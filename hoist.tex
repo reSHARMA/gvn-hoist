@@ -52,6 +52,65 @@ On the other hand sinking loads may improve the cache behavior, because we load 
 We might want to to improve the code-hoisting to a global code motion algorithm.
 
 
+
+\section{Hoisting bottom up with optimistic approach}
+Optimistic means collect the set of all potential redundancies and then discard the bad ones.
+
+Bottom up:
+Sort the basic blocks of potentially redundant computations based on DFS-in numbers.
+Then start evaluating the safety checks for first two, if good then move to second one. That way we can even
+partially hoist computations should we find that we cannot remove all the redundant computations.
+
+We can also split the set of to partially hoist multiple times, if hoisting globally is not possible.
+
+In the case when more than one computation from the same basic block shows up as redundant.
+e.g.
+BB1
+load a;
+....
+store .;
+....
+load a;
+
+
+BB2
+load a
+
+BB0 -> BB1
+BB0 -> BB2
+
+In this case both the loads from BB1 will show up as redundant (according to the current algorithm), but the complete
+hoising will fail as the second load in BB1 is not safe to hoist. By following the bottom-up approach, the sorted list
+of BBs will appear like this:
+
+{ BB1, BB2(first load), BB2(second load) }
+
+Now we will start evaluating the safety of BB1-l1 and BB2-l2 which will pass, then BB12-l1 and BB2-l2 will fail.
+So we can revert back to BB12-l1 and hoist them to BB0. Doing the top down approach and finding the partial set
+to hoist instructions partially would result in a combinatorial explosion.
+
+GCC: 23286 has interesting test cases.
+
+
+
+\section{Enabling LICM by code-hoisting}
+loop:
+if (a)
+  i1;
+else
+  i1;
+
+Here i1 is redundant and can be hoisted out of loop. But the LICM will not do because it does not reason about instructions in the conditional.
+By code-hoisting i1 will be hoisted out of conditional which will benefit the LICM.
+
+\section{Improving the Inliner heuristics}
+Reducing the number of instructions also reduces the inline cost and hence improves the inliner heuristics.
+
+\section{Improving vectorization}
+It will also benefit vectorizer by reducing the number
+of basic blocks, should all the instructions in conditional get hoisted.
+
+
 \end{section}
 
 
