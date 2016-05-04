@@ -51,7 +51,21 @@ Say c = f(a, b) is an instruction. Hoisting up will reduce the liveness of regis
 On the other hand sinking loads may improve the cache behavior, because we load as late as possible. But sinking computations may increase the live range.
 We might want to to improve the code-hoisting to a global code motion algorithm.
 
+\section{Hoisting scalars}
+Scalars are the easiest to hoist because we do not have to analyze for mem-refs. As long as all the
+operands are available (which in SSA form we do, or may be there are chained dependencies), the scalar can
+be hoisted. Care must be taken in case of hoisting scalars too far, as that may increase register pressure
+and result in spills. For example hoisting a scalar past a call. In that case the call may result in
+save and restore of the register the scalar may be defined to. In our current implementation
+we do not hoist scalars past a call. Another way to mitigate this problem would be to
+reinstantiate (rematerialize) the computation after a call (may be as a different pass).
 
+\section{Hoisting calls}
+Calls can be hoisted by value-numbering all the arguments. For safety we have to check that no other side-effects are there
+between call and the hoisting point, just like loads and stores.
+
+\section{Hoisting stores}
+We need to value number the address and the value being stored.
 
 \section{Hoisting bottom up with optimistic approach}
 Optimistic means collect the set of all potential redundancies and then discard the bad ones.
