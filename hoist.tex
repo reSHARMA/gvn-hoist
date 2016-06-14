@@ -2,6 +2,8 @@
 
 \section{Global Value Numbering}
 \section{Code Hoisting}
+Code hoisting does not remove redundancies by itself but it enables removal of redundancies by other passes.
+e.g., Enable inlining.
 \section{Related Work}
 
 \section{Cost models}
@@ -74,7 +76,7 @@ operands are available (which in SSA form we do, or may be there are chained dep
 be hoisted. Care must be taken in case of hoisting scalars too far, as that may increase register pressure
 and result in spills. For example hoisting a scalar past a call. In that case the call may result in
 save and restore of the register the scalar may be defined to. In our current implementation
-we do not hoist scalars past a call. Another way to mitigate this problem would be to
+we do not hoist scalars past a call. Another way to mitigate this problem is be to
 reinstantiate (rematerialize) the computation after a call (may be as a different pass).
 
 \section{Hoisting calls}
@@ -89,6 +91,7 @@ Optimistic means collect the set of all potential redundancies and then discard 
 
 Bottom up:
 Sort the basic blocks of potentially redundant computations based on DFS-in numbers.
+TODO: Explain why sorting by DFS-in numbers.
 Then start evaluating the safety checks for first two, if good then move to second one. That way we can even
 partially hoist computations should we find that we cannot remove all the redundant computations.
 
@@ -122,7 +125,18 @@ to hoist instructions partially would result in a combinatorial explosion.
 
 GCC: 23286 has interesting test cases.
 
+\section{Partition the list of hoisting candidates to maximize hoisting}
+The set of candidates are sorted in the order of their DFS-in numbers. So that candidates close to
+each other in the list are also closer (??) in the CFG.
 
+In the case where all the candidates cannot be hoisted at a common hoist point because of:
+\begin{enumerate}
+\item Safety conditions are not met.
+\item Live range would increase too much.
+\end{enumerate}
+
+We partition the list at the point where the above mentioned checks fail.
+TODO: Put an example to illustrate the point.
 
 \section{Enabling LICM by code-hoisting}
 loop:
@@ -140,7 +154,6 @@ Reducing the number of instructions also reduces the inline cost and hence impro
 \section{Improving vectorization}
 It will also benefit vectorizer by reducing the number
 of basic blocks, should all the instructions in conditional get hoisted.
-
 
 \end{section}
 
