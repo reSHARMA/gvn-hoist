@@ -27,40 +27,89 @@ Start from a branch.
 6. Hoisting to reduce critical path in OoO execution.
 7. Ranking/Wavefront algorithm to hoist across switch blocks.
 
-Global code motion.
- bb1: b = ...
- bb2: c = ...
- bb3: a = b + c (to be moved to b5)
- bb4: ... = a
- old-live-range = distance(bb1,bb3) + distance(bb2,bb3) + distance (bb3,bb4)
- new-live-rance = distance(bb1,bb5) + distance(bb2,bb5) + distance (bb5,bb4)
- distance(bbx, bby) = total instruction count in the path from bbx to bby
- If the new live-range is less than the old one it will be a good candidate
- for gcm. When both the ranges will be same:
-  - It is a simple copy of kind a = b.
-  - One of the operands is not a Instruction/Register.
-  - In these cases we need to have some heuristic or we can ignore them.
 
- The decision for bb5 can be made by whether hoist/sink is beneficial.
+\section{Hoisting to improve performance}
+Hoisting also reduces critical path length of execution in out of order machines (but not in sequential machines), by exposing ILP before the conditional where the instruction was hoisted.
 
- Loads can be moved early as long as there is load available in each branch
- or there is already a load/store from/to the same underlying object.
- Stores can be moved up if there is a store/load to/from the same object.
- The idea is to establish that the object has memory allocated to it.
- Moving load/store together may help with locality of reference.
+\begin{program}
+float foo(float d, float min, float max, float a)
+{
+  float tmin;
+  float tmax;
 
- PRE via Global Value Numbering
- Remove redundant instructions which are:
-  - Already available in the dominator.
-  - Are in one of the sibling branches, i.e., the instruction is used at
-    a point which shares a common dominator where all the use-operands
-    are available.
- In some cases it is possible to generate redundancy by restructuring the code
- (Ref. Ras Bodik), but that I'll leave for the next iteration of this patch.
+  float inv = 1.0f / d;
+  if (inv >= 0) {
+    tmin = (min - a) * inv;
+    tmax = (max - a) * inv;
+  } else {
+    tmin = (max - a) * inv;
+    tmax = (min - a) * inv;
+  }
+  return tmax + tmin;
+}
+
+\end{program}
+
+In this program the computations of tmax and tmin and identical in both the branches but they cannot be evaluated before inv. Since inv depends on a division operation
+which is generally more expensive than the addition, subtraction and multiplication operations as required to evaluate tmax and tmin, the total latency of computation across
+each branch is:
+
+O(div) + 2(O(sub) + O(mul))
+Or for out of order processors with two add units and two multiply units:
+O(div) + O(sub) + O(mul)
+
+But if we hoist the computation of tmax and tmin outside the conditionals, the C code version would look like this:
+\begin{program}
+float foo(float d, float min, float max, float a)
+{
+  float tmin;
+  float tmax;
+
+  tmin' = (min - a);
+  tmax' = (max - a);
+
+  float inv = 1.0f / d;
+  tmin' = tmin' * inv;
+  tmax' = tmax' * inv;
+
+  if (inv >= 0) {
+    tmin = tmin';
+    tmax = tmax';
+  } else {
+    tmin = tmax';
+    tmax = tmin';
+  }
+
+  return tmax + tmin;
+}
+
+\end{program}
+
+In this code the two subtractions and the div operations can execute in parallel. So the total number of cycles will be
+O(div) + O(mul)
+since O(div) is usually greater than O(sub)
+
+Of course, a sinking optimization could just sink the computation of both tmax and tmin, and since the final operation is an addition (aasociative under fast math), the entire if-else
+code would go away.
+
+\begin{program}
+float foo(float d, float min, float max, float a)
+{
+  float tmin;
+  float tmax;
+
+  tmin' = (min - a);
+  tmax' = (max - a);
+
+  float inv = 1.0f / d;
+  tmin' = tmin' * inv;
+  tmax' = tmax' * inv;
+
+  return tmax' + tmin';
+}
+\end{program}
 
 
- Hoisting also reduces critical path length of execution in out of order machines (but not in sequential machines), by exposing ILP before the conditional where the instruction was hoisted. This feature has already been identified in the previous patch which improves ray-trace.
-  
  Concerns:
  Safety of load instructions to be checked. We cannot hoist loads until all the paths in the parent BBs have the same load. This is to comply with C semantics, although I'm not sure about this yet.
  Finding a cost model in case optimistic hoisting does not give desired results.
