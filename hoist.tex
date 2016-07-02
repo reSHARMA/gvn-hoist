@@ -109,16 +109,6 @@ float foo(float d, float min, float max, float a)
 }
 \end{program}
 
-
- Concerns:
- Safety of load instructions to be checked. We cannot hoist loads until all the paths in the parent BBs have the same load. This is to comply with C semantics, although I'm not sure about this yet.
- Finding a cost model in case optimistic hoisting does not give desired results.
-
-It seems, code hoisting is beneficial in cases even if the computations are not redundant.
-Say c = f(a, b) is an instruction. Hoisting up will reduce the liveness of registers a and b, but will only increase the liveness of c. So we gain 2:1 even when the computation is not redundant. For loads this is not the case because, load takes only one operand so the liveness remains the same, additionally hoisting too much loads can have adversely affect the cache behavior.
-On the other hand sinking loads may improve the cache behavior, because we load as late as possible. But sinking computations may increase the live range.
-We might want to to improve the code-hoisting to a global code motion algorithm.
-
 \section{Hoisting scalars}
 Scalars are the easiest to hoist because we do not have to analyze for mem-refs. As long as all the
 operands are available (which in SSA form we do, or may be there are chained dependencies), the scalar can
