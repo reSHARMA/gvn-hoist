@@ -2,8 +2,8 @@
 
 \section{Global Value Numbering}
 \section{Code Hoisting}
-Code hoisting does not remove redundancies by itself but it enables removal of redundancies by other passes.
-e.g., Enable inlining.
+Code hoisting does not remove redundancies by itself but it enables
+removal of redundancies by other passes.  e.g., Enable inlining.
 \section{Related Work}
 
 
@@ -11,7 +11,8 @@ e.g., Enable inlining.
 
 \section{Cost models}
 \subsection{In the presence of calls}
-Hoisting scalars across calls is tricky because it can increase the number of spills.
+Hoisting scalars across calls is tricky because it can increase the
+number of spills.
 
 \subsection{Hoisting too far away}
 \begin{enumerate}
@@ -45,7 +46,9 @@ Start from a branch. Hoist one by one iteratively.
 
 
 \section{Hoisting to improve performance}
-Hoisting also reduces critical path length of execution in out of order machines (but not in sequential machines), by exposing ILP before the conditional where the instruction was hoisted.
+Hoisting also reduces critical path length of execution in out of
+order machines (but not in sequential machines), by exposing ILP
+before the conditional where the instruction was hoisted.
 
 \begin{program}
 float foo(float d, float min, float max, float a)
@@ -66,15 +69,19 @@ float foo(float d, float min, float max, float a)
 
 \end{program}
 
-In this program the computations of tmax and tmin and identical in both the branches but they cannot be evaluated before inv. Since inv depends on a division operation
-which is generally more expensive than the addition, subtraction and multiplication operations as required to evaluate tmax and tmin, the total latency of computation across
-each branch is:
+In this program the computations of tmax and tmin and identical in
+both the branches but they cannot be evaluated before inv. Since inv
+depends on a division operation which is generally more expensive than
+the addition, subtraction and multiplication operations as required to
+evaluate tmax and tmin, the total latency of computation across each
+branch is:
 
 O(div) + 2(O(sub) + O(mul))
 Or for out of order processors with two add units and two multiply units:
 O(div) + O(sub) + O(mul)
 
-But if we hoist the computation of tmax and tmin outside the conditionals, the C code version would look like this:
+But if we hoist the computation of tmax and tmin outside the
+conditionals, the C code version would look like this:
 \begin{program}
 float foo(float d, float min, float max, float a)
 {
@@ -101,12 +108,13 @@ float foo(float d, float min, float max, float a)
 
 \end{program}
 
-In this code the two subtractions and the div operations can execute in parallel. So the total number of cycles will be
-O(div) + O(mul)
+In this code the two subtractions and the div operations can execute
+in parallel. So the total number of cycles will be O(div) + O(mul)
 since O(div) is usually greater than O(sub)
 
-Of course, a sinking optimization could just sink the computation of both tmax and tmin, and since the final operation is an addition (aasociative under fast math), the entire if-else
-code would go away.
+Of course, a sinking optimization could just sink the computation of
+both tmax and tmin, and since the final operation is an addition
+(aasociative under fast math), the entire if-else code would go away.
 
 \begin{program}
 float foo(float d, float min, float max, float a)
@@ -126,33 +134,41 @@ float foo(float d, float min, float max, float a)
 \end{program}
 
 \section{Hoisting scalars}
-Scalars are the easiest to hoist because we do not have to analyze for mem-refs. As long as all the
-operands are available (which in SSA form we do, or may be there are chained dependencies), the scalar can
-be hoisted. Care must be taken in case of hoisting scalars too far, as that may increase register pressure
-and result in spills. For example hoisting a scalar past a call. In that case the call may result in
-save and restore of the register the scalar may be defined to. In our current implementation
-we do not hoist scalars past a call. Another way to mitigate this problem is be to
-reinstantiate (rematerialize) the computation after a call (may be as a different pass).
+Scalars are the easiest to hoist because we do not have to analyze for
+mem-refs. As long as all the operands are available (which in SSA form
+we do, or may be there are chained dependencies), the scalar can be
+hoisted. Care must be taken in case of hoisting scalars too far, as
+that may increase register pressure and result in spills. For example
+hoisting a scalar past a call. In that case the call may result in
+save and restore of the register the scalar may be defined to. In our
+current implementation we do not hoist scalars past a call. Another
+way to mitigate this problem is be to reinstantiate (rematerialize)
+the computation after a call (may be as a different pass).
 
 \section{Hoisting calls}
-Calls can be hoisted by value-numbering all the arguments. For safety we have to check that no other side-effects are there
-between call and the hoisting point, just like loads and stores.
+Calls can be hoisted by value-numbering all the arguments. For safety
+we have to check that no other side-effects are there between call and
+the hoisting point, just like loads and stores.
 
 \section{Hoisting stores}
 We need to value number the address and the value being stored.
 
 \section{Hoisting bottom up with optimistic approach}
-Optimistic means collect the set of all potential redundancies and then discard the bad ones.
+Optimistic means collect the set of all potential redundancies and
+then discard the bad ones.
 
-Bottom up:
-Sort the basic blocks of potentially redundant computations based on DFS-in numbers.
-TODO: Explain why sorting by DFS-in numbers.
-Then start evaluating the safety checks for first two, if good then move to second one. That way we can even
-partially hoist computations should we find that we cannot remove all the redundant computations.
+Bottom up: Sort the basic blocks of potentially redundant computations
+based on DFS-in numbers.  TODO: Explain why sorting by DFS-in numbers.
+Then start evaluating the safety checks for first two, if good then
+move to second one. That way we can even partially hoist computations
+should we find that we cannot remove all the redundant computations.
 
-We can also split the set of to partially hoist multiple times, if hoisting globally is not possible.
+We can also split the set of to partially hoist multiple times, if
+hoisting globally is not possible.
 
-In the case when more than one computation from the same basic block shows up as redundant.
+In the case when more than one computation from the same basic block
+shows up as redundant.
+
 e.g.
 BB1
 load a;
@@ -168,23 +184,28 @@ load a
 BB0 -> BB1
 BB0 -> BB2
 
-In this case both the loads from BB1 will show up as redundant (according to the current algorithm), but the complete
-hoising will fail as the second load in BB1 is not safe to hoist. By following the bottom-up approach, the sorted list
-of BBs will appear like this:
+In this case both the loads from BB1 will show up as redundant
+(according to the current algorithm), but the complete hoising will
+fail as the second load in BB1 is not safe to hoist. By following the
+bottom-up approach, the sorted list of BBs will appear like this:
 
 { BB1, BB2(first load), BB2(second load) }
 
-Now we will start evaluating the safety of BB1-l1 and BB2-l2 which will pass, then BB12-l1 and BB2-l2 will fail.
-So we can revert back to BB12-l1 and hoist them to BB0. Doing the top down approach and finding the partial set
-to hoist instructions partially would result in a combinatorial explosion.
+Now we will start evaluating the safety of BB1-l1 and BB2-l2 which
+will pass, then BB12-l1 and BB2-l2 will fail.  So we can revert back
+to BB12-l1 and hoist them to BB0. Doing the top down approach and
+finding the partial set to hoist instructions partially would result
+in a combinatorial explosion.
 
 GCC: 23286 has interesting test cases.
 
 \section{Partition the list of hoisting candidates to maximize hoisting}
-The set of candidates are sorted in the order of their DFS-in numbers. So that candidates close to
-each other in the list are also closer (??) in the CFG.
+The set of candidates are sorted in the order of their DFS-in
+numbers. So that candidates close to each other in the list are also
+closer (??) in the CFG.
 
-In the case where all the candidates cannot be hoisted at a common hoist point because of:
+In the case where all the candidates cannot be hoisted at a common
+hoist point because of:
 \begin{enumerate}
 \item Safety conditions are not met.
 \item Live range would increase too much.
@@ -200,11 +221,14 @@ if (a)
 else
   i1;
 
-Here i1 is redundant and can be hoisted out of loop. But the LICM will not do because it does not reason about instructions in the conditional.
-By code-hoisting i1 will be hoisted out of conditional which will benefit the LICM.
+Here i1 is redundant and can be hoisted out of loop. But the LICM will
+not do because it does not reason about instructions in the
+conditional.  By code-hoisting i1 will be hoisted out of conditional
+which will benefit the LICM.
 
 \section{Improving the Inliner heuristics}
-Reducing the number of instructions also reduces the inline cost and hence improves the inliner heuristics.
+Reducing the number of instructions also reduces the inline cost and
+hence improves the inliner heuristics.
 
 \section{Improving vectorization}
 It will also benefit vectorizer by reducing the number
