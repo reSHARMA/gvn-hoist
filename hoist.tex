@@ -6,34 +6,6 @@ Code hoisting does not remove redundancies by itself but it enables
 removal of redundancies by other passes.  e.g., Enable inlining.
 \section{Related Work}
 
-
-
-
-\section{Cost models}
-\subsection{In the presence of calls}
-Hoisting scalars across calls is tricky because it can increase the
-number of spills.
-
-\subsection{Hoisting too far away}
-\begin{enumerate}
-\item When the hoist point is too far.
-\item When the number of instructions we may cross is very high.
-\end{enumerate}
-
-\section{Comparative analysis of different approaches to hoisting}
-\subsection{Optimistic approach}
-Collect GVN of all the instructions in the beginning.
-\subsection{Pessimistic approach}
-Start from a branch. Hoist one by one iteratively.
-\subsection{Triangle approach}
-
-
-\section{Using MemorySSA}
-\subsection{Iterative update to memory ssa during the hoisting process}
-
-\section{Without MemorySSA using the dominance information}
-
-
 \begin{section}
 
 1. Code hoisting in adjacent blocks in a diamond/triangle like structure.
@@ -114,7 +86,7 @@ since O(div) is usually greater than O(sub)
 
 Of course, a sinking optimization could just sink the computation of
 both tmax and tmin, and since the final operation is an addition
-(aasociative under fast math), the entire if-else code would go away.
+(asociative under fast math), the entire if-else code would go away.
 
 \begin{program}
 float foo(float d, float min, float max, float a)
@@ -134,24 +106,40 @@ float foo(float d, float min, float max, float a)
 \end{program}
 
 \section{Hoisting scalars}
-Scalars are the easiest to hoist because we do not have to analyze for
-mem-refs. As long as all the operands are available (which in SSA form
-we do, or may be there are chained dependencies), the scalar can be
-hoisted. Care must be taken in case of hoisting scalars too far, as
-that may increase register pressure and result in spills. For example
-hoisting a scalar past a call. In that case the call may result in
-save and restore of the register the scalar may be defined to. In our
-current implementation we do not hoist scalars past a call. Another
-way to mitigate this problem is be to reinstantiate (rematerialize)
-the computation after a call (may be as a different pass).
+Scalars are the easiest to hoist because we do not have to analyze
+them for aliasing memory references. As long as all the operands are
+available (which in SSA form we do, or may be there are chained
+dependencies), the scalar can be hoisted. Care must be taken in case
+of hoisting scalars too far, as that may increase register pressure
+and result in spills. For example hoisting a scalar past a call. In
+that case the call may result in save and restore of the register the
+scalar may be defined to. In our current implementation we do not
+hoist scalars past a call. Another way to mitigate this problem is be
+to reinstantiate (rematerialize) the computation after a call (may be
+as a different pass).
 
-\section{Hoisting calls}
-Calls can be hoisted by value-numbering all the arguments. For safety
-we have to check that no other side-effects are there between call and
-the hoisting point, just like loads and stores.
+
+
+\section{Using MemorySSA}
+\subsection{Iterative update to memory ssa during the hoisting process}
+
+\section{Without MemorySSA using the dominance information}
 
 \section{Hoisting stores}
 We need to value number the address and the value being stored.
+
+\section{Hoisting calls}
+Calls can be hoisted by value-numbering all the arguments. For safety
+we have to check that there are no other side-effects between a call and
+its hoisting point, just like loads and stores.
+
+
+\section{Comparative analysis of different approaches to hoisting}
+\subsection{Optimistic approach}
+Collect GVN of all the instructions in the beginning.
+\subsection{Pessimistic approach}
+Start from a branch. Hoist one by one iteratively.
+\subsection{Triangle approach}
 
 \section{Hoisting bottom up with optimistic approach}
 Optimistic means collect the set of all potential redundancies and
@@ -213,6 +201,20 @@ hoist point because of:
 
 We partition the list at the point where the above mentioned checks fail.
 TODO: Put an example to illustrate the point.
+
+
+\section{Cost models}
+\subsection{In the presence of calls}
+Hoisting scalars across calls is tricky because it can increase the
+number of spills.
+
+\subsection{Hoisting too far away}
+\begin{enumerate}
+\item When the hoist point is too far.
+\item When the number of instructions we may cross is very high.
+\end{enumerate}
+
+
 
 \section{Enabling LICM by code-hoisting}
 loop:
