@@ -137,9 +137,28 @@ its hoisting point, just like loads and stores.
 \section{Comparative analysis of different approaches to hoisting}
 \subsection{Optimistic approach}
 Collect GVN of all the instructions in the beginning.
-\subsection{Pessimistic approach}
-Start from a branch. Hoist one by one iteratively.
+
 \subsection{Triangle approach}
+This is the most basic approach to code-hoisting when the instructions are
+hoisted to immediate parent in a diamond like structure. When there are
+identical computations in both the branches of a conditional, and all the
+legality checks are met, the instruction can be hoisted to the predecessor basic
+block. This approach is simple to implement and has minimal impact on the
+register pressure.
+
+\subsection{Pessimistic approach}
+To extend the triangle approach to the entire function, the algorithm traverses
+the basic blocks in the invers depth-first order. All the leaf nodes are visited
+before the non-leaf nodes because instructions are hoisted upwards. We start
+from a branch and collect the GVN of all the instructions. Then in the sibling
+basic block we find if there are any identical computations. Once we find an
+identical computation we try to hoist it to the nearest common dominator which
+is the immediate predecessor of both the basic blocks. We traverse the basic
+block from top to down so that the once an instruction is hoisted it creates
+opportunities for other dependent instructions. After all the sibling basic
+blocks have all the identical computations hoisted, we continue the hoisting
+process with their parent and its sibling of their parent until we reach the
+beginning of the function.
 
 \section{Hoisting bottom up with optimistic approach}
 Optimistic means collect the set of all potential redundancies and
@@ -206,16 +225,20 @@ increasing order of their DFS-in numbers, we make sure that candidates
 closer in the list have their common dominator nearby.
 
 Essentially,
-abs(DFS-in(I1) - DFS-in(I2)) < abs(DFS-in(I1) - DFS-in(I3))
-=> dist(I1, nearest-common-dom(I1, I2)) <= dist(I1, nearest-common-dom(I1, I3))
+abs(DFSIn(I1) - DFSIn(I2)) < abs(DFSIn(I1) - DFSIn(I3))
+=> bbDist(I1, nearest-common-dom(I1, I2)) <= bbDist(I1, nearest-common-dom(I1, I3))
 
-This means for candidates closer to each other w.r.t. DFS numbers, we
-would make fewer checks for preconditions.
+This means for candidates closer to each other w.r.t. DFS numbers:
+\begin{enumerate}
+\item would make fewer checks for preconditions.
+\item hoisting point will be closer so, the intersection of live-range of the instruction
+with other instructions will be minimal.
+\end{enumerate}
 
-We partition the list at the point where the above mentioned checks fail.
+In our current implementation we partition the list at the point where the
+legality/profitability checks fail.
 
 TODO: Put an example to illustrate the point.
-
 
 \section{Cost models}
 \subsection{In the presence of calls}
@@ -243,7 +266,7 @@ conditional.  By code-hoisting i1 will be hoisted out of conditional
 which will benefit the LICM.
 
 \section{Improving the Inliner heuristics}
-Reducing the number of instructions also reduces the inline cost and
+Reducing the number of instructions also reduces the inlining cost and
 hence improves the inliner heuristics.
 
 \section{Improving vectorization}
