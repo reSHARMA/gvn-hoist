@@ -199,7 +199,21 @@ hoist point because of:
 \item Live range would increase too much.
 \end{enumerate}
 
+In order to hoist a subset of identical instructions, we partition the
+list of all candidates in a way to maximise the total number of
+hoistings.  By sorting the list of all the candidates in the
+increasing order of their DFS-in numbers, we make sure that candidates
+closer in the list have their common dominator nearby.
+
+Essentially,
+abs(DFS-in(I1) - DFS-in(I2)) < abs(DFS-in(I1) - DFS-in(I3))
+=> dist(I1, nearest-common-dom(I1, I2)) <= dist(I1, nearest-common-dom(I1, I3))
+
+This means for candidates closer to each other w.r.t. DFS numbers, we
+would make fewer checks for preconditions.
+
 We partition the list at the point where the above mentioned checks fail.
+
 TODO: Put an example to illustrate the point.
 
 
