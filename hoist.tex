@@ -135,9 +135,6 @@ its hoisting point, just like loads and stores.
 
 
 \section{Comparative analysis of different approaches to hoisting}
-\subsection{Optimistic approach}
-Collect GVN of all the instructions in the beginning.
-
 \subsection{Triangle approach}
 This is the most basic approach to code-hoisting when the instructions are
 hoisted to immediate parent in a diamond like structure. When there are
@@ -159,6 +156,26 @@ opportunities for other dependent instructions. After all the sibling basic
 blocks have all the identical computations hoisted, we continue the hoisting
 process with their parent and its sibling of their parent until we reach the
 beginning of the function.
+
+\subsection{Optimistic approach}
+In this approach, the goal is to maximise the total number of hoistings in the
+entire function.  This algorithm is very useful when optimizing for code-size.
+We see a lot of computations hoisted \ref{experimental-results}. In order to do
+that, we collect the GVN of all the instructions in the function. After that we
+iterate on the list of instructions having identical GVN. After that we find the
+common dominator dominating all the identical computations and try to hoist the
+instruction in that basic block, if feasible. Many times it is not possible to
+hoist all the instructions to one common dominator, due to legality/profitability
+constraints. In those cases, the algorithmn would partion the list of computations
+a partially hoist a set of computations to their common dominator. For more details
+see \ref{sec:partition}
+
+
+\subsubsection{pros,cons}
+Naturally, the amount of hoisting depends on the generality of the GVN
+algorithm. Current llvm GVN implementation finds out equivalence between
+dependent instructions to some extent.
+
 
 \section{Hoisting bottom up with optimistic approach}
 Optimistic means collect the set of all potential redundancies and
@@ -207,6 +224,7 @@ in a combinatorial explosion.
 GCC: 23286 has interesting test cases.
 
 \section{Partition the list of hoisting candidates to maximize hoisting}
+\cite{sec:partition}
 The set of candidates are sorted in the order of their DFS-in
 numbers. So that candidates close to each other in the list are also
 closer (??) in the CFG.
