@@ -217,10 +217,12 @@ its hoisting point, just like loads and stores.
 \subsection{Cost models}
 
 \subsection{Reduce register pressure}
+\label{hoist:reg-pressure}
 Following example explains how code hoisting can actually reduce the register pressure.
 Consider the following example where the labels prefixed with 'p' represent the position of
 instruction in a basic block (names prefixed with bb).
 
+\begin{verbatim}
 bb0: p0: b = ...
 bb1: p1: c = ...
 bb2: p2: if (c) jump bb3 else jump bb4
@@ -228,16 +230,21 @@ bb3: p3: a0 = b + c
 bb4: p4: a1 = b + c
 bb5: p5: d = phi {a0(bb3), a1(bb4)}
 
-If we measure distance(px, py) as total instruction count in the path from the position of px to py
+If we measure distance(px, py) as total instruction
+count in the path from the position of px to py
 
-old-live-range = max(distance(p0, p3) + distance(p1, p3) , distance(p0, p4) + distance(p1, p4)) + distance (p3, p5)
-new-live-rance = distance(p0, p2) + distance(p1, p2) + distance (p2, p5)
+old-live-range = max(distance(p0, p3) + distance(p1, p3) ,
+                     distance(p0, p4) + distance(p1, p4))
+                 + distance (p3, p5)
+new-live-rance = distance(p0, p2) + distance(p1, p2)
+                 + distance (p2, p5)
+\end{verbatim}
 
 If the new live-range is less than the old one it will be a good candidate
 for hoist. There are cases when both the ranges will be same:
 \begin{enumerate}
-\item There is only one operand on the right hand side e.g., an assignment operation.
-\item One of the operands is not a Instruction/Register.
+  \item There is only one operand on the right hand side e.g., an assignment operation.
+  \item One of the operands is not a Instruction/Register.
 \end{enumerate}
 
 In a special case where the instruction to be hoisted has the last use of its
@@ -247,12 +254,19 @@ has two register operands because the gain in live-range will be in the ratio of
 one register operand in the right hand side with its last use, code hoisting
 will either decrease or maintain the register pressure.
 
-Hoisting scalars across calls is tricky because it can increase the
-number of spills.
-
-
 \subsection{In the presence of calls}
-Caller saved registers.
+Hoisting scalars across calls is tricky because it can increase the number of
+spills. During the frame lowering of calls, the argument registers, in general,
+the caller saved registers are saved because they might be modified by the
+callee and after the call they are restored. So before the call the register
+pressure is high because the number of available registers are reduced by the
+number of caller saved registers. In that situation if a computation is hoisted
+across the call, that would increase the total number of registers required by
+one, thus contributing to the register pressure.
+
+However, in the two special cases discussed in Section-\ref{hoist:reg-pressure},
+it will be okay to hoist.
+
 
 \subsection{Hoisting too far away}
 \begin{enumerate}
@@ -282,6 +296,7 @@ of basic blocks, should all the instructions in conditional get hoisted.
 
 
 \section{Experimental Evaluation}
+\label{sec:experimental-results}
 
 \subsection{Comparative analysis of different approaches to hoisting}
 \subsection{Triangle approach}
@@ -309,15 +324,16 @@ beginning of the function.
 \subsection{Optimistic approach}
 In this approach, the goal is to maximise the total number of hoistings in the
 entire function.  This algorithm is very useful when optimizing for code-size.
-We see a lot of computations hoisted \ref{experimental-results}. In order to do
-that, we collect the GVN of all the instructions in the function. After that we
-iterate on the list of instructions having identical GVN. After that we find the
-common dominator dominating all the identical computations and try to hoist the
-instruction in that basic block, if feasible. Many times it is not possible to
-hoist all the instructions to one common dominator, due to legality/profitability
-constraints. In those cases, the algorithmn would partion the list of computations
-a partially hoist a set of computations to their common dominator. For more details
-see \ref{sec:partition}
+We see a lot of computations hoisted (see
+Section~\ref{sec:experimental-results}. In order to do that, we collect the GVN
+of all the instructions in the function. After that we iterate on the list of
+instructions having identical GVN. After that we find the common dominator
+dominating all the identical computations and try to hoist the instruction in
+that basic block, if feasible. Many times it is not possible to hoist all the
+instructions to one common dominator, due to legality/profitability
+constraints. In those cases, the algorithmn would partion the list of
+computations a partially hoist a set of computations to their common
+dominator. For more details see Section~\ref{subsec:partition}.
 
 
 \subsubsection{pros,cons}
@@ -373,7 +389,7 @@ in a combinatorial explosion.
 GCC: 23286 has interesting test cases.
 
 \subsection{Partition the list of hoisting candidates to maximize hoisting}
-\cite{sec:partition}
+\label{subsec:partition}
 The set of candidates are sorted in the order of their DFS-in
 numbers. So that candidates close to each other in the list are also
 closer (??) in the CFG.
