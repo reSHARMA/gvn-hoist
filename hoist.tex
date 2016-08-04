@@ -56,27 +56,40 @@ removal of redundancies by other passes.  e.g., Enable inlining.
 
 \section{Introduction}
 
+Why hoisting expressions:
+\begin{itemize}
+\item OOO processors: good for speculative execution of branches
+\item more ILP for in-order processors
+\item code size
+\item optimize for register pressure
+\item improve inlining heuristics
+\end{itemize}
+
+\begin{enumerate}
+\item Code hoisting in adjacent blocks in a diamond/triangle like structure.
+\item O(n) Algorithm.
+\item Hoisting equivalent computations in non-sibling BBs.
+\item Hoisting across switch blocks.
+\item Hoisting to improve PRE.
+\item Hoisting to reduce critical path in OoO execution.
+\item Ranking/Wavefront algorithm to hoist across switch blocks.
+\end{enumerate}
+
+\section{Related Work}
+
+A lot of bug reports in GCC and LLVM bugzillas, no papers on this topic yet.
+
+Code hoisting does not remove redundancies by itself but it enables
+removal of redundancies by other passes.  e.g., Enable inlining.
+
+
 graph algorithms \cite{tarjan},
 SSA \cite{cytron}
 GVN \cite{rosen1988global,click1995global}
 CFG, DOM \cite{dragonbook}
 SESE, SEME \cite{sese}
 
-\section{Global Value Numbering}
-\section{Code Hoisting}
-Code hoisting does not remove redundancies by itself but it enables
-removal of redundancies by other passes.  e.g., Enable inlining.
-\section{Related Work}
-
-
-1. Code hoisting in adjacent blocks in a diamond/triangle like structure.
-2. O(n) Algorithm.
-3. Hoisting equivalent computations in non-sibling BBs.
-4. Hoisting across switch blocks.
-5. Hoisting to improve PRE.
-6. Hoisting to reduce critical path in OoO execution.
-7. Ranking/Wavefront algorithm to hoist across switch blocks.
-
+\subsection{Global Value Numbering}
 
 \section{Hoisting to improve performance}
 Hoisting also reduces critical path length of execution in out of
