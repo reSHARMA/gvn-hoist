@@ -50,8 +50,14 @@ Sebastian Pop\\
 
 \maketitle
 \begin{abstract}
-Code hoisting does not remove redundancies by itself but it enables
-removal of redundancies by other passes.  e.g., Enable inlining.
+  Code hoisting identifies identical computations and replaces them with a
+  single expression in the common dominator.  Code hoisting is often confused
+  with CSE (Common Subexpression Elimination) although is not bound to find
+  redundancies within a single basic block.  It could also be confused with PRE,
+  although the main goal is not to remove redundancies: it enables removal of
+  redundancies by other passes like LICM.  The main goal of code hoisting is to
+  reduce code size with added benefit of exposing instruction level parallelism
+  and reduced register pressure.
 \end{abstract}
 
 \section{Introduction}
@@ -88,6 +94,7 @@ SSA \cite{cytron}
 GVN \cite{rosen1988global,click1995global}
 CFG, DOM \cite{dragonbook}
 SESE, SEME \cite{sese}
+MemorySSA \cite{novillo2007memory}
 
 \subsection{Global Value Numbering}
 
