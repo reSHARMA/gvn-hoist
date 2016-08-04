@@ -205,8 +205,27 @@ as a different pass).
 
 \subsection{Without MemorySSA using the dominance information}
 
+\subsection{Hoisting loads}
+In order to value number stores, we value number (hash) the address from where
+the value is to be loaded. Then we need to compute the hoisting point just like
+we did for the scalars. At the hoisting point we compute if the operands to the
+load (an address) is available. If it is not available we can try to compute the
+addresss if that is possible.  Along the path from current position of the load
+instruction through the hoiting point, we find if there are aliasing stores, we
+find if any of the basic blocks are landing pads or targets of indirect
+branches. In those cases we discard the candidate. Since the load increases the
+register pressure by one (unless the operand to load becomes dead at the load),
+we evaluate if it is beneficial to hoist the load.
+
 \subsection{Hoisting stores}
-We need to value number the address and the value being stored.
+In order to value number stores, we value number (hash) the address as well as
+the value to be stored to that address. For the legality, we need to check the
+dependency requirements just like hoisting loads. We need to check that the
+operands of store are available at the hoisting point, that there are no
+aliasing loads or store along the path from the current position through the
+hoisting point and, none of the basic blocks along the path are landing pads.
+Once all the legality checks are satisfied, it is a good candidate to be
+hoisted.
 
 \subsection{Hoisting calls}
 Calls can be hoisted by value-numbering all the arguments. For safety
