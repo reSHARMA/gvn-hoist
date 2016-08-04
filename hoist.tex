@@ -217,8 +217,39 @@ its hoisting point, just like loads and stores.
 \subsection{Cost models}
 
 \subsection{Reduce register pressure}
+Following example explains how code hoisting can actually reduce the register pressure.
+Consider the following example where the labels prefixed with 'p' represent the position of
+instruction in a basic block (names prefixed with bb).
+
+bb0: p0: b = ...
+bb1: p1: c = ...
+bb2: p2: if (c) jump bb3 else jump bb4
+bb3: p3: a0 = b + c
+bb4: p4: a1 = b + c
+bb5: p5: d = phi {a0(bb3), a1(bb4)}
+
+If we measure distance(px, py) as total instruction count in the path from the position of px to py
+
+old-live-range = max(distance(p0, p3) + distance(p1, p3) , distance(p0, p4) + distance(p1, p4)) + distance (p3, p5)
+new-live-rance = distance(p0, p2) + distance(p1, p2) + distance (p2, p5)
+
+If the new live-range is less than the old one it will be a good candidate
+for hoist. There are cases when both the ranges will be same:
+\begin{enumerate}
+  - There is only one operand on the right hand side e.g., an assignment operation.
+  - One of the operands is not a Instruction/Register.
+\end{enumerate}
+
+In a special case where the instruction to be hoisted has the last use of its
+operands then the code hoisting will always reduce the register pressure if it
+has two register operands because the gain in live-range will be in the ratio of
+2:1. Based on the above formulae we can also deduce that, as long as there is
+one register operand in the right hand side with its last use, code hoisting
+will either decrease or maintain the register pressure.
+
 Hoisting scalars across calls is tricky because it can increase the
 number of spills.
+
 
 \subsection{In the presence of calls}
 Caller saved registers.
