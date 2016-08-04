@@ -269,6 +269,15 @@ it will be okay to hoist.
 
 
 \subsection{Hoisting too far away}
+When we load a value from memory, we require an extra register to keep the value
+around. Hoisting a load means we need to keep the value alive for a longer
+period. That could result in spills later in the register allocation.
+
+Also, if there are several instructions in between the hoisting point and the
+instruction to be hoisted, the instruction to be hoisted crosses several
+instructions while hoisting, it means we are adding one register to all the
+live-ranges spanning the instructions. That could result in spills.
+
 \begin{enumerate}
 \item When the hoist point is too far.
 \item When the number of instructions we may cross is very high.
