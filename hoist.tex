@@ -236,8 +236,8 @@ new-live-rance = distance(p0, p2) + distance(p1, p2) + distance (p2, p5)
 If the new live-range is less than the old one it will be a good candidate
 for hoist. There are cases when both the ranges will be same:
 \begin{enumerate}
-  - There is only one operand on the right hand side e.g., an assignment operation.
-  - One of the operands is not a Instruction/Register.
+\item There is only one operand on the right hand side e.g., an assignment operation.
+\item One of the operands is not a Instruction/Register.
 \end{enumerate}
 
 In a special case where the instruction to be hoisted has the last use of its
