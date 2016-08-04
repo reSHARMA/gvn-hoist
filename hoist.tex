@@ -284,7 +284,7 @@ across the call, that would increase the total number of registers required by
 one, thus contributing to the register pressure.
 
 However, in the two special cases discussed in Section-\ref{hoist:reg-pressure},
-it will be okay to hoist.
+it will be okay to hoist because the regiter pressure would not change.
 
 
 \subsection{Hoisting too far away}
@@ -295,7 +295,15 @@ period. That could result in spills later in the register allocation.
 Also, if there are several instructions in between the hoisting point and the
 instruction to be hoisted, the instruction to be hoisted crosses several
 instructions while hoisting, it means we are adding one register to all the
-live-ranges spanning the instructions. That could result in spills.
+live-ranges spanning the instructions. That could result in spills. In the
+current implementation we choose to hoist if the number of instructions crossed
+is below a threshold. Ideally, it should be okay to hoist all the instructions
+and a later live-range-splitting pass should make the right decision of
+rematerializing the instruction should it be beneficial to do so. But the
+current live-range splitting pass of llvm is not making the optimial decision
+and we have found spills if the threshold is exceeded. The threshold was
+computed as a result of tuning the llvm testsuite \cite{llvm-nightly} and spec
+benchmark \cite{Henning2000}.
 
 \begin{enumerate}
 \item When the hoist point is too far.
@@ -441,9 +449,9 @@ abs(DFSIn(I1) - DFSIn(I2)) < abs(DFSIn(I1) - DFSIn(I3))
 
 This means for candidates closer to each other w.r.t. DFS numbers:
 \begin{enumerate}
-\item would make fewer checks for preconditions.
-\item hoisting point will be closer so, the intersection of live-range of the instruction
-with other instructions will be minimal.
+\item would make fewer checks for legality and profitability.
+\item hoisting point will be closer so, the intersection of live-range of the
+  instruction with other instructions will be minimal.
 \end{enumerate}
 
 In our current implementation we partition the list at the point where the
