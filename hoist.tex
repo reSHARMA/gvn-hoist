@@ -64,11 +64,17 @@ Sebastian Pop\\
   although the main goal of code hoisting is not to remove redundancies: code
   hoisting effectively exposes redundancies and enables other passes like LICM
   to remove more redundancies.  The main goal of code hoisting is to reduce code
-  size with the added benefit of exposing instruction level parallelism and
+  size with the added benefit of exposing more instruction level parallelism and
   reduced register pressure.
 \end{abstract}
 
 \section{Introduction}
+
+Classical scalar optimizations like CSE \cite{dragonbook} work very well on
+single basic blocks.  With time, we have seen the transition to more complex
+passes like GCSE that work across basic blocks, or other passes like the
+macroblock formation that create a region within
+
 
 Why hoisting expressions:
 \begin{itemize}
