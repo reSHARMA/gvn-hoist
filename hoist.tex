@@ -285,15 +285,20 @@ will either decrease or maintain the register pressure.
 Hoisting scalars across calls is tricky because it can increase the number of
 spills. During the frame lowering of calls, the argument registers, in general,
 the caller saved registers are saved because they might be modified by the
-callee and after the call they are restored. So before the call the register
-pressure is high because the number of available registers are reduced by the
-number of caller saved registers. In that situation if a computation is hoisted
-across the call, that would increase the total number of registers required by
-one, thus contributing to the register pressure.
+callee and after the call they are restored \cite{frame-lowering}. So before the
+call, the register pressure is high because the number of available registers
+are reduced by the number of caller saved registers. In that situation if a
+computation is hoisted across the call, that would increase the total number of
+registers required by one, thus contributing to the register pressure.
 
 However, in the two special cases discussed in Section-\ref{hoist:reg-pressure},
 it will be okay to hoist because the regiter pressure would not change.
 
+Hoisting memory references also require precise analysis of all the memory
+addresses accessed by the call. In our implementation, since we only analyze the
+callee declaration the analysis is very conservative. In the presence of pure
+calls, loads can be hoisted but stores can't. Also, if the call throws exceptions,
+or it it may not return, memory references cannot be hoisted.
 
 \subsection{Hoisting too far away}
 When we load a value from memory, we require an extra register to keep the value
