@@ -95,6 +95,31 @@ Why hoisting expressions:
 \item Ranking/Wavefront algorithm to hoist across switch blocks.
 \end{enumerate}
 
+\subsection{Enabling LICM by code-hoisting}
+
+\begin{verbatim}
+loop:
+if (a)
+  i1;
+else
+  i1;
+\end{verbatim}
+
+Here i1 is redundant and can be hoisted out of loop. But the LICM will
+not do because it does not reason about instructions in the
+conditional.  By code-hoisting i1 will be hoisted out of conditional
+which will benefit the LICM.
+
+\subsection{Improving the Inliner heuristics}
+Reducing the number of instructions also reduces the inlining cost and
+hence improves the inliner heuristics.
+
+\subsection{Improving vectorization}
+It will also benefit vectorizer by reducing the number
+of basic blocks, should all the instructions in conditional get hoisted.
+
+
+
 \section{Related Work}
 
 A lot of bug reports in GCC and LLVM bugzillas, no papers on this topic yet.
@@ -112,7 +137,12 @@ MemorySSA \cite{novillo2007memory}
 
 \subsection{Global Value Numbering}
 
+\newpage
+
 \section{Code hoisting}
+
+\subsection{Overview}
+
 Hoisting also reduces critical path length of execution in out of
 order machines (but not in sequential machines), by exposing ILP
 before the conditional where the instruction was hoisted.
@@ -199,7 +229,7 @@ float foo(float d, float min, float max, float a)
 }
 \end{verbatim}
 
-\subsection{Hoisting scalars}
+\subsubsection{Hoisting scalars}
 Scalars are the easiest to hoist because we do not have to analyze
 them for aliasing memory references. As long as all the operands are
 available (which in SSA form we do, or may be there are chained
@@ -212,14 +242,7 @@ hoist scalars past a call. Another way to mitigate this problem is be
 to reinstantiate (rematerialize) the computation after a call (may be
 as a different pass).
 
-
-
-\subsection{Using MemorySSA}
-\subsection{Iterative update to memory ssa during the hoisting process}
-
-\subsection{Without MemorySSA using the dominance information}
-
-\subsection{Hoisting loads}
+\subsubsection{Hoisting loads}
 In order to value number stores, we value number (hash) the address from where
 the value is to be loaded. Then we need to compute the hoisting point just like
 we did for the scalars. At the hoisting point we compute if the operands to the
@@ -231,7 +254,7 @@ branches. In those cases we discard the candidate. Since the load increases the
 register pressure by one (unless the operand to load becomes dead at the load),
 we evaluate if it is beneficial to hoist the load.
 
-\subsection{Hoisting stores}
+\subsubsection{Hoisting stores}
 In order to value number stores, we value number (hash) the address as well as
 the value to be stored to that address. For the legality, we need to check the
 dependency requirements just like hoisting loads. We need to check that the
@@ -241,166 +264,18 @@ hoisting point and, none of the basic blocks along the path are landing pads.
 Once all the legality checks are satisfied, it is a good candidate to be
 hoisted.
 
-\subsection{Hoisting calls}
+\subsubsection{Hoisting calls}
 Calls can be hoisted by value-numbering all the arguments. For safety
 we have to check that there are no other side-effects between a call and
 its hoisting point, just like loads and stores.
 
 
-\subsection{Cost models}
-
-\subsection{Reduce register pressure}
-\label{hoist:reg-pressure}
-Following example explains how code hoisting can actually reduce the register pressure.
-Consider the following example where the labels prefixed with 'p' represent the position of
-instruction in a basic block (names prefixed with bb).
-
-\begin{verbatim}
-bb0: p0: b = ...
-bb1: p1: c = ...
-bb2: p2: if (c) jump bb3 else jump bb4
-bb3: p3: a0 = b + c
-bb4: p4: a1 = b + c
-bb5: p5: d = phi {a0(bb3), a1(bb4)}
-
-If we measure distance(px, py) as total instruction
-count in the path from the position of px to py
-
-old-live-range = max(distance(p0, p3) + distance(p1, p3) ,
-                     distance(p0, p4) + distance(p1, p4))
-                 + distance (p3, p5)
-new-live-rance = distance(p0, p2) + distance(p1, p2)
-                 + distance (p2, p5)
-\end{verbatim}
-
-If the new live-range is less than the old one it will be a good candidate
-for hoist. There are cases when both the ranges will be same:
-\begin{enumerate}
-  \item There is only one operand on the right hand side e.g., an assignment operation.
-  \item One of the operands is not a Instruction/Register.
-\end{enumerate}
-
-In a special case where the instruction to be hoisted has the last use of its
-operands then the code hoisting will always reduce the register pressure if it
-has two register operands because the gain in live-range will be in the ratio of
-2:1. Based on the above formulae we can also deduce that, as long as there is
-one register operand in the right hand side with its last use, code hoisting
-will either decrease or maintain the register pressure.
-
-\subsection{In the presence of calls}
-Hoisting scalars across calls is tricky because it can increase the number of
-spills. During the frame lowering of calls, the argument registers, in general,
-the caller saved registers are saved because they might be modified by the
-callee and after the call they are restored \cite{frame-lowering}. So before the
-call, the register pressure is high because the number of available registers
-are reduced by the number of caller saved registers. In that situation if a
-computation is hoisted across the call, that would increase the total number of
-registers required by one, thus contributing to the register pressure.
-
-However, in the two special cases discussed in Section-\ref{hoist:reg-pressure},
-it will be okay to hoist because the regiter pressure would not change.
-
-Hoisting memory references also require precise analysis of all the memory
-addresses accessed by the call. In our implementation, since we only analyze the
-callee declaration the analysis is very conservative. In the presence of pure
-calls, loads can be hoisted but stores can't. Also, if the call throws exceptions,
-or it it may not return, memory references cannot be hoisted.
-
-\subsection{Hoisting too far away}
-When we load a value from memory, we require an extra register to keep the value
-around. Hoisting a load means we need to keep the value alive for a longer
-period. That could result in spills later in the register allocation.
-
-Also, if there are several instructions in between the hoisting point and the
-instruction to be hoisted, the instruction to be hoisted crosses several
-instructions while hoisting, it means we are adding one register to all the
-live-ranges spanning the instructions. That could result in spills. In the
-current implementation we choose to hoist if the number of instructions crossed
-is below a threshold. Ideally, it should be okay to hoist all the instructions
-and a later live-range-splitting pass should make the right decision of
-rematerializing the instruction should it be beneficial to do so. But the
-current live-range splitting pass of llvm is not making the optimial decision
-and we have found spills if the threshold is exceeded. The threshold was
-computed as a result of tuning the llvm testsuite \cite{llvm-nightly} and spec
-benchmark \cite{Henning2000}.
-
-\begin{enumerate}
-\item When the hoist point is too far.
-\item When the number of instructions we may cross is very high.
-\end{enumerate}
-
-\subsection{Enabling LICM by code-hoisting}
-
-\begin{verbatim}
-loop:
-if (a)
-  i1;
-else
-  i1;
-\end{verbatim}
-
-Here i1 is redundant and can be hoisted out of loop. But the LICM will
-not do because it does not reason about instructions in the
-conditional.  By code-hoisting i1 will be hoisted out of conditional
-which will benefit the LICM.
-
-\subsection{Improving the Inliner heuristics}
-Reducing the number of instructions also reduces the inlining cost and
-hence improves the inliner heuristics.
-
-\subsection{Improving vectorization}
-It will also benefit vectorizer by reducing the number
-of basic blocks, should all the instructions in conditional get hoisted.
 
 
-\section{Experimental Evaluation}
-\label{sec:experimental-results}
+\subsection{Algorithm}
+A good full page.
 
-\subsection{Comparative analysis of different approaches to hoisting}
-\subsection{Triangle approach}
-This is the most basic approach to code-hoisting when the instructions are
-hoisted to immediate parent in a diamond like structure. When there are
-identical computations in both the branches of a conditional, and all the
-legality checks are met, the instruction can be hoisted to the predecessor basic
-block. This approach is simple to implement and has minimal impact on the
-register pressure.
-
-\subsection{Pessimistic approach}
-To extend the triangle approach to the entire function, the algorithm traverses
-the basic blocks in the invers depth-first order. All the leaf nodes are visited
-before the non-leaf nodes because instructions are hoisted upwards. We start
-from a branch and collect the GVN of all the instructions. Then in the sibling
-basic block we find if there are any identical computations. Once we find an
-identical computation we try to hoist it to the nearest common dominator which
-is the immediate predecessor of both the basic blocks. We traverse the basic
-block from top to down so that the once an instruction is hoisted it creates
-opportunities for other dependent instructions. After all the sibling basic
-blocks have all the identical computations hoisted, we continue the hoisting
-process with their parent and its sibling of their parent until we reach the
-beginning of the function.
-
-\subsection{Optimistic approach}
-In this approach, the goal is to maximise the total number of hoistings in the
-entire function.  This algorithm is very useful when optimizing for code-size.
-We see a lot of computations hoisted (see
-Section~\ref{sec:experimental-results}. In order to do that, we collect the GVN
-of all the instructions in the function. After that we iterate on the list of
-instructions having identical GVN. After that we find the common dominator
-dominating all the identical computations and try to hoist the instruction in
-that basic block, if feasible. Many times it is not possible to hoist all the
-instructions to one common dominator, due to legality/profitability
-constraints. In those cases, the algorithmn would partion the list of
-computations a partially hoist a set of computations to their common
-dominator. For more details see Section~\ref{subsec:partition}.
-
-
-\subsubsection{pros,cons}
-Naturally, the amount of hoisting depends on the generality of the GVN
-algorithm. Current llvm GVN implementation finds out equivalence between
-dependent instructions to some extent.
-
-
-\subsection{Hoisting bottom up with optimistic approach}
+\subsubsection{Hoisting bottom up with optimistic approach}
 Optimistic means collect the set of all potential redundancies and
 then discard the bad ones.
 
@@ -448,7 +323,7 @@ in a combinatorial explosion.
 
 GCC: 23286 has interesting test cases.
 
-\subsection{Partition the list of hoisting candidates to maximize hoisting}
+\subsubsection{Partition the list of hoisting candidates to maximize hoisting}
 \label{subsec:partition}
 The set of candidates are sorted in the order of their DFS-in
 numbers. So that candidates close to each other in the list are also
@@ -482,6 +357,142 @@ In our current implementation we partition the list at the point where the
 legality/profitability checks fail.
 
 TODO: Put an example to illustrate the point.
+
+\subsection{Cost models}
+
+\subsubsection{Reduce register pressure}
+\label{hoist:reg-pressure}
+Following example explains how code hoisting can actually reduce the register pressure.
+Consider the following example where the labels prefixed with 'p' represent the position of
+instruction in a basic block (names prefixed with bb).
+
+\begin{verbatim}
+bb0: p0: b = ...
+bb1: p1: c = ...
+bb2: p2: if (c) jump bb3 else jump bb4
+bb3: p3: a0 = b + c
+bb4: p4: a1 = b + c
+bb5: p5: d = phi {a0(bb3), a1(bb4)}
+
+If we measure distance(px, py) as total instruction
+count in the path from the position of px to py
+
+old-live-range = max(distance(p0, p3) + distance(p1, p3) ,
+                     distance(p0, p4) + distance(p1, p4))
+                 + distance (p3, p5)
+new-live-rance = distance(p0, p2) + distance(p1, p2)
+                 + distance (p2, p5)
+\end{verbatim}
+
+If the new live-range is less than the old one it will be a good candidate
+for hoist. There are cases when both the ranges will be same:
+\begin{enumerate}
+  \item There is only one operand on the right hand side e.g., an assignment operation.
+  \item One of the operands is not a Instruction/Register.
+\end{enumerate}
+
+In a special case where the instruction to be hoisted has the last use of its
+operands then the code hoisting will always reduce the register pressure if it
+has two register operands because the gain in live-range will be in the ratio of
+2:1. Based on the above formulae we can also deduce that, as long as there is
+one register operand in the right hand side with its last use, code hoisting
+will either decrease or maintain the register pressure.
+
+\subsubsection{In the presence of calls}
+Hoisting scalars across calls is tricky because it can increase the number of
+spills. During the frame lowering of calls, the argument registers, in general,
+the caller saved registers are saved because they might be modified by the
+callee and after the call they are restored \cite{frame-lowering}. So before the
+call, the register pressure is high because the number of available registers
+are reduced by the number of caller saved registers. In that situation if a
+computation is hoisted across the call, that would increase the total number of
+registers required by one, thus contributing to the register pressure.
+
+However, in the two special cases discussed in Section-\ref{hoist:reg-pressure},
+it will be okay to hoist because the regiter pressure would not change.
+
+Hoisting memory references also require precise analysis of all the memory
+addresses accessed by the call. In our implementation, since we only analyze the
+callee declaration the analysis is very conservative. In the presence of pure
+calls, loads can be hoisted but stores can't. Also, if the call throws exceptions,
+or it it may not return, memory references cannot be hoisted.
+
+\subsubsection{Hoisting too far away}
+When we load a value from memory, we require an extra register to keep the value
+around. Hoisting a load means we need to keep the value alive for a longer
+period. That could result in spills later in the register allocation.
+
+Also, if there are several instructions in between the hoisting point and the
+instruction to be hoisted, the instruction to be hoisted crosses several
+instructions while hoisting, it means we are adding one register to all the
+live-ranges spanning the instructions. That could result in spills. In the
+current implementation we choose to hoist if the number of instructions crossed
+is below a threshold. Ideally, it should be okay to hoist all the instructions
+and a later live-range-splitting pass should make the right decision of
+rematerializing the instruction should it be beneficial to do so. But the
+current live-range splitting pass of llvm is not making the optimial decision
+and we have found spills if the threshold is exceeded. The threshold was
+computed as a result of tuning the llvm testsuite \cite{llvm-nightly} and spec
+benchmark \cite{Henning2000}.
+
+\begin{enumerate}
+\item When the hoist point is too far.
+\item When the number of instructions we may cross is very high.
+\end{enumerate}
+
+
+\subsection{Other Approaches}
+
+\subsubsection{Triangle approach}
+This is the most basic approach to code-hoisting when the instructions are
+hoisted to immediate parent in a diamond like structure. When there are
+identical computations in both the branches of a conditional, and all the
+legality checks are met, the instruction can be hoisted to the predecessor basic
+block. This approach is simple to implement and has minimal impact on the
+register pressure.
+
+\subsubsection{Pessimistic approach}
+To extend the triangle approach to the entire function, the algorithm traverses
+the basic blocks in the invers depth-first order. All the leaf nodes are visited
+before the non-leaf nodes because instructions are hoisted upwards. We start
+from a branch and collect the GVN of all the instructions. Then in the sibling
+basic block we find if there are any identical computations. Once we find an
+identical computation we try to hoist it to the nearest common dominator which
+is the immediate predecessor of both the basic blocks. We traverse the basic
+block from top to down so that the once an instruction is hoisted it creates
+opportunities for other dependent instructions. After all the sibling basic
+blocks have all the identical computations hoisted, we continue the hoisting
+process with their parent and its sibling of their parent until we reach the
+beginning of the function.
+
+\subsubsection{Optimistic approach}
+In this approach, the goal is to maximise the total number of hoistings in the
+entire function.  This algorithm is very useful when optimizing for code-size.
+We see a lot of computations hoisted (see
+Section~\ref{sec:experimental-results}. In order to do that, we collect the GVN
+of all the instructions in the function. After that we iterate on the list of
+instructions having identical GVN. After that we find the common dominator
+dominating all the identical computations and try to hoist the instruction in
+that basic block, if feasible. Many times it is not possible to hoist all the
+instructions to one common dominator, due to legality/profitability
+constraints. In those cases, the algorithmn would partion the list of
+computations a partially hoist a set of computations to their common
+dominator. For more details see Section~\ref{subsec:partition}.
+
+
+\subsubsection{pros,cons}
+Naturally, the amount of hoisting depends on the generality of the GVN
+algorithm. Current llvm GVN implementation finds out equivalence between
+dependent instructions to some extent.
+
+\subsubsection{PRE based hoisting}
+
+\newpage
+
+\section{Experimental Evaluation}
+\label{sec:experimental-results}
+
+\subsection{Comparative analysis of different approaches to hoisting}
 
 
 \section{Conclusion and Future Work}
