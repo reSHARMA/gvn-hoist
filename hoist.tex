@@ -143,9 +143,10 @@ MemorySSA \cite{novillo2007memory}
 
 \subsection{Overview}
 
-Hoisting also reduces critical path length of execution in out of
-order machines (but not in sequential machines), by exposing ILP
-before the conditional where the instruction was hoisted.
+Code hoisting can also reduce the critical path length of execution in out of
+order machines. As more instructios are available at the hoisting point, the
+hardware has more instructions to reorder. Following example illustrates how
+hoisting can improve performance by exposing more ILP.
 
 \begin{verbatim}
 float foo(float d, float min, float max, float a)
@@ -169,7 +170,7 @@ In this program the computations of tmax and tmin and identical in
 both the branches but they cannot be evaluated before inv. Since inv
 depends on a division operation which is generally more expensive than
 the addition, subtraction and multiplication operations as required to
-evaluate tmax and tmin, the total latency of computation across each
+evaluate tmax and tmin. The total latency of computation across each
 branch is:
 
 O(div) + 2(O(sub) + O(mul))
@@ -205,12 +206,11 @@ float foo(float d, float min, float max, float a)
 \end{verbatim}
 
 In this code the two subtractions and the div operations can execute
-in parallel. So the total number of cycles will be O(div) + O(mul)
-since O(div) is usually greater than O(sub)
+in parallel. So the total number of cycles will be max(O(div), O(sub)) + O(mul)
+= O(div) + O(mul); since O(div) is usually greater than O(sub)
 
-Of course, a sinking optimization could just sink the computation of
-both tmax and tmin, and since the final operation is an addition
-(asociative under fast math), the entire if-else code would go away.
+Of course, a partial redundancy elimination pass could just remove the entire
+if-block because final operation is an addition (asociative under fast math).
 
 \begin{verbatim}
 float foo(float d, float min, float max, float a)
