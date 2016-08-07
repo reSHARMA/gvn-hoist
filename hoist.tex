@@ -151,10 +151,9 @@ hoisting can improve performance by exposing more ILP.
 \begin{verbatim}
 float foo(float d, float min, float max, float a)
 {
-  float tmin;
-  float tmax;
+  float tmin, tmax, inv;
 
-  float inv = 1.0f / d;
+  inv = 1.0f / d;
   if (inv >= 0) {
     tmin = (min - a) * inv;
     tmax = (max - a) * inv;
@@ -166,38 +165,36 @@ float foo(float d, float min, float max, float a)
 }
 \end{verbatim}
 
-In this program the computations of tmax and tmin and identical in
-both the branches but they cannot be evaluated before inv. Since inv
-depends on a division operation which is generally more expensive than
-the addition, subtraction and multiplication operations as required to
-evaluate tmax and tmin. The total latency of computation across each
-branch is:
+In this program the computations of tmax and tmin are identical to the
+computations of tmin and tmax of sibling branch respectively. Both tmax and tmin
+depends on inv which depends on a division operation which is generally more
+expensive than the addition, subtraction and multiplication operations. The
+total latency of computation across each branch is:
 
 O(div) + 2(O(sub) + O(mul))
 Or for out of order processors with two add units and two multiply units:
 O(div) + O(sub) + O(mul)
 
-But if we hoist the computation of tmax and tmin outside the
+Now if the computation of tmax and tmin are hoisted outside the
 conditionals, the C code version would look like this:
 \begin{verbatim}
 float foo(float d, float min, float max, float a)
 {
-  float tmin;
-  float tmax;
+  float tmin, tmax, tmin1, tmax1, inv;
 
-  tmin' = (min - a);
-  tmax' = (max - a);
+  tmin1 = (min - a);
+  tmax1 = (max - a);
 
-  float inv = 1.0f / d;
-  tmin' = tmin' * inv;
-  tmax' = tmax' * inv;
+  inv = 1.0f / d;
+  tmin1 = tmin1 * inv;
+  tmax1 = tmax1 * inv;
 
   if (inv >= 0) {
-    tmin = tmin';
-    tmax = tmax';
+    tmin = tmin1;
+    tmax = tmax1;
   } else {
-    tmin = tmax';
-    tmax = tmin';
+    tmin = tmax1;
+    tmax = tmin1;
   }
 
   return tmax + tmin;
@@ -205,9 +202,10 @@ float foo(float d, float min, float max, float a)
 
 \end{verbatim}
 
-In this code the two subtractions and the div operations can execute
-in parallel. So the total number of cycles will be max(O(div), O(sub)) + O(mul)
-= O(div) + O(mul); since O(div) is usually greater than O(sub)
+In this code the two subtractions and the division operations can be executed in
+parallel because there are no dependencies among them. So the total number of
+cycles will be max(O(div), O(sub)) + O(mul) = O(div) + O(mul); since O(div) is
+usually much greater than O(sub) \cite{x86,aarch64}
 
 Of course, a partial redundancy elimination pass could just remove the entire
 if-block because final operation is an addition (asociative under fast math).
@@ -215,17 +213,16 @@ if-block because final operation is an addition (asociative under fast math).
 \begin{verbatim}
 float foo(float d, float min, float max, float a)
 {
-  float tmin;
-  float tmax;
+  float tmin1, tmax1, inv;
 
-  tmin' = (min - a);
-  tmax' = (max - a);
+  tmin1 = (min - a);
+  tmax1 = (max - a);
 
-  float inv = 1.0f / d;
-  tmin' = tmin' * inv;
-  tmax' = tmax' * inv;
+  inv = 1.0f / d;
+  tmin1 = tmin1 * inv;
+  tmax1 = tmax1 * inv;
 
-  return tmax' + tmin';
+  return tmax1 + tmin1;
 }
 \end{verbatim}
 
