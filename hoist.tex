@@ -91,6 +91,8 @@ run-time and thus the number of run-time computations is not reduced.  Instead,
 the goals of code hoisting are:
 \begin{itemize}
 \item to reduce the code size of the program;
+\item to remove fully redundant instructions: although this is also done by
+  GVN-PRE.
 \item to improve function inlining heuristics: functions become cheaper to
   inline by reducing their code size;
 \item to expose more instruction level parallelism: by hoisting identical
