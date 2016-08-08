@@ -256,8 +256,8 @@ steps:
 Finding if a set of instructions perform identical computations. Since this code
 hoisting is based on GVN, we need the facility to compute GVN of instructions.
 In llvm \cite{llvm}, GVN infrastructure is already set up and works well for
-most kind of instructions except loads and store so we compute the GVN of loads
-and stores separately. In order to value number stores, we value number (hash)
+most kind of instructions except loads and stores so we compute the GVN of loads
+and stores separately. In order to value number loads, we value number (hash)
 the address from where the value is to be loaded. For stores, we value number
 (hash) the address as well as the value to be stored at that address.
 
@@ -276,7 +276,7 @@ the value number of computations.
 \subsection{Checking for legality}
 Finding a hoisting point i.e., a common dominator of the set of instructions. If
 such a dominator is found then checking if all the use-operands of the set of
-instructions are available or not. In some cases if the operands are not
+instructions are available or not. In some cases when the operands are not
 available, it is possible to reinstantiate (remateralize) the use-operands, thus
 passing the legality check. Checking that the side-effects of the computations
 does not intersect with any side-effects between the instructions to be hoisted
@@ -287,14 +287,15 @@ correctness. Moreover, hoisting of memory operations is tricky on paths which
 have indirect branch targets e.g., landing pad, case statements, goto labels
 etc., because it becomes difficult to prove that all the paths from hoisting
 point to the end of the function would execute the instruction. In our current
-implementation we discard hoisting on such paths.
+implementation we discard hoisting through such paths.
 
 
 In the optimistic approach (Section-\ref{subsec:optimistic}), it is possible
 that a common hoisting point of all the instructions is either too far away, or
-not possible. In these cases, it is still possible to `partially' hoist a subset
-of instructions by splitting the set of candidates and finding a closer hoisting
-point for each subset. For more details see Section-\ref{subsec:partition}.
+not legally possible. In these cases, it is still possible to `partially' hoist
+a subset of instructions by splitting the set of candidates and finding a closer
+hoisting point for each subset. For more details see
+Section-\ref{subsec:partition}.
 
 \subsubsection{Hoisting scalars}
 Scalars are the easiest to hoist because we do not have to analyze them for
@@ -302,11 +303,11 @@ aliasing memory references. As long as all the operands are available, the
 scalar can be hoisted.
 
 \subsubsection{Hoisting loads}
-The availability of operands to the load (an address) is checked at the hoisting
-point. If it is not available we try to rematerialize the addresss if that is
+The availability of operand to the load (an address) is checked at the hoisting
+point. If that is not available we try to rematerialize the addresss if
 possible.  Along the path, from current position of the load instruction through
-the hoisting point, we find if there are aliasing stores. In those cases we
-discard the candidate.
+the hoisting point, we find if there are aliasing writes to memory. In those
+cases we discard the candidate.
 
 \subsubsection{Hoisting stores}
 We need to check the dependency requirements similar to the hoisting of
@@ -316,7 +317,7 @@ from the current position through the hoisting point.
 
 \subsubsection{Hoisting calls}
 For hoisting the call instructions, we check that the loads/stores in the call
-does not create hazard with any loads/stores (in the caller) in the path from
+would not hazard with any loads/stores (in the caller) along the path from the
 callsite through the hoisting point, just like we did for loads and stores.
 
 \subsection{Checking for profitability}
@@ -348,10 +349,12 @@ it ends the liveness of registers, we hoist all the stores.
 Currently we hoist all the calls that are suitable candidates for hoisting.
 
 \subsection{Making the transformation}
-Once all the legality checks and profitability checks are satisfied, a copy of
-the computation is inserted at the hoisting point and all the computations made
-redundant by the new copy are removed. After that SSA semantics is restored by
-updating the intermediate representation (IR) to reflect changes.
+Once all the legality checks and profitability checks are satisfied for a set of
+identical instructions, they are suitable candidates for hoisting. A copy of the
+computation is inserted at the hoisting point along with any instructions which
+needed to be rematerialized. Thereafter, all the computations made redundant by
+the new copy are removed. After that SSA semantics is restored by updating the
+intermediate representation (IR) to reflect changes.
 
 \subsection{Verification}
 Performing a set of checks (e.g., consistency of use-defs and SSA semantics) to
