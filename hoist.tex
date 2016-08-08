@@ -239,11 +239,11 @@ the address from where the value is to be loaded. For stores, we value number
 The process of computing GVN can be on-demand (as we come across an instruction)
 or, precomputed (computing GVN of all the instructions beforehand). Which
 process to choose is determined by the scope of code-hoisting we want to
-perform. A pessimistic approach where we want to hoist limited set of
-instructions from the sibing branches as we iterate the DFS tree bottom-up, it
-is sufficient to compute values on-demand. Whereas, in the optimistic approach,
-where we want to hoist as many instructions as possible, would require values to
-be precomputed.
+perform. In a pessimistic approach (Section-\ref{subsec:pessimistic}) where we
+want to hoist limited set of instructions from the sibing branches as we iterate
+the DFS tree bottom-up, it is sufficient to compute values on-demand. Whereas,
+in the optimistic approach (Section-\ref{subsec:optimistic}), where we want to
+hoist as many instructions as possible, would require values to be precomputed.
 
 Whatever approach we take, to find a candidate all we need to do is to compare
 the value number of computations.
@@ -253,12 +253,15 @@ Finding a hoisting point i.e., a common dominator of the set of instructions. If
 such a dominator is found then checking if all the use-operands of the set of
 instructions are available or not. In some cases if the operands are not
 available, it is possible to reinstantiate (remateralize) the use-operands, thus
-making the passing the legality check. Checking that the side-effects of the
-computations does not intersect with any side-effect between the instructions to
-be hoisted and their hoisting point. For memory operations like loads, stores,
-calls etc., it is also required to check that all the paths from the hoisting
-point to the end of the function should have the exact memory operation
-available, in order to guarantee correctness.
+passing the legality check. Checking that the side-effects of the computations
+does not intersect with any side-effects between the instructions to be hoisted
+and their hoisting point. For memory operations like loads, stores, calls etc.,
+it is also required to check that all the paths from the hoisting point to the
+end of the function should execute the exact instruction, in order to guarantee
+correctness. Moreover, hoisting of memory operations should not be done on paths
+which have indirect branch targets e.g., landing pad, case statements, goto
+labels etc., because it becomes tricky to prove that all the paths from hoisting
+point to the end of the function would execute the instruction.
 
 \subsubsection{Hoisting scalars}
 Scalars are the easiest to hoist because we do not have to analyze them for
@@ -269,21 +272,19 @@ scalar can be hoisted.
 At the hoisting point the availability of operands to the load (an address) is
 checked. If it is not available we try to compute the addresss if that is
 possible.  Along the path, from current position of the load instruction through
-the hoisting point, we find if there are aliasing stores, we find if any of the
-basic blocks are landing pads or targets of indirect branches. In those cases we
+the hoisting point, we find if there are aliasing stores. In those cases we
 discard the candidate.
 
 \subsubsection{Hoisting stores}
 We need to check the dependency requirements similar to the hoisting of
 loads. We need to check that the operands of the store instruction are available
 at the hoisting point, that there are no aliasing loads or store along the path
-from the current position through the hoisting point and, none of the basic
-blocks along the path have their address taken.
+from the current position through the hoisting point.
 
 \subsubsection{Hoisting calls}
-We have to check that the loads/stores in the call does not create hazard with
-any loads/stores (in the caller) in the path from callsite through the hoisting
-point, just like we did for loads and stores.
+For hoisting the call instructions, we check that the loads/stores in the call
+does not create hazard with any loads/stores (in the caller) in the path from
+callsite through the hoisting point, just like we did for loads and stores.
 
 \subsection{Checking for profitability}
 Establishing a set of cost models tune for performance. Like decreasing code
@@ -295,7 +296,7 @@ register pressure and result in spills. For example hoisting a scalar past a
 call (Section-\ref{cost:across-calls}). In our current implementation we hoist
 scalars past a call only when optimizing for code-side (-Os). Another way to
 mitigate this problem is be to reinstantiate (rematerialize) the computation
-after a call (may be as a different pass).
+after a call (may be as a different optimization pass).
 
 \subsubsection{Hoisting loads}
 A load instruction introduces a register where the value loaded will be kept,
@@ -322,6 +323,7 @@ Performing a set of checks (e.g., consistency of use-defs and SSA semantics) to
 establish that program invariants are maintained.
 
 \subsection{Hoisting bottom up with optimistic approach}
+\label{subsec:optimistic}
 Optimistic means collect the set of all potential redundancies and
 then discard the bad ones.
 
@@ -499,6 +501,7 @@ block. This approach is simple to implement and has minimal impact on the
 register pressure.
 
 \subsubsection{Pessimistic approach}
+\label{subsec:pessimistic}
 To extend the triangle approach to the entire function, the algorithm traverses
 the basic blocks in the invers depth-first order. All the leaf nodes are visited
 before the non-leaf nodes because instructions are hoisted upwards. We start
