@@ -227,46 +227,41 @@ float foo(float d, float min, float max, float a)
 \end{verbatim}
 
 \subsubsection{Hoisting scalars}
-Scalars are the easiest to hoist because we do not have to analyze
-them for aliasing memory references. As long as all the operands are
-available (which in SSA form we do, or may be there are chained
-dependencies), the scalar can be hoisted. Care must be taken in case
-of hoisting scalars too far, as that may increase register pressure
-and result in spills. For example hoisting a scalar past a call. In
-that case the call may result in save and restore of the register the
-scalar may be defined to. In our current implementation we do not
-hoist scalars past a call. Another way to mitigate this problem is be
-to reinstantiate (rematerialize) the computation after a call (may be
-as a different pass).
+Scalars are the easiest to hoist because we do not have to analyze them for
+aliasing memory references. As long as all the operands are available, the
+scalar can be hoisted. Care must be taken in case of hoisting scalars too far,
+as that may increase register pressure and result in spills. For example
+hoisting a scalar past a call (Section-\ref{cost:across-calls}). In our current
+implementation we hoist scalars past a call only when optimizing for code-side
+(-Os). Another way to mitigate this problem is be to reinstantiate
+(rematerialize) the computation after a call (may be as a different pass).
 
 \subsubsection{Hoisting loads}
 In order to value number stores, we value number (hash) the address from where
-the value is to be loaded. Then we need to compute the hoisting point just like
-we did for the scalars. At the hoisting point we compute if the operands to the
-load (an address) is available. If it is not available we can try to compute the
-addresss if that is possible.  Along the path from current position of the load
-instruction through the hoiting point, we find if there are aliasing stores, we
+the value is to be loaded. Then we need to compute the hoisting point similar to
+the hoisting of scalars. At the hoisting point the availability of operands to the
+load (an address) is checked. If it is not available we try to compute the
+addresss if that is possible.  Along the path, from current position of the load
+instruction through the hoisting point, we find if there are aliasing stores, we
 find if any of the basic blocks are landing pads or targets of indirect
 branches. In those cases we discard the candidate. Since the load increases the
 register pressure by one (unless the operand to load becomes dead at the load),
-we evaluate if it is beneficial to hoist the load.
+we also evaluate if it is beneficial to hoist the load.
 
 \subsubsection{Hoisting stores}
 In order to value number stores, we value number (hash) the address as well as
-the value to be stored to that address. For the legality, we need to check the
-dependency requirements just like hoisting loads. We need to check that the
-operands of store are available at the hoisting point, that there are no
-aliasing loads or store along the path from the current position through the
-hoisting point and, none of the basic blocks along the path are landing pads.
-Once all the legality checks are satisfied, it is a good candidate to be
-hoisted.
+the value to be stored at that address. For the legality, we need to check the
+dependency requirements similar to the hoisting of loads. We need to check that
+the operands of the store instruction are available at the hoisting point, that
+there are no aliasing loads or store along the path from the current position
+through the hoisting point and, none of the basic blocks along the path have
+their address taken. Once all the legality checks are satisfied, it is a good
+candidate to be hoisted.
 
 \subsubsection{Hoisting calls}
 Calls can be hoisted by value-numbering all the arguments. For safety
 we have to check that there are no other side-effects between a call and
-its hoisting point, just like loads and stores.
-
-
+its hoisting point, just like we did for loads and stores.
 
 
 \subsection{Algorithm}
@@ -396,6 +391,7 @@ one register operand in the right hand side with its last use, code hoisting
 will either decrease or maintain the register pressure.
 
 \subsubsection{In the presence of calls}
+\label{cost:across-calls}
 Hoisting scalars across calls is tricky because it can increase the number of
 spills. During the frame lowering of calls, the argument registers, in general,
 the caller saved registers are saved because they might be modified by the
