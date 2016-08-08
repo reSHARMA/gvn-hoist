@@ -345,11 +345,13 @@ Since stores do not increase the live-range of any registers, and in some cases
 it ends the liveness of registers, we hoist all the stores.
 
 \subsubsection{Hoisting calls}
-Currently we hoist all the calls.
+Currently we hoist all the calls that are suitable candidates for hoisting.
 
 \subsection{Making the transformation}
-Putting a copy of the computation at the hoisting point and removing all the
-computations made redundant by the new copy.
+Once all the legality checks and profitability checks are satisfied, a copy of
+the computation is inserted at the hoisting point and all the computations made
+redundant by the new copy are removed. After that SSA semantics is restored by
+updating the intermediate representation (IR) to reflect changes.
 
 \subsection{Verification}
 Performing a set of checks (e.g., consistency of use-defs and SSA semantics) to
