@@ -70,19 +70,36 @@ Sebastian Pop\\
 
 \section{Introduction}
 
-Classical scalar optimizations like CSE \cite{dragonbook} work very well on
-single basic blocks.  With time, we have seen the transition to more complex
-passes like GCSE that work across basic blocks, or other passes like the
-macroblock formation that create a region within
+Compiler techniques to remove redundant computations are composed of an analysis
+phase that detects identical computations in the program and a transformation
+phase that reduces the number of run-time computations.  Classical scalar
+optimizations like CSE \cite{dragonbook} work very well on single basic blocks.
+When it comes to detect redundancies across basic blocks these techniques fall
+short: more complex passes like GCSE and PRE have been designed to handle these
+cases based on dataflow analysis \cite{morel1979global}.  At first these
+techniques were described in the classical data-flow analysis framework, and
+later the use of the SSA representation lowered the cost in terms of compilation
+time \cite{briggs1994effective,chow1997new,kennedy1999partial} and brought these
+techniques in the main stream: nowadays SSA based PRE is available in every
+industrial compiler.
 
-
-Why hoisting expressions:
+This paper describes code hoisting, a technique that uses the information
+computed for PRE to detect identical computations and has a transformation phase
+whose goal differs from PRE: it removes identical computations from different
+branches of execution.  These identical computations would not be redundant at
+run-time and thus the number of run-time computations is not reduced.  Instead,
+the goals of code hoisting are:
 \begin{itemize}
-\item OOO processors: good for speculative execution of branches
-\item more ILP for in-order processors
-\item code size
-\item optimize for register pressure
-\item improve inlining heuristics
+\item to reduce the code size of the program,
+\item to expose more instruction level parallelism by hoisting identical
+  computations to be executed earlier, and thus helping to schedule heavy
+  computations earlier in order to avoid pipeline bubbles,
+\item to help out-of-order processors with speculative execution of branches: by
+  hoisting expressions out of branches, code hoisting can effectively reduce
+  the amount of code to be speculatively executed,
+\item to decrease the number of live variables and thus to reduce register
+  pressure,
+\item to improve function inlining heuristics by reducing the size of a function body.
 \end{itemize}
 
 \begin{enumerate}
