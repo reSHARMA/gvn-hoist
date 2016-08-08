@@ -229,8 +229,24 @@ divided into the following five steps:
 
 \subsection{Finding the candidates}
 Finding if a set of instructions perform identical computations. Since this code
-hoisting is based on GVN, all we need to do is to compare the value number of
-computations.
+hoisting is based on GVN, we need the facility to compute GVN of instructions.
+In llvm \cite{llvm}, GVN infrastructure is already set up and works well for
+most kind of instructions except loads and store so we compute the GVN of loads
+and stores separately. In order to value number stores, we value number (hash)
+the address from where the value is to be loaded. For stores, we value number
+(hash) the address as well as the value to be stored at that address.
+
+The process of computing GVN can be on-demand (as we come across an instruction)
+or, precomputed (computing GVN of all the instructions beforehand). Which
+process to choose is determined by the scope of code-hoisting we want to
+perform. A pessimistic approach where we want to hoist limited set of
+instructions from the sibing branches as we iterate the DFS tree bottom-up, it
+is sufficient to compute values on-demand. Whereas, in the optimistic approach,
+where we want to hoist as many instructions as possible, would require values to
+be precomputed.
+
+Whatever approach we take, to find a candidate all we need to do is to compare
+the value number of computations.
 
 \subsection{Checking for legality}
 Finding a hoisting point i.e. a common dominator of the set of instructions. If
