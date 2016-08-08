@@ -90,51 +90,37 @@ branches of execution.  These identical computations would not be redundant at
 run-time and thus the number of run-time computations is not reduced.  Instead,
 the goals of code hoisting are:
 \begin{itemize}
-\item to reduce the code size of the program,
-\item to expose more instruction level parallelism by hoisting identical
-  computations to be executed earlier, and thus helping to schedule heavy
-  computations earlier in order to avoid pipeline bubbles,
+\item to reduce the code size of the program;
+\item to improve function inlining heuristics: functions become cheaper to
+  inline by reducing their code size;
+\item to expose more instruction level parallelism: by hoisting identical
+  computations to be executed earlier, schedulers can move heavy computations
+  earlier in order to avoid pipeline bubbles;
 \item to help out-of-order processors with speculative execution of branches: by
-  hoisting expressions out of branches, code hoisting can effectively reduce
-  the amount of code to be speculatively executed,
-\item to decrease the number of live variables and thus to reduce register
-  pressure,
-\item to improve function inlining heuristics by reducing the size of a function body.
+  hoisting expressions out of branches, code hoisting can effectively reduce the
+  amount of code to be speculatively executed and can reduce the critical path;
+\item to reduce register pressure: by moving computations closer to the
+  definitions of their operands;
+\item to improve passes that do not work well with branches:
+  \begin{itemize}
+  \item to improve loop vectorization by reducing a loop with control flow to a
+    loop with a single BB, should all the instructions in a conditional get
+    hoisted and sinked;
+  \item to enable more loop invariant code motion (LICM): as LICM does not
+    reason about instructions in the context of loops with conditional branches,
+    code-hoisting is needed to move instructions out of conditional expressions
+    and expose them to LICM.
+  \end{itemize}
 \end{itemize}
 
-\begin{enumerate}
-\item Code hoisting in adjacent blocks in a diamond/triangle like structure.
-\item O(n) Algorithm.
-\item Hoisting equivalent computations in non-sibling BBs.
-\item Hoisting across switch blocks.
-\item Hoisting to improve PRE.
-\item Hoisting to reduce critical path in OoO execution.
-\item Ranking/Wavefront algorithm to hoist across switch blocks.
-\end{enumerate}
-
-\subsection{Enabling LICM by code-hoisting}
-
-\begin{verbatim}
-loop:
-if (a)
-  i1;
-else
-  i1;
-\end{verbatim}
-
-Here i1 is redundant and can be hoisted out of loop. But the LICM will
-not do because it does not reason about instructions in the
-conditional.  By code-hoisting i1 will be hoisted out of conditional
-which will benefit the LICM.
-
-\subsection{Improving the Inliner heuristics}
-Reducing the number of instructions also reduces the inlining cost and
-hence improves the inliner heuristics.
-
-\subsection{Improving vectorization}
-It will also benefit vectorizer by reducing the number
-of basic blocks, should all the instructions in conditional get hoisted.
-
+The complexity of code hoisting is linear in number of instructions that could
+be hoisted in the program, matching the complexity of PRE on SSA form.  The
+analysis phase is based on the Global Value Numbering (GVN), the same analysis
+used for PRE, followed by the computation of a partition of identical
+expressions to be hoisted in a same location to guarantee safety properties and
+program performance, and followed by a simple code generation that adds the
+identified instruction in the hoisting point and removes all the now redundant
+expressions.
 
 \subsection{Contributions of this paper}
 \begin{itemize}
@@ -144,12 +130,18 @@ of basic blocks, should all the instructions in conditional get hoisted.
 \item cost model to reduce live-range and reduce spills
 \end{itemize}
 
+
+\begin{itemize}
+\item Code hoisting in adjacent blocks in a diamond/triangle like structure.
+\item Hoisting equivalent computations in non-sibling BBs.
+\item Hoisting across switch blocks.
+\item Ranking/Wavefront algorithm to hoist across switch blocks.
+\end{itemize}
+
+
 \section{Related Work}
 
 A lot of bug reports in GCC and LLVM bugzillas, no papers on this topic yet.
-
-Code hoisting does not remove redundancies by itself but it enables
-removal of redundancies by other passes.  e.g., Enable inlining.
 
 
 graph algorithms \cite{tarjan},
