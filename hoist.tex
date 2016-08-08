@@ -226,6 +226,9 @@ float foo(float d, float min, float max, float a)
 }
 \end{verbatim}
 
+For legality we have to check that the side-effects of call does not intersect
+any side-effect between the instruciton to be hoisted and its hoisting point.
+
 \subsubsection{Hoisting scalars}
 Scalars are the easiest to hoist because we do not have to analyze them for
 aliasing memory references. As long as all the operands are available, the
@@ -259,10 +262,11 @@ their address taken. Once all the legality checks are satisfied, it is a good
 candidate to be hoisted.
 
 \subsubsection{Hoisting calls}
-Calls can be hoisted by value-numbering all the arguments. For safety
-we have to check that there are no other side-effects between a call and
-its hoisting point, just like we did for loads and stores.
-
+llvm has built in facility to value-number calls. If there are calls in sibling
+branches with identical value numbers, they can be hoisted. For legality we have
+to check that the loads/stores in the call does not create hazard with any
+loads/stores (in the caller) in the path from callsite through the hoisting
+point, just like we did for loads and stores.
 
 \subsection{Algorithm}
 A good full page.
