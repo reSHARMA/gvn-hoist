@@ -141,8 +141,6 @@ MemorySSA \cite{novillo2007memory}
 
 \section{Code hoisting}
 
-\subsection{Overview}
-
 Code hoisting can also reduce the critical path length of execution in out of
 order machines. As more instructios are available at the hoisting point, the
 hardware has more instructions to reorder. Following example illustrates how
@@ -226,8 +224,30 @@ float foo(float d, float min, float max, float a)
 }
 \end{verbatim}
 
-For legality we have to check that the side-effects of call does not intersect
-any side-effect between the instruciton to be hoisted and its hoisting point.
+
+\subsection{Overview}
+Similar to most compiler optimization passes the code-hoisting can also be
+divided into following five steps:
+
+\begin{enumerate}
+\item Checking for candidacy. Finding if a set of instructions perform identical
+  computation.
+\item Checking for legality. Finding a hoisting point i.e. a common dominator of
+  the set of instructions. If such a dominator is found then checking if all the
+  use-operands of the set of instructions are available or not.  Checking that
+  the side-effects of the computations does not intersect any side-effect
+  between the instructions to be hoisted and their hoisting point. In some cases
+  if the operands are not available, it is possible to reinstantiate
+  (remateralize) the use-operands, thus making the passing the legality check.
+\item Checking for profitability. Establishing a set of cost models tune for
+  performance. Like decreasing code size, minimizing spills etc.
+\item Making the transformation. Putting a copy of the computation at the
+  hoisting point and removing all the computations made redundant by the new
+  copy.
+\item Verification. Performing a set of checks (e.g., consistency of use-defs
+  and SSA semantics) to establish that program invariants are maintained.
+\end{enumerate}
+
 
 \subsubsection{Hoisting scalars}
 Scalars are the easiest to hoist because we do not have to analyze them for
