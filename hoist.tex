@@ -249,7 +249,7 @@ Whatever approach we take, to find a candidate all we need to do is to compare
 the value number of computations.
 
 \subsection{Checking for legality}
-Finding a hoisting point i.e. a common dominator of the set of instructions. If
+Finding a hoisting point i.e., a common dominator of the set of instructions. If
 such a dominator is found then checking if all the use-operands of the set of
 instructions are available or not. In some cases if the operands are not
 available, it is possible to reinstantiate (remateralize) the use-operands, thus
@@ -263,45 +263,55 @@ available, in order to guarantee correctness.
 \subsubsection{Hoisting scalars}
 Scalars are the easiest to hoist because we do not have to analyze them for
 aliasing memory references. As long as all the operands are available, the
-scalar can be hoisted. Care must be taken in case of hoisting scalars too far,
-as that may increase register pressure and result in spills. For example
-hoisting a scalar past a call (Section-\ref{cost:across-calls}). In our current
-implementation we hoist scalars past a call only when optimizing for code-side
-(-Os). Another way to mitigate this problem is be to reinstantiate
-(rematerialize) the computation after a call (may be as a different pass).
+scalar can be hoisted.
 
 \subsubsection{Hoisting loads}
-In order to value number stores, we value number (hash) the address from where
-the value is to be loaded. Then we need to compute the hoisting point similar to
-the hoisting of scalars. At the hoisting point the availability of operands to the
-load (an address) is checked. If it is not available we try to compute the
-addresss if that is possible.  Along the path, from current position of the load
-instruction through the hoisting point, we find if there are aliasing stores, we
-find if any of the basic blocks are landing pads or targets of indirect
-branches. In those cases we discard the candidate. Since the load increases the
-register pressure by one (unless the operand to load becomes dead at the load),
-we also evaluate if it is beneficial to hoist the load.
+At the hoisting point the availability of operands to the load (an address) is
+checked. If it is not available we try to compute the addresss if that is
+possible.  Along the path, from current position of the load instruction through
+the hoisting point, we find if there are aliasing stores, we find if any of the
+basic blocks are landing pads or targets of indirect branches. In those cases we
+discard the candidate.
 
 \subsubsection{Hoisting stores}
-In order to value number stores, we value number (hash) the address as well as
-the value to be stored at that address. For the legality, we need to check the
-dependency requirements similar to the hoisting of loads. We need to check that
-the operands of the store instruction are available at the hoisting point, that
-there are no aliasing loads or store along the path from the current position
-through the hoisting point and, none of the basic blocks along the path have
-their address taken. Once all the legality checks are satisfied, it is a good
-candidate to be hoisted.
+We need to check the dependency requirements similar to the hoisting of
+loads. We need to check that the operands of the store instruction are available
+at the hoisting point, that there are no aliasing loads or store along the path
+from the current position through the hoisting point and, none of the basic
+blocks along the path have their address taken.
 
 \subsubsection{Hoisting calls}
-llvm has built in facility to value-number calls. If there are calls in sibling
-branches with identical value numbers, they can be hoisted. For legality we have
-to check that the loads/stores in the call does not create hazard with any
-loads/stores (in the caller) in the path from callsite through the hoisting
+We have to check that the loads/stores in the call does not create hazard with
+any loads/stores (in the caller) in the path from callsite through the hoisting
 point, just like we did for loads and stores.
 
 \subsection{Checking for profitability}
 Establishing a set of cost models tune for performance. Like decreasing code
 size, minimizing spills etc.
+
+\subsubsection{Hoisting scalars}
+Care must be taken in case of hoisting scalars too far, as that may increase
+register pressure and result in spills. For example hoisting a scalar past a
+call (Section-\ref{cost:across-calls}). In our current implementation we hoist
+scalars past a call only when optimizing for code-side (-Os). Another way to
+mitigate this problem is be to reinstantiate (rematerialize) the computation
+after a call (may be as a different pass).
+
+\subsubsection{Hoisting loads}
+A load instruction introduces a register where the value loaded will be kept,
+the register pressure increases by one (unless the operand to load becomes dead
+at the load). On the other hand, loading a value early will reduce the stall
+during execution should the value is not in the cache. We generally prefer to
+hoist load except the hoisting point is too far (this distance is computed by
+looking at the experimental results of representative benchmarks see
+Section-\ref{sec:experimental-results}).
+
+\subsubsection{Hoisting stores}
+Since stores do not increase the live-range of any registers, and in some cases
+it ends the liveness of registers, we hoist all the stores.
+
+\subsubsection{Hoisting calls}
+Currently we hoist all the calls.
 
 \subsection{Making the transformation}
 Putting a copy of the computation at the hoisting point and removing all the
