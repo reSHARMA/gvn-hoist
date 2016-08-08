@@ -121,7 +121,7 @@ of basic blocks, should all the instructions in conditional get hoisted.
 
 \subsection{Contributions of this paper}
 \begin{itemize}
-\item A systematic approach to compiler optimization pass.
+\item A systematic approach to writing a compiler optimization pass.
 \item gvn hoisting
 \item partition algorithm
 \item cost model to reduce live-range and reduce spills
@@ -231,8 +231,9 @@ float foo(float d, float min, float max, float a)
 \newpage
 
 \section{Code hoisting}
-Similar to most compiler optimization passes the code-hoisting pass can also be
-divided into the following five steps:
+For the code hoisting we follow a very systematic approach to writing a compiler
+optimization pass. As such this pass can be divided into the following five
+steps:
 
 \subsection{Finding the candidates}
 Finding if a set of instructions perform identical computations. Since this code
@@ -265,10 +266,18 @@ does not intersect with any side-effects between the instructions to be hoisted
 and their hoisting point. For memory operations like loads, stores, calls etc.,
 it is also required to check that all the paths from the hoisting point to the
 end of the function should execute the exact instruction, in order to guarantee
-correctness. Moreover, hoisting of memory operations should not be done on paths
-which have indirect branch targets e.g., landing pad, case statements, goto
-labels etc., because it becomes tricky to prove that all the paths from hoisting
-point to the end of the function would execute the instruction.
+correctness. Moreover, hoisting of memory operations is tricky on paths which
+have indirect branch targets e.g., landing pad, case statements, goto labels
+etc., because it becomes difficult to prove that all the paths from hoisting
+point to the end of the function would execute the instruction. In our current
+implementation we discard hoisting on such paths.
+
+
+In the optimistic approach (Section-\ref{subsec:optimistic}), it is possible
+that a common hoisting point of all the instructions is either too far away, or
+not possible. In these cases, it is still possible to `partially' hoist a subset
+of instructions by splitting the set of candidates and finding a closer hoisting
+point for each subset. For more details see Section-\ref{subsec:partition}.
 
 \subsubsection{Hoisting scalars}
 Scalars are the easiest to hoist because we do not have to analyze them for
@@ -276,8 +285,8 @@ aliasing memory references. As long as all the operands are available, the
 scalar can be hoisted.
 
 \subsubsection{Hoisting loads}
-At the hoisting point the availability of operands to the load (an address) is
-checked. If it is not available we try to compute the addresss if that is
+The availability of operands to the load (an address) is checked at the hoisting
+point. If it is not available we try to rematerialize the addresss if that is
 possible.  Along the path, from current position of the load instruction through
 the hoisting point, we find if there are aliasing stores. In those cases we
 discard the candidate.
@@ -534,7 +543,7 @@ that basic block, if feasible. Many times it is not possible to hoist all the
 instructions to one common dominator, due to legality/profitability
 constraints. In those cases, the algorithmn would partion the list of
 computations a partially hoist a set of computations to their common
-dominator. For more details see Section~\ref{subsec:partition}.
+dominator. For more details see Section-\ref{subsec:partition}.
 
 
 \subsubsection{pros,cons}
