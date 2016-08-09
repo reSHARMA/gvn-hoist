@@ -91,8 +91,6 @@ run-time and thus the number of run-time computations is not reduced.  Instead,
 the goals of code hoisting are:
 \begin{itemize}
 \item to reduce the code size of the program;
-\item to remove fully redundant instructions: although this is also done by
-  GVN-PRE.
 \item to improve function inlining heuristics: functions become cheaper to
   inline by reducing their code size;
 \item to expose more instruction level parallelism: by hoisting identical
@@ -119,8 +117,7 @@ the goals of code hoisting are:
 \begin{itemize}
 \item hoisting of identical computations
 \item partition algorithm
-\item code hoisting can remove fully redundant computations
-\item code hoisting can actually improve performance in some cases
+\item performance improvements
 \item cost model to reduce live-range and reduce spills
 \end{itemize}
 
