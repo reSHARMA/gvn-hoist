@@ -337,20 +337,18 @@ Performing a set of checks (e.g., consistency of use-defs and SSA semantics) to
 establish that program invariants are maintained.
 
 \section{Code hoisting policies}
-The amount of hoisting depends on the whether we collect information about all
-the instructions before finding candidates (optimistic).
+The amount of hoisting depends on whether we collect GVN of instructions
+on-demand (pessimistic) or, before finding candidates (optimistic).It also
+depends on the generality of the GVN algorithm, however, that analysis is beyond
+the scope of this paper.
 
+\subsection{Hoisting bottom up with pessimistic approach}
+\label{subsec:pessimistic}
 In the pessimistic approach, the basic blocks are traversed in the inverse
 depth-first order, computing the GVN of instructions as they come by. The GVN of
 sibling branches are compared for equality. Once such a candidate is found, it
 is hoisted in the common dominator. All the leaf nodes are visited before the
-non-leaf nodes (bottom-up) because instructions are hoisted upwards. The
-pessimistic algorithm is fast, results in fewer spills but hoists very less
-instructions. We have implemented optimistic approach because it is more general
-and can be tuned down to closely mimic pessimistic approach by changing a flag.
-
-It also depends on the generality of the GVN algorithm, however, that analysis
-is beyond the scope of this paper.
+non-leaf nodes (bottom-up) because instructions are hoisted upwards.
 
 \subsection{Hoisting bottom up with optimistic approach}
 \label{subsec:optimistic}
@@ -363,14 +361,11 @@ dominator dominating all such identical computations and perform legality checks
 instructions to one common dominator, due to legality constraints e.g.,
 intersecting side-effects or, profitability constraints e.g., hoisting point too
 far. In those cases, this algorithmn would partition the list of identical
-computations and partially hoist a set of computations to their common
-dominator. The partition algorithm is described as follows:
+instructions into subsets which can be partially hoisted to their respective
+common dominators. The partition algorithm is described as follows:
 
 \subsubsection{Partition the list of hoisting candidates to maximize hoisting}
 \label{subsec:partition}
-The set of candidates are sorted in the order of their DFS-in numbers. So that
-candidates close to each other in the list are also closer (??) in the CFG.
-
 In order to hoist a subset of identical instructions, we partition the list of
 all candidates in a way to maximise the total number of hoistings.  By sorting
 the list of all the candidates in the increasing order of their DFS-in numbers,
@@ -447,6 +442,10 @@ finding the partial set to hoist instructions partially would result
 in a combinatorial explosion.
 
 GCC: 23286 has interesting test cases.
+
+The pessimistic algorithm is fast, results in fewer spills but hoists very less
+instructions. We have implemented optimistic approach because it is more general
+and can be tuned down to closely mimic pessimistic approach by changing a flag.
 
 
 \subsubsection{Time complexity of algorithm}
