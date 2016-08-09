@@ -268,6 +268,7 @@ Whatever approach we take, to find a candidate all we need to do is to compare
 the value number of computations.
 
 \subsection{Checking for legality}
+\label{subsec:legality}
 Finding a hoisting point i.e., a common dominator of the set of instructions. If
 such a dominator is found then checking if all the use-operands of the set of
 instructions are available or not. In some cases when the operands are not
@@ -314,6 +315,7 @@ would not hazard with any loads/stores (in the caller) along the path from the
 callsite through the hoisting point, just like we did for loads and stores.
 
 \subsection{Checking for profitability}
+\label{subsec:profitability}
 Establishing a set of cost models tune for performance. Like decreasing code
 size, minimizing spills etc.
 
@@ -363,15 +365,54 @@ that analysis is beyond the scope of this paper.
 \label{subsec:optimistic}
 In this approach, the goal is to maximise the total number of hoistings in the
 entire function.  This algorithm is very useful when optimizing for code-size.
-In order to do that, we collect the GVN of all the instructions in the
-function. After that we iterate on the list of instructions having identical
-GVNs. After that we find the common dominator dominating all the identical
-computations and try to hoist the instruction in that basic block, if
-feasible. Many times it is not possible to hoist all the instructions to one
-common dominator, due to legality/profitability constraints. In those cases, the
-algorithmn would partion the list of computations and partially hoist a set of
-computations to their common dominator. For more details see
-Section-\ref{subsec:partition}.
+In order to do that, we collect the GVN of all the instructions in the function
+and iterate on the list of instructions having identical GVNs. After that we
+find the common dominator dominating all the identical computations and perform
+legality checks (Section-\ref{subsec:legality}). Many times it is not possible
+to hoist all the instructions to one common dominator, due to legality
+constraints e.g., intersecting side-effects or, profitability constraints e.g.,
+hoisting point too far. In those cases, the algorithmn would partition the list
+of computations and partially hoist a set of computations to their common
+dominator. For more details see Section-\ref{subsec:partition}.
+
+\subsubsection{Partition the list of hoisting candidates to maximize hoisting}
+\label{subsec:partition}
+The set of candidates are sorted in the order of their DFS-in
+numbers. So that candidates close to each other in the list are also
+closer (??) in the CFG.
+
+In order to hoist a subset of identical instructions, we partition the list of
+all candidates in a way to maximise the total number of hoistings.  By sorting
+the list of all the candidates in the increasing order of their DFS-in numbers,
+we make sure that candidates closer in the list have their common dominator
+nearby in cases when there are no fully redundant instructions.
+
+Essentially,
+abs(DFSIn(I1) - DFSIn(I2)) < abs(DFSIn(I1) - DFSIn(I3))
+=> bbDist(I1, nearest-common-dom(I1, I2)) <= bbDist(I1, nearest-common-dom(I1, I3))
+
+In case of fully redundant computations the nearby elements may not be 'closer'
+than the separated ones. TODO: Explain.
+
+This means for candidates closer to each other w.r.t. DFS numbers:
+\begin{enumerate}
+\item would make fewer checks for legality and profitability.
+\item hoisting point will be closer so, the intersection of live-range of the
+  instruction with other instructions will be minimal.
+\end{enumerate}
+
+
+In the case where all the candidates cannot be hoisted at a common hoist point
+because of:
+\begin{enumerate}
+\item Safety conditions are not met.
+\item Live range would increase too much.
+\end{enumerate}
+
+In our current implementation we partition the list at the point where the
+legality checks fail.
+
+TODO: Put an example to illustrate the point.
 
 Bottom up: Sort the basic blocks of potentially redundant computations
 based on DFS-in numbers.  TODO: Explain why sorting by DFS-in numbers.
@@ -416,42 +457,6 @@ finding the partial set to hoist instructions partially would result
 in a combinatorial explosion.
 
 GCC: 23286 has interesting test cases.
-
-\subsubsection{Partition the list of hoisting candidates to maximize hoisting}
-\label{subsec:partition}
-The set of candidates are sorted in the order of their DFS-in
-numbers. So that candidates close to each other in the list are also
-closer (??) in the CFG.
-
-In the case where all the candidates cannot be hoisted at a common
-hoist point because of:
-\begin{enumerate}
-\item Safety conditions are not met.
-\item Live range would increase too much.
-\end{enumerate}
-
-In order to hoist a subset of identical instructions, we partition the
-list of all candidates in a way to maximise the total number of
-hoistings.  By sorting the list of all the candidates in the
-increasing order of their DFS-in numbers, we make sure that candidates
-closer in the list have their common dominator nearby.
-
-Essentially,
-abs(DFSIn(I1) - DFSIn(I2)) < abs(DFSIn(I1) - DFSIn(I3))
-=> bbDist(I1, nearest-common-dom(I1, I2)) <= bbDist(I1, nearest-common-dom(I1, I3))
-
-This means for candidates closer to each other w.r.t. DFS numbers:
-\begin{enumerate}
-\item would make fewer checks for legality and profitability.
-\item hoisting point will be closer so, the intersection of live-range of the
-  instruction with other instructions will be minimal.
-\end{enumerate}
-
-In our current implementation we partition the list at the point where the
-legality/profitability checks fail.
-
-TODO: Put an example to illustrate the point.
-
 
 
 \subsubsection{Triangle approach}
