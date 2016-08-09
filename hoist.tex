@@ -60,7 +60,7 @@ Sebastian Pop\\
   Code hoisting is often confused with CSE (Common Subexpression Elimination)
   although hoisting is not bound to find redundancies within a single basic
   block.  Code hoisting could also be confused with Partial Redundancy
-  Elimination (PRE) or even with Global Common Subexpression Elimination (GCSE)
+  Elimination (PRE) or with Global Common Subexpression Elimination (GCSE)
   although the main goal of code hoisting is not to remove redundancies: code
   hoisting effectively exposes redundancies and enables other passes like LICM
   to remove more redundancies.  The main goal of code hoisting is to reduce code
@@ -87,8 +87,8 @@ This paper describes code hoisting, a technique that uses the information
 computed for PRE to detect identical computations and has a transformation phase
 whose goal differs from PRE: it removes identical computations from different
 branches of execution.  These identical computations would not be redundant at
-run-time and thus the number of run-time computations is not reduced.  Instead,
-the goals of code hoisting are:
+run-time and as the number of run-time computations is not reduced, code
+hoisting is not a redundancy elimination pass.  The goals of code hoisting are:
 \begin{itemize}
 \item to reduce the code size of the program;
 \item to improve function inlining heuristics: functions become cheaper to
