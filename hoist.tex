@@ -115,29 +115,13 @@ the goals of code hoisting are:
   \end{itemize}
 \end{itemize}
 
-The complexity of code hoisting is linear in number of instructions that could
-be hoisted in the program, matching the complexity of PRE on SSA form.  The
-analysis phase is based on the Global Value Numbering (GVN), the same analysis
-used for PRE, followed by the computation of a partition of identical
-expressions to be hoisted in a same location to guarantee safety properties and
-program performance, and followed by a simple code generation that adds the
-identified instruction in the hoisting point and removes all the now redundant
-expressions.
-
 \subsection{Contributions of this paper}
 \begin{itemize}
-\item A systematic approach to writing a compiler optimization pass.
-\item gvn hoisting
+\item hoisting of identical computations
 \item partition algorithm
+\item code hoisting can remove fully redundant computations
+\item code hoisting can actually improve performance in some cases
 \item cost model to reduce live-range and reduce spills
-\end{itemize}
-
-
-\begin{itemize}
-\item Code hoisting in adjacent blocks in a diamond/triangle like structure.
-\item Hoisting equivalent computations in non-sibling BBs.
-\item Hoisting across switch blocks.
-\item Ranking/Wavefront algorithm to hoist across switch blocks.
 \end{itemize}
 
 
@@ -357,29 +341,38 @@ establish that program invariants are maintained.
 
 \section{Code hoisting policies}
 The amount of hoisting depends on the whether we collect information about all
-the instructions before finding candidates (optimistic), or on demand
-(pessimistic). It also depends on the generality of the GVN algorithm, however,
-that analysis is beyond the scope of this paper.
+the instructions before finding candidates (optimistic).
+
+In the pessimistic approach, the basic blocks are traversed in the inverse
+depth-first order, computing the GVN of instructions as they come by. The GVN of
+sibling branches are compared for equality. Once such a candidate is found, it
+is hoisted in the common dominator. All the leaf nodes are visited before the
+non-leaf nodes (bottom-up) because instructions are hoisted upwards. The
+pessimistic algorithm is fast, results in fewer spills but hoists very less
+instructions. We have implemented optimistic approach because it is more general
+and can be tuned down to closely mimic pessimistic approach by changing a flag.
+
+It also depends on the generality of the GVN algorithm, however, that analysis
+is beyond the scope of this paper.
 
 \subsection{Hoisting bottom up with optimistic approach}
 \label{subsec:optimistic}
 In this approach, the goal is to maximise the total number of hoistings in the
 entire function.  This algorithm is very useful when optimizing for code-size.
-In order to do that, we collect the GVN of all the instructions in the function
-and iterate on the list of instructions having identical GVNs. After that we
-find the common dominator dominating all the identical computations and perform
-legality checks (Section-\ref{subsec:legality}). Many times it is not possible
-to hoist all the instructions to one common dominator, due to legality
-constraints e.g., intersecting side-effects or, profitability constraints e.g.,
-hoisting point too far. In those cases, the algorithmn would partition the list
-of computations and partially hoist a set of computations to their common
-dominator. For more details see Section-\ref{subsec:partition}.
+We collect the GVN of all the instructions in the function and iterate on the
+list of instructions having identical GVNs. After that we find the common
+dominator dominating all such identical computations and perform legality checks
+(Section-\ref{subsec:legality}). Many times it is not possible to hoist all the
+instructions to one common dominator, due to legality constraints e.g.,
+intersecting side-effects or, profitability constraints e.g., hoisting point too
+far. In those cases, this algorithmn would partition the list of identical
+computations and partially hoist a set of computations to their common
+dominator. The partition algorithm is described as follows:
 
 \subsubsection{Partition the list of hoisting candidates to maximize hoisting}
 \label{subsec:partition}
-The set of candidates are sorted in the order of their DFS-in
-numbers. So that candidates close to each other in the list are also
-closer (??) in the CFG.
+The set of candidates are sorted in the order of their DFS-in numbers. So that
+candidates close to each other in the list are also closer (??) in the CFG.
 
 In order to hoist a subset of identical instructions, we partition the list of
 all candidates in a way to maximise the total number of hoistings.  By sorting
@@ -459,31 +452,15 @@ in a combinatorial explosion.
 GCC: 23286 has interesting test cases.
 
 
-\subsubsection{Triangle approach}
-This is the most basic approach to code-hoisting when the instructions are
-hoisted to immediate parent in a diamond like structure. When there are
-identical computations in both the branches of a conditional, and all the
-legality checks are met, the instruction can be hoisted to the predecessor basic
-block. This approach is simple to implement and has minimal impact on the
-register pressure.
-
-\subsubsection{Pessimistic approach}
-\label{subsec:pessimistic}
-To extend the triangle approach to the entire function, the algorithm traverses
-the basic blocks in the invers depth-first order. All the leaf nodes are visited
-before the non-leaf nodes because instructions are hoisted upwards. We start
-from a branch and collect the GVN of all the instructions. Then in the sibling
-basic block we find if there are any identical computations. Once we find an
-identical computation we try to hoist it to the nearest common dominator which
-is the immediate predecessor of both the basic blocks. We traverse the basic
-block from top to down so that the once an instruction is hoisted it creates
-opportunities for other dependent instructions. After all the sibling basic
-blocks have all the identical computations hoisted, we continue the hoisting
-process with their parent and its sibling of their parent until we reach the
-beginning of the function.
-
-\subsubsection{PRE based hoisting}
-
+\subsubsection{Time complexity of algorithm}
+The complexity of code hoisting is linear in number of instructions that could
+be hoisted in the program, matching the complexity of PRE on SSA form.  The
+analysis phase is based on the Global Value Numbering (GVN), the same analysis
+used for PRE, followed by the computation of a partition of identical
+expressions to be hoisted in a same location to guarantee safety properties and
+program performance, and followed by a simple code generation that adds the
+identified instruction in the hoisting point and removes all the now redundant
+expressions.
 
 
 
