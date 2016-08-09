@@ -283,7 +283,6 @@ etc., because it becomes difficult to prove that all the paths from hoisting
 point to the end of the function would execute the instruction. In our current
 implementation we discard hoisting through such paths.
 
-
 In the optimistic approach (Section-\ref{subsec:optimistic}), it is possible
 that a common hoisting point of all the instructions is either too far away, or
 not legally possible. In these cases, it is still possible to `partially' hoist
@@ -350,14 +349,29 @@ needed to be rematerialized. Thereafter, all the computations made redundant by
 the new copy are removed. After that SSA semantics is restored by updating the
 intermediate representation (IR) to reflect changes.
 
-\subsection{Verification}
+\subsection{Verifying the post-conditions}
 Performing a set of checks (e.g., consistency of use-defs and SSA semantics) to
 establish that program invariants are maintained.
 
+\section{Code hoisting policies}
+The amount of hoisting depends on the whether we collect information about all
+the instructions before finding candidates (optimistic), or on demand
+(pessimistic). It also depends on the generality of the GVN algorithm, however,
+that analysis is beyond the scope of this paper.
+
 \subsection{Hoisting bottom up with optimistic approach}
 \label{subsec:optimistic}
-Optimistic means collect the set of all potential redundancies and
-then discard the bad ones.
+In this approach, the goal is to maximise the total number of hoistings in the
+entire function.  This algorithm is very useful when optimizing for code-size.
+In order to do that, we collect the GVN of all the instructions in the
+function. After that we iterate on the list of instructions having identical
+GVNs. After that we find the common dominator dominating all the identical
+computations and try to hoist the instruction in that basic block, if
+feasible. Many times it is not possible to hoist all the instructions to one
+common dominator, due to legality/profitability constraints. In those cases, the
+algorithmn would partion the list of computations and partially hoist a set of
+computations to their common dominator. For more details see
+Section-\ref{subsec:partition}.
 
 Bottom up: Sort the basic blocks of potentially redundant computations
 based on DFS-in numbers.  TODO: Explain why sorting by DFS-in numbers.
@@ -438,7 +452,39 @@ legality/profitability checks fail.
 
 TODO: Put an example to illustrate the point.
 
-\subsection{Cost models}
+
+
+\subsubsection{Triangle approach}
+This is the most basic approach to code-hoisting when the instructions are
+hoisted to immediate parent in a diamond like structure. When there are
+identical computations in both the branches of a conditional, and all the
+legality checks are met, the instruction can be hoisted to the predecessor basic
+block. This approach is simple to implement and has minimal impact on the
+register pressure.
+
+\subsubsection{Pessimistic approach}
+\label{subsec:pessimistic}
+To extend the triangle approach to the entire function, the algorithm traverses
+the basic blocks in the invers depth-first order. All the leaf nodes are visited
+before the non-leaf nodes because instructions are hoisted upwards. We start
+from a branch and collect the GVN of all the instructions. Then in the sibling
+basic block we find if there are any identical computations. Once we find an
+identical computation we try to hoist it to the nearest common dominator which
+is the immediate predecessor of both the basic blocks. We traverse the basic
+block from top to down so that the once an instruction is hoisted it creates
+opportunities for other dependent instructions. After all the sibling basic
+blocks have all the identical computations hoisted, we continue the hoisting
+process with their parent and its sibling of their parent until we reach the
+beginning of the function.
+
+\subsubsection{PRE based hoisting}
+
+
+
+
+
+
+\section{Cost models}
 
 \subsubsection{Reduce register pressure}
 \label{hoist:reg-pressure}
@@ -522,52 +568,6 @@ benchmark \cite{Henning2000}.
 \end{enumerate}
 
 
-\subsection{Other Approaches}
-
-\subsubsection{Triangle approach}
-This is the most basic approach to code-hoisting when the instructions are
-hoisted to immediate parent in a diamond like structure. When there are
-identical computations in both the branches of a conditional, and all the
-legality checks are met, the instruction can be hoisted to the predecessor basic
-block. This approach is simple to implement and has minimal impact on the
-register pressure.
-
-\subsubsection{Pessimistic approach}
-\label{subsec:pessimistic}
-To extend the triangle approach to the entire function, the algorithm traverses
-the basic blocks in the invers depth-first order. All the leaf nodes are visited
-before the non-leaf nodes because instructions are hoisted upwards. We start
-from a branch and collect the GVN of all the instructions. Then in the sibling
-basic block we find if there are any identical computations. Once we find an
-identical computation we try to hoist it to the nearest common dominator which
-is the immediate predecessor of both the basic blocks. We traverse the basic
-block from top to down so that the once an instruction is hoisted it creates
-opportunities for other dependent instructions. After all the sibling basic
-blocks have all the identical computations hoisted, we continue the hoisting
-process with their parent and its sibling of their parent until we reach the
-beginning of the function.
-
-\subsubsection{Optimistic approach}
-In this approach, the goal is to maximise the total number of hoistings in the
-entire function.  This algorithm is very useful when optimizing for code-size.
-We see a lot of computations hoisted (see
-Section~\ref{sec:experimental-results}. In order to do that, we collect the GVN
-of all the instructions in the function. After that we iterate on the list of
-instructions having identical GVN. After that we find the common dominator
-dominating all the identical computations and try to hoist the instruction in
-that basic block, if feasible. Many times it is not possible to hoist all the
-instructions to one common dominator, due to legality/profitability
-constraints. In those cases, the algorithmn would partion the list of
-computations a partially hoist a set of computations to their common
-dominator. For more details see Section-\ref{subsec:partition}.
-
-
-\subsubsection{pros,cons}
-Naturally, the amount of hoisting depends on the generality of the GVN
-algorithm. Current llvm GVN implementation finds out equivalence between
-dependent instructions to some extent.
-
-\subsubsection{PRE based hoisting}
 
 \newpage
 
