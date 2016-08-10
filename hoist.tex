@@ -394,19 +394,12 @@ because of:
 \item Live range would increase too much.
 \end{enumerate}
 
-In our current implementation we partition the list at the point where the
-legality checks fail.
+In our current implementation we keep as many candidates in one set as possible
+unless (greedy approach). We split the list at a point where the legality checks
+fail to hoist subset of candidates which are legal to hoist and, start finding
+new hoisting point for the remaining ones.
 
 TODO: Put an example to illustrate the point.
-
-Bottom up: Sort the basic blocks of potentially redundant computations
-based on DFS-in numbers.  TODO: Explain why sorting by DFS-in numbers.
-Then start evaluating the safety checks for first two, if good then
-move to second one. That way we can even partially hoist computations
-should we find that we cannot remove all the redundant computations.
-
-We can also split the set of to partially hoist multiple times, if
-hoisting globally is not possible.
 
 In the case when more than one computation from the same basic block
 shows up as redundant.
