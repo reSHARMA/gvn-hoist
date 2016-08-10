@@ -372,9 +372,16 @@ the list of all the candidates in the increasing order of their DFS-in numbers,
 we make sure that candidates closer in the list have their common dominator
 nearby in cases when there are no fully redundant instructions.
 
-Essentially,
-abs(DFSIn(I1) - DFSIn(I2)) < abs(DFSIn(I1) - DFSIn(I3))
-=> bbDist(I1, nearest-common-dom(I1, I2)) <= bbDist(I1, nearest-common-dom(I1, I3))
+\begin{verbatim}
+Essentially if,
+DFS-I1I2 = abs(DFSIn(I1) - DFSIn(I2))
+DFS-I1I3 = abs(DFSIn(I1) - DFSIn(I3))
+BBDistI1I2 = bbDist(I1, nearest-common-dom(I1, I2))
+BBDistI1I3 = bbDist(I1, nearest-common-dom(I1, I3))
+
+Then,
+DFS-I1I2 < DFS-I1I3 => BBDistI1I2 <= BBDistI1I3
+\end{verbatim}
 
 In case of fully redundant computations the nearby elements may not be 'closer'
 than the separated ones. TODO: Explain.
