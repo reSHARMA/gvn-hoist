@@ -115,114 +115,41 @@ hoisting is not a redundancy elimination pass.  The goals of code hoisting are:
 
 The main contributions of this paper are:
 \begin{itemize}
-\item a new algorithm to hoist computations from branches
-\item cost model to reduce live-range and reduce spills
-\item performance evaluation of the implementation in LLVM
-\item comparison against other algorithms for code hoisting
+\item a new algorithm to hoist computations from branches,
+\item cost model to reduce live-range and reduce spills,
+\item performance evaluation of the implementation in LLVM,
+\item comparison against other algorithms for code hoisting.
 \end{itemize}
 
+\newpage
 
 \section{Related Work}
 
 A lot of bug reports in GCC and LLVM bugzillas, no papers on this topic yet.
 
 
-graph algorithms \cite{tarjan},
-SSA \cite{cytron}
-GVN \cite{rosen1988global,click1995global}
-CFG, DOM \cite{dragonbook}
-SESE, SEME \cite{sese}
-MemorySSA \cite{novillo2007memory}
-
-\subsection{Global Value Numbering}
-
-Code hoisting can also reduce the critical path length of execution in out of
-order machines. As more instructios are available at the hoisting point, the
-hardware has more instructions to reorder. Following example illustrates how
-hoisting can improve performance by exposing more ILP.
-
-\begin{verbatim}
-float foo(float d, float min, float max, float a)
-{
-  float tmin, tmax, inv;
-
-  inv = 1.0f / d;
-  if (inv >= 0) {
-    tmin = (min - a) * inv;
-    tmax = (max - a) * inv;
-  } else {
-    tmin = (max - a) * inv;
-    tmax = (min - a) * inv;
-  }
-  return tmax + tmin;
-}
-\end{verbatim}
-
-In this program the computations of tmax and tmin are identical to the
-computations of tmin and tmax of sibling branch respectively. Both tmax and tmin
-depends on inv which depends on a division operation which is generally more
-expensive than the addition, subtraction and multiplication operations. The
-total latency of computation across each branch is:
-
-O(div) + 2(O(sub) + O(mul))
-Or for out of order processors with two add units and two multiply units:
-O(div) + O(sub) + O(mul)
-
-Now if the computation of tmax and tmin are hoisted outside the
-conditionals, the C code version would look like this:
-\begin{verbatim}
-float foo(float d, float min, float max, float a)
-{
-  float tmin, tmax, tmin1, tmax1, inv;
-
-  tmin1 = (min - a);
-  tmax1 = (max - a);
-
-  inv = 1.0f / d;
-  tmin1 = tmin1 * inv;
-  tmax1 = tmax1 * inv;
-
-  if (inv >= 0) {
-    tmin = tmin1;
-    tmax = tmax1;
-  } else {
-    tmin = tmax1;
-    tmax = tmin1;
-  }
-
-  return tmax + tmin;
-}
-
-\end{verbatim}
-
-In this code the two subtractions and the division operations can be executed in
-parallel because there are no dependencies among them. So the total number of
-cycles will be max(O(div), O(sub)) + O(mul) = O(div) + O(mul); since O(div) is
-usually much greater than O(sub) \cite{x86,aarch64}
-
-Of course, a partial redundancy elimination pass could just remove the entire
-if-block because final operation is an addition (asociative under fast math).
-
-\begin{verbatim}
-float foo(float d, float min, float max, float a)
-{
-  float tmin1, tmax1, inv;
-
-  tmin1 = (min - a);
-  tmax1 = (max - a);
-
-  inv = 1.0f / d;
-  tmin1 = tmin1 * inv;
-  tmax1 = tmax1 * inv;
-
-  return tmax1 + tmin1;
-}
-\end{verbatim}
-
-
 \newpage
 
 \section{Code hoisting}
+
+\subsection{}
+The algorithm for code hoisting uses several common representations of the
+program that we shortly describe below:
+\begin{itemize}
+\item Control Flow Graph (CFG) and the Dominance (DOM) and Post-Dominance (PDOM)
+  relations \cite{dragonbook};
+\item Single Entry Single Exit (SESE) \cite{sese} and Single Entry Multiple Exit
+  (SEME) regions;
+\item Static Single Assignment (SSA) \cite{cytron};
+\item Global Value Numbering (GVN) \cite{rosen1988global,click1995global}: to
+  identify similar computations compilers use GVN.  Each expression is given a
+  unique number and the expressions that the compiler can prove identical are
+  given the same number;
+\item Memory SSA \cite{novillo2007memory}: memory operations that the compiler
+  is able to prove in dependence are linked through use-def chains;
+\end{itemize}
+
+
 For the code hoisting we follow a very systematic approach to writing a compiler
 optimization pass. As such this pass can be divided into the following five
 steps:
@@ -593,6 +520,90 @@ the register allocation.
 
 However, in the special case discussed in Section-\ref{hoist:reg-pressure}, it
 will be okay to hoist because the register pressure would not decrease.
+
+\subsubsection{Exposing more ILP}
+Code hoisting can also reduce the critical path length of execution in out of
+order machines. As more instructios are available at the hoisting point, the
+hardware has more instructions to reorder. Following example illustrates how
+hoisting can improve performance by exposing more ILP.
+
+\begin{verbatim}
+float foo(float d, float min, float max, float a)
+{
+  float tmin, tmax, inv;
+
+  inv = 1.0f / d;
+  if (inv >= 0) {
+    tmin = (min - a) * inv;
+    tmax = (max - a) * inv;
+  } else {
+    tmin = (max - a) * inv;
+    tmax = (min - a) * inv;
+  }
+  return tmax + tmin;
+}
+\end{verbatim}
+
+In this program the computations of tmax and tmin are identical to the
+computations of tmin and tmax of sibling branch respectively. Both tmax and tmin
+depends on inv which depends on a division operation which is generally more
+expensive than the addition, subtraction and multiplication operations. The
+total latency of computation across each branch is:
+
+O(div) + 2(O(sub) + O(mul))
+Or for out of order processors with two add units and two multiply units:
+O(div) + O(sub) + O(mul)
+
+Now if the computation of tmax and tmin are hoisted outside the
+conditionals, the C code version would look like this:
+\begin{verbatim}
+float foo(float d, float min, float max, float a)
+{
+  float tmin, tmax, tmin1, tmax1, inv;
+
+  tmin1 = (min - a);
+  tmax1 = (max - a);
+
+  inv = 1.0f / d;
+  tmin1 = tmin1 * inv;
+  tmax1 = tmax1 * inv;
+
+  if (inv >= 0) {
+    tmin = tmin1;
+    tmax = tmax1;
+  } else {
+    tmin = tmax1;
+    tmax = tmin1;
+  }
+
+  return tmax + tmin;
+}
+
+\end{verbatim}
+
+In this code the two subtractions and the division operations can be executed in
+parallel because there are no dependencies among them. So the total number of
+cycles will be max(O(div), O(sub)) + O(mul) = O(div) + O(mul); since O(div) is
+usually much greater than O(sub) \cite{x86,aarch64}
+
+Of course, a partial redundancy elimination pass could just remove the entire
+if-block because final operation is an addition (asociative under fast math).
+
+\begin{verbatim}
+float foo(float d, float min, float max, float a)
+{
+  float tmin1, tmax1, inv;
+
+  tmin1 = (min - a);
+  tmax1 = (max - a);
+
+  inv = 1.0f / d;
+  tmin1 = tmin1 * inv;
+  tmax1 = tmax1 * inv;
+
+  return tmax1 + tmin1;
+}
+\end{verbatim}
 
 \newpage
 
