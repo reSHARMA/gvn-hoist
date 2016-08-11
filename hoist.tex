@@ -465,9 +465,10 @@ In our current implementation we keep as many candidates in one set as possible
 (greedy approach). We split the list at a point where the legality checks fail
 to hoist subset of candidates which are legal to hoist and then start finding
 new hoisting point for the remaining ones. So there are two limitations of the
-current implementation: first, sorting by DFSIn numbers does not give the right
-order when there are fully redundant instructions, second, it lacks cost model
-for partitioning in order to preserve/improve performance.
+current implementation of the partition algorithm: First, sorting by DFSIn
+numbers does not give the desired order when there are fully redundant
+instructions; Second, it lacks cost model for partitioning in order to
+preserve/improve performance \ref{sec:future-work}.
 
 \subsection{Hoisting bottom up with pessimistic approach}
 \label{subsec:pessimistic}
@@ -495,41 +496,58 @@ expressions.
 
 \subsubsection{Reduce register pressure}
 \label{hoist:reg-pressure}
-Following example explains how code hoisting can actually reduce the register pressure.
-Consider the following example where the labels prefixed with 'p' represent the position of
-instruction in a basic block (names prefixed with bb).
+Following example explains how code hoisting can actually reduce the register
+pressure.  Consider the following example where the labels prefixed with 'P'
+represent the position of instruction in a basic block (names prefixed with 'B').
 
 \begin{verbatim}
-bb0: p0: b = ...
-bb1: p1: c = ...
-bb2: p2: if (c) jump bb3 else jump bb4
-bb3: p3: a0 = b + c
-bb4: p4: a1 = b + c
-bb5: p5: d = phi {a0(bb3), a1(bb4)}
+B0: P0: b = 1
+    goto B1
 
-If we measure distance(px, py) as total instruction
-count in the path from the position of px to py
+B1: P1: c = 2
+    goto B2
 
-old-live-range = max(distance(p0, p3) + distance(p1, p3) ,
-                     distance(p0, p4) + distance(p1, p4))
-                 + distance (p3, p5)
-new-live-rance = distance(p0, p2) + distance(p1, p2)
-                 + distance (p2, p5)
+B2: P2: if c is true then goto B3 else goto B4
+
+B3: P3: a0 = b + c
+    goto B5
+
+B4: P4: a1 = b + c
+    goto B5
+
+B5: P5: d = phi {a0(B3), a1(B4)}
+
+If we measure D(Px,Py) as total instruction
+count in the path from the position of Px to Py
+
+live-range(a0) = D(P0,P3) + D(P1,P3) + D(P3,P5)
+               = 6 + 4 + 2 = 12
+live-range(a1) = D(P0,P4) + D(P1,P4) + D(P4,P5)
+               = 6 + 4 + 2 = 12
+
+old-live-range = max(live-range(a0),live-range(a1))
+               = 12
+
+After hoisting a0 and a1 are removed and a copy
+of a0 as a01 is placed in B2 just before P2.
+
+live-range(a01) = D(P0,P2-1) + D(P1,P2-1) + D(P2 -1,P5)
+                = 4 + 3 + 3 = 10
+new-live-range = live-range(a01)
 \end{verbatim}
 
-If the new live-range is less than the old one it will be a good candidate
-for hoist. There are cases when both the ranges will be same:
-\begin{enumerate}
-  \item There is only one operand on the right hand side e.g., an assignment operation.
-  \item One of the operands is not a Instruction/Register.
-\end{enumerate}
+If the new live-range is less than the old one it will be a good candidate for
+hoisting. The live ranges can remain same as well if there is only one operand
+on the right hand side e.g., an assignment operation or, one of the operands is
+not a register. That means hoisting upwards will decrease the live-range of its
+use but increase the live-range of its definition.
 
 In a special case where the instruction to be hoisted has the last use of its
 operands then the code hoisting will always reduce the register pressure if it
 has two register operands because the gain in live-range will be in the ratio of
 2:1. Based on the above formulae we can also deduce that, as long as there is
 one register operand in the right hand side with its last use, code hoisting
-will either decrease or maintain the register pressure.
+will either decrease or preserve the register pressure.
 
 \subsubsection{In the presence of calls}
 \label{cost:across-calls}
@@ -542,8 +560,8 @@ are reduced by the number of caller saved registers. In that situation if a
 computation is hoisted across the call, that would increase the total number of
 registers required by one, thus contributing to the register pressure.
 
-However, in the two special cases discussed in Section-\ref{hoist:reg-pressure},
-it will be okay to hoist because the regiter pressure would not change.
+However, in the special case discussed in Section-\ref{hoist:reg-pressure},
+it will be okay to hoist because the register pressure would not decrease.
 
 Hoisting memory references also require precise analysis of all the memory
 addresses accessed by the call. In our implementation, since we only analyze the
@@ -585,6 +603,7 @@ benchmark \cite{Henning2000}.
 
 
 \section{Conclusion and Future Work}
+\label{sec:future-work}
 
 \bibliographystyle{abbrv}
 {\small
