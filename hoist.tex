@@ -493,8 +493,13 @@ identified instruction in the hoisting point and removes all the now redundant
 expressions.
 
 \section{Cost models}
+Similar to any compiler optimization pass, there are several cost functions that
+are deployed to tune for optimal combination of performance and code-size.
+Since this is mostly a code-size optimization pass, the goal is to not regress
+in performance across popular benchmarks at the same time reduce code size as
+much as possible. Following are the cost models which are implemented:
 
-\subsubsection{Reduce register pressure}
+\subsection{Reduce register pressure}
 \label{hoist:reg-pressure}
 Following example explains how code hoisting can actually reduce the register
 pressure.  Consider the following example where the labels prefixed with 'P'
@@ -549,7 +554,7 @@ has two register operands because the gain in live-range will be in the ratio of
 one register operand in the right hand side with its last use, code hoisting
 will either decrease or preserve the register pressure.
 
-\subsubsection{In the presence of calls}
+\subsection{In the presence of calls}
 \label{cost:across-calls}
 Hoisting scalars across calls is tricky because it can increase the number of
 spills. During the frame lowering of calls, the argument registers, in general,
@@ -558,41 +563,36 @@ callee and after the call they are restored \cite{frame-lowering}. So before the
 call, the register pressure is high because the number of available registers
 are reduced by the number of caller saved registers. In that situation if a
 computation is hoisted across the call, that would increase the total number of
-registers required by one, thus contributing to the register pressure.
+registers required by one, thus contributing to the register pressure. However,
+in the special case discussed in Section-\ref{hoist:reg-pressure}, it will be
+okay to hoist because the register pressure would not decrease.
 
-However, in the special case discussed in Section-\ref{hoist:reg-pressure},
-it will be okay to hoist because the register pressure would not decrease.
+Hoisting loads/stores across calls also require precise analysis of all the
+memory addresses accessed by the call. Our implementation being an
+intraprocedural pass, the analysis is very conservative. In the presence of pure
+calls, loads can be hoisted but stores can't. Also, if the call throws
+exceptions, or it it may not return, memory references cannot be hoisted.
 
-Hoisting memory references also require precise analysis of all the memory
-addresses accessed by the call. Our implementation being an intraprocedural
-pass, the analysis is very conservative. In the presence of pure calls, loads
-can be hoisted but stores can't. Also, if the call throws exceptions, or it it
-may not return, memory references cannot be hoisted.
-
-\subsubsection{Hoisting too far away}
-When we load a value from memory, we require an extra register to keep the value
-around. Hoisting a load means we need to keep the value alive for a longer
-period. That could result in spills later in the register allocation.
-
-Also, if there are several instructions in between the hoisting point and the
+\subsection{Hoisting too far away}
+If there are several instructions in between the hoisting point and the
 instruction to be hoisted, the instruction to be hoisted crosses several
-instructions while hoisting, it means we are adding one register to all the
+instructions while hoisting, that means we are adding one register to all the
 live-ranges spanning the instructions. That could result in spills. In the
 current implementation we choose to hoist if the number of instructions crossed
 is below a threshold. Ideally, it should be okay to hoist all the instructions
-and a later live-range-splitting pass should make the right decision of
-rematerializing the instruction should it be beneficial to do so. But the
-current live-range splitting pass of llvm is not making the optimial decision
-and we have found spills if the threshold is exceeded. The threshold was
-computed as a result of tuning the llvm testsuite \cite{llvm-nightly} and spec
-benchmark \cite{Henning2000}.
+and a later a live-range-splitting \cite{cooper1998live} pass should make the
+right decision of rematerializing the instruction should it be beneficial to do
+so. But the current live-range splitting pass of llvm is not making the optimial
+decision and we have found spills if the threshold is exceeded. The threshold
+was computed as a result of tuning the llvm testsuite \cite{llvm-nightly} and
+spec benchmark \cite{Henning2000}.
 
-\begin{enumerate}
-\item When the hoist point is too far.
-\item When the number of instructions we may cross is very high.
-\end{enumerate}
+Also, hoisting a load increases the register pressure by one across all the
+instructions which the load would cross. That could result in spills later in
+the register allocation.
 
-
+However, in the special case discussed in Section-\ref{hoist:reg-pressure}, it
+will be okay to hoist because the register pressure would not decrease.
 
 \newpage
 
