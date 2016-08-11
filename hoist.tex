@@ -376,10 +376,16 @@ there are no fully redundant instructions. Essentially if,
 \begin{verbatim}
 BasicBlock B1, B2, B3 // B1 != B2 != B3
 DFSIn(B1) = depth first discovery time stamp
-DFSIn(B1,B2) = abs(DFSIn(B1) - DFSIn(B2))
-DFSIn(B1,B3) = abs(DFSIn(B1) - DFSIn(B3))
-BBDist(B1,B2) = BBDist(B1, nearest-common-dom(B1, B2))
-BBDist(B1,B3) = BBDist(B1, nearest-common-dom(B1, B3))
+DFSIn(B1,B2) = |DFSIn(B1) - DFSIn(B2)|
+DFSIn(B1,B3) = |DFSIn(B1) - DFSIn(B3)|
+
+Depth(B1) = depth of tree from the root node.
+// When B1 dominates B2
+BBDist(B1, B2) = |Depth(B1) - Depth(B2)|
+
+NCD(B1, B2) = nearest common dominator of B1 and B2
+BBDist(B1,B2) = BBDist(B1, NCD(B1, B2))
+BBDist(B1,B3) = BBDist(B1, NCD(B1, B3))
 
 Then,
 DFSIn(B1,B2) < DFSIn(B1,B3) implies
@@ -387,15 +393,18 @@ DFSIn(B1,B2) < DFSIn(B1,B3) implies
 \end{verbatim}
 
 Same property would hold for instructions I1, I2, I3 provided they are not fully
-redundant i.e., none of the basic blocks containing I1, I2 and I3 dominate the
-other.
+redundant i.e., none of the basic blocks containing I1, I2 and I3 respectively
+dominate the other:
 
 \begin{verbatim}
-DFSIn(I1) = DFSIn of containing basic block
-DFSIn(I1,I2) = abs(DFSIn(I1) - DFSIn(I2))
-DFSIn(I1,I3) = abs(DFSIn(I1) - DFSIn(I3))
-BBDist(I1,I2) = BBDist(I1, nearest-common-dom(I1, I2))
-BBDist(I1,I3) = BBDist(I1, nearest-common-dom(I1, I3))
+Instruction I1, I2, I3
+// I1, I2, I3 are not fully redundant
+// B1, B2, B3 contains I1, I2, I3 respectively
+DFSIn(I1) = DFSIn(B1)
+BBDist(I1, I2) = BBDist(B1, B2)
+DFSIn(I1) = DFSIn(B1)
+DFSIn(I1,I3) = DFSIn(B1, B3)
+NCD(I1, I2) = NCD(B1, B2)
 
 Then,
  DFSIn(I1,I2) < DFSIn(I1,I3) implies
