@@ -336,19 +336,50 @@ intermediate representation (IR) to reflect changes.
 Performing a set of checks (e.g., consistency of use-defs and SSA semantics) to
 establish that program invariants are maintained.
 
+
+\subsection{Illustrative Example}
+In the case when more than one computation from the same basic block
+shows up as redundant.
+
+e.g.
+\begin{verbatim}
+BB1
+load a;
+....
+store .;
+....
+load a;
+
+
+BB2
+load a
+
+BB0 -> BB1
+BB0 -> BB2
+\end{verbatim}
+
+In this case both the loads from BB1 will show up as redundant
+(according to the current algorithm), but the complete hoising will
+fail as the second load in BB1 is not safe to hoist. By following the
+bottom-up approach, the sorted list of BBs will appear like this:
+
+{ BB1, BB2(first load), BB2(second load) }
+
+Now we will start evaluating the safety of BB1-l1 and BB2-l2 which
+will pass, then BB12-l1 and BB2-l2 will fail.  So we can revert back
+to BB12-l1 and hoist them to BB0. Doing the top down approach and
+finding the partial set to hoist instructions partially would result
+in a combinatorial explosion.
+
+GCC: 23286 has interesting test cases.
+
+
+
 \section{Code hoisting policies}
 The amount of hoisting depends on whether we collect GVN of instructions
-on-demand (pessimistic) or, before finding candidates (optimistic).It also
+before finding candidates (optimistic) or, on-demand (pessimistic). It also
 depends on the generality of the GVN algorithm, however, that analysis is beyond
 the scope of this paper.
-
-\subsection{Hoisting bottom up with pessimistic approach}
-\label{subsec:pessimistic}
-In the pessimistic approach, the basic blocks are traversed in the inverse
-depth-first order, computing the GVN of instructions as they come by. The GVN of
-sibling branches are compared for equality. Once such a candidate is found, it
-is hoisted in the common dominator. All the leaf nodes are visited before the
-non-leaf nodes (bottom-up) because instructions are hoisted upwards.
 
 \subsection{Hoisting bottom up with optimistic approach}
 \label{subsec:optimistic}
@@ -374,7 +405,8 @@ candidates closer in the list have their common dominator nearby in cases when
 there are no fully redundant instructions. Essentially if,
 
 \begin{verbatim}
-BasicBlock B1, B2, B3 // B1 != B2 != B3
+// B1 != B2 != B3
+BasicBlock B1, B2, B3
 DFSIn(B1) = depth first discovery time stamp
 DFSIn(B1,B2) = |DFSIn(B1) - DFSIn(B2)|
 DFSIn(B1,B3) = |DFSIn(B1) - DFSIn(B3)|
@@ -420,71 +452,36 @@ In the presence of fully redundant computations in the list of hoistable
 candidates this equation may not hold. For example, if there is another
 instruction I4 which is dominated by I1, but I4 is present in a basic block
 which is farther than DFSIn(I1, I2) i.e., $DFSIn(I1,I2) < DFSIn(I1,I4)$;
-however, $BBDist(I1,I4) = 0 < BBDist(I1,I2) >=1$
-
+however, $BBDist(I1,I4) = 0 < BBDist(I1,I2) >=1$.
 
 So by sorting candidates w.r.t. their DFSIn numbers:
 \begin{enumerate}
 \item would make fewer checks for legality and profitability.
-\item hoisting point will be closer so, the intersection of live-range of the
+\item hoisting point will be closer, so the intersection of live-range of the
   instruction with other instructions will be minimal.
 \end{enumerate}
 
-In the case where all the candidates cannot be hoisted at a common hoist point
-because of:
-\begin{enumerate}
-\item Safety conditions are not met.
-\item Live range would increase too much.
-\end{enumerate}
-
 In our current implementation we keep as many candidates in one set as possible
-unless (greedy approach). We split the list at a point where the legality checks
-fail to hoist subset of candidates which are legal to hoist and, start finding
-new hoisting point for the remaining ones.
+(greedy approach). We split the list at a point where the legality checks fail
+to hoist subset of candidates which are legal to hoist and then start finding
+new hoisting point for the remaining ones. So there are two limitations of the
+current implementation: first, sorting by DFSIn numbers does not give the right
+order when there are fully redundant instructions, second, it lacks cost model
+for partitioning in order to preserve/improve performance.
 
-TODO: Put an example to illustrate the point.
-
-In the case when more than one computation from the same basic block
-shows up as redundant.
-
-e.g.
-\begin{verbatim}
-BB1
-load a;
-....
-store .;
-....
-load a;
-
-
-BB2
-load a
-
-BB0 -> BB1
-BB0 -> BB2
-\end{verbatim}
-
-In this case both the loads from BB1 will show up as redundant
-(according to the current algorithm), but the complete hoising will
-fail as the second load in BB1 is not safe to hoist. By following the
-bottom-up approach, the sorted list of BBs will appear like this:
-
-{ BB1, BB2(first load), BB2(second load) }
-
-Now we will start evaluating the safety of BB1-l1 and BB2-l2 which
-will pass, then BB12-l1 and BB2-l2 will fail.  So we can revert back
-to BB12-l1 and hoist them to BB0. Doing the top down approach and
-finding the partial set to hoist instructions partially would result
-in a combinatorial explosion.
-
-GCC: 23286 has interesting test cases.
+\subsection{Hoisting bottom up with pessimistic approach}
+\label{subsec:pessimistic}
+In the pessimistic approach, the basic blocks are traversed in the inverse
+depth-first order, computing the GVN of instructions as they come by. The GVN of
+sibling branches are compared for equality. Once such a candidate is found, it
+is hoisted in the common dominator. All the leaf nodes are visited before the
+non-leaf nodes (bottom-up) because instructions are hoisted upwards.
 
 The pessimistic algorithm is fast, results in fewer spills but hoists very less
 instructions. We have implemented optimistic approach because it is more general
 and can be tuned down to closely mimic pessimistic approach by changing a flag.
 
-
-\subsubsection{Time complexity of algorithm}
+\subsection{Time complexity of algorithm}
 The complexity of code hoisting is linear in number of instructions that could
 be hoisted in the program, matching the complexity of PRE on SSA form.  The
 analysis phase is based on the Global Value Numbering (GVN), the same analysis
@@ -493,10 +490,6 @@ expressions to be hoisted in a same location to guarantee safety properties and
 program performance, and followed by a simple code generation that adds the
 identified instruction in the hoisting point and removes all the now redundant
 expressions.
-
-
-
-
 
 \section{Cost models}
 
