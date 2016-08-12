@@ -420,6 +420,7 @@ identified instruction in the hoisting point and removes all the now redundant
 expressions.
 
 \section{Cost models}
+\label{sec:cost-models}
 Similar to any compiler optimization pass, there are several cost functions that
 are deployed to tune for optimal combination of performance and code-size.
 Since this is mostly a code-size optimization pass, the goal is to not regress
@@ -521,7 +522,7 @@ the register allocation.
 However, in the special case discussed in Section-\ref{hoist:reg-pressure}, it
 will be okay to hoist because the register pressure would not decrease.
 
-\subsubsection{Exposing more ILP}
+\subsection{Exposing more ILP}
 Code hoisting can also reduce the critical path length of execution in out of
 order machines. As more instructios are available at the hoisting point, the
 hardware has more instructions to reorder. Following example illustrates how
@@ -615,6 +616,11 @@ float foo(float d, float min, float max, float a)
 
 \section{Conclusion and Future Work}
 \label{sec:future-work}
+We have presented the GVN based code hoisting algorithm. The primary goal is to
+reduce the code size but it benefits performance in some cases as well. To
+preserve performance and not hoist too much we have implemented several cost
+models \ref{sec:cost-models}. Since those cost models depend on a set of thresholds,
+it requires tuning, as such, we used representative benchmarks to tune them.
 
 \bibliographystyle{abbrv}
 {\small
