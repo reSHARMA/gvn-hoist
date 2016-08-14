@@ -263,8 +263,13 @@ Once all the legality checks and profitability checks are satisfied for a set of
 identical instructions, they are suitable candidates for hoisting. A copy of the
 computation is inserted at the hoisting point along with any instructions which
 needed to be rematerialized. Thereafter, all the computations made redundant by
-the new copy are removed. After that SSA semantics is restored by updating the
-intermediate representation (IR) to reflect changes.
+the new copy are removed. After that SSA form is restored by updating the
+intermediate representation (IR) to reflect changes. After one iteration of
+algorithm runs through the entire function, it creates more oppportunities for
+\italics{higher ranked} computations \cite{rosen1988global}. Currently, we rerun
+the algorithm until there are no more instructions left to be
+hoisted. Obviously, this is not the most optimal approach and can be improved by
+ranking the computations \cite{rosen1988global}.
 
 \subsection{Verifying the post-conditions}
 Performing a set of checks (e.g., consistency of use-defs and SSA semantics) to
@@ -593,6 +598,11 @@ reduce the code size but it benefits performance in some cases as well. To
 preserve performance and not hoist too much we have implemented several cost
 models \ref{sec:cost-models}. Since those cost models depend on a set of thresholds,
 it requires tuning, as such, we used representative benchmarks to tune them.
+
+Currently, we rerun the algorithm until there are no more instructions left to
+be hoisted. This is not the most optimal approach and results in expensive
+analyses to be recomputed. This can be improved by ranking the computations
+\cite{rosen1988global}.
 
 \bibliographystyle{abbrv}
 {\small
