@@ -550,10 +550,9 @@ computations of tmin and tmax of sibling branch respectively. Both tmax and tmin
 depends on inv which depends on a division operation which is generally more
 expensive than the addition, subtraction and multiplication operations. The
 total latency of computation across each branch is:
-
-O(div) + 2(O(sub) + O(mul))
-Or for out of order processors with two add units and two multiply units:
-O(div) + O(sub) + O(mul)
+$O(div) + 2(O(sub) + O(mul))$
+Or, for out of order processors with two add units and two multiply units:
+$O(div) + O(sub) + O(mul)$
 
 Now if the computation of tmax and tmin are hoisted outside the
 conditionals, the C code version would look like this:
@@ -584,8 +583,8 @@ float foo(float d, float min, float max, float a)
 
 In this code the two subtractions and the division operations can be executed in
 parallel because there are no dependencies among them. So the total number of
-cycles will be max(O(div), O(sub)) + O(mul) = O(div) + O(mul); since O(div) is
-usually much greater than O(sub) \cite{x86,aarch64}
+cycles will be $max(O(div), O(sub)) + O(mul) = O(div) + O(mul)$; since $O(div)$ is
+usually much greater than $O(sub)$ \cite{x86,aarch64}
 
 Of course, a partial redundancy elimination pass could just remove the entire
 if-block because final operation is an addition (asociative under fast math).
