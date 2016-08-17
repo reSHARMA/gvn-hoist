@@ -234,15 +234,23 @@ callsite through the hoisting point, just like we did for loads and stores.
 
 \subsection{Checking for profitability}
 \label{subsec:profitability}
-Establishing a set of cost models tune for performance. Like decreasing code
-size, minimizing spills etc.
+After the legality checks have passed, we check for profitability of hoisting.
+That takes into account the impact code-hoisting would have on various
+parameters that affects runtime performance e.g., impact on live-range, gain in
+the code size.  We have established a set of cost models \ref{sec:cost-models}
+for each parameter and tuned them for performance against representative
+benchmarks.
 
 \subsubsection{Hoisting scalars}
-Care must be taken in case of hoisting scalars too far, as that may increase
-register pressure and result in spills. For example hoisting a scalar past a
-call (Section-\ref{cost:across-calls}). In our current implementation we hoist
-scalars past a call only when optimizing for code-side (-Os). Another way to
-mitigate this problem is be to reinstantiate (rematerialize) the computation
+Since scalars are the majority of instructions which are hoisted, we pay special
+attention in case of hoisting scalars too far, as that may increase register
+pressure and result in spills. For example hoisting a scalar past a call
+(Section-\ref{cost:across-calls}).  In our current implementation we hoist
+scalars past a call only when optimizing for code-side (-Os). Ideally, a later
+stage of live-range splitting pass should split the live-ranges for optimal
+performance, however, that is not the case with llvm as we have found
+regressions when scalars are hoisted too far \ref{sec:cost-models}. Another way
+to mitigate this problem is be to reinstantiate (rematerialize) the computation
 after a call (may be as a different optimization pass).
 
 \subsubsection{Hoisting loads}
@@ -269,7 +277,7 @@ needed to be rematerialized. Thereafter, all the computations made redundant by
 the new copy are removed. After that SSA form is restored by updating the
 intermediate representation (IR) to reflect changes. After one iteration of
 algorithm runs through the entire function, it creates more oppportunities for
-\italics{higher ranked} computations \cite{rosen1988global}. Currently, we rerun
+\emph{higher ranked} computations \cite{rosen1988global}. Currently, we rerun
 the algorithm until there are no more instructions left to be
 hoisted. Obviously, this is not the most optimal approach and can be improved by
 ranking the computations \cite{rosen1988global}.
