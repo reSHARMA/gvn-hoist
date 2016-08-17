@@ -162,13 +162,14 @@ optimization pass. As such this pass can be divided into the following five
 steps:
 
 \subsection{Finding the candidates}
-Finding if a set of instructions perform identical computations. Since this code
-hoisting is based on GVN, we need the facility to compute GVN of instructions.
-In llvm \cite{llvm}, GVN infrastructure is already set up and works well for
-most kind of instructions except loads and stores so we compute the GVN of loads
-and stores separately. In order to value number loads, we value number (hash)
-the address from where the value is to be loaded. For stores, we value number
-(hash) the address as well as the value to be stored at that address.
+The first step is to find if a set of instructions perform identical
+computations. Since our code hoisting algorithm is based on GVN, we need the
+facility to compute GVN of instructions.  In llvm \cite{llvm}, GVN
+infrastructure is already set up and works well for most kind of instructions
+except loads and stores so we compute the GVN of loads and stores separately. In
+order to value number loads, we value number (hash) the address from where the
+value is to be loaded. For stores, we value number (hash) the address as well as
+the value to be stored at that address.
 
 The process of computing GVN can be on-demand (as we come across an instruction)
 or, precomputed (computing GVN of all the instructions beforehand). Which
@@ -184,20 +185,22 @@ the value number of computations.
 
 \subsection{Checking for legality}
 \label{subsec:legality}
-Finding a hoisting point i.e., a common dominator of the set of instructions. If
-such a dominator is found then checking if all the use-operands of the set of
+Since the equality of candidates is purely based on the value they compute, we
+need to establish if hoisting them to a common dominator would be feasible. One
+a common dominator is found then we check if all the use-operands of the set of
 instructions are available or not. In some cases when the operands are not
 available, it is possible to reinstantiate (remateralize) the use-operands, thus
-passing the legality check. Checking that the side-effects of the computations
-does not intersect with any side-effects between the instructions to be hoisted
-and their hoisting point. For memory operations like loads, stores, calls etc.,
-it is also required to check that all the paths from the hoisting point to the
-end of the function should execute the exact instruction, in order to guarantee
-correctness. Moreover, hoisting of memory operations is tricky on paths which
-have indirect branch targets e.g., landing pad, case statements, goto labels
-etc., because it becomes difficult to prove that all the paths from hoisting
-point to the end of the function would execute the instruction. In our current
-implementation we discard hoisting through such paths.
+passing the legality check. Subsequently, it is checked that the side-effects of
+the computations does not intersect with any side-effects between the
+instructions to be hoisted and their hoisting point. For memory operations like
+loads, stores, calls etc., it is also required to check that all the paths from
+the hoisting point to the end of the function should execute the exact
+instruction, in order to guarantee correctness. Moreover, hoisting of memory
+operations is tricky on paths which have indirect branch targets e.g., landing
+pad, case statements, goto labels etc., because it becomes difficult to prove
+that all the paths from hoisting point to the end of the function would execute
+the instruction. In our current implementation we discard hoisting through such
+paths.
 
 In the optimistic approach (Section-\ref{subsec:optimistic}), it is possible
 that a common hoisting point of all the instructions is either too far away, or
@@ -208,8 +211,8 @@ Section-\ref{subsec:partition}.
 
 \subsubsection{Hoisting scalars}
 Scalars are the easiest to hoist because we do not have to analyze them for
-aliasing memory references. As long as all the operands are available, the
-scalar can be hoisted.
+aliasing memory references. As long as all the operands are available (or can be
+made available by rematerialization), the scalar can be hoisted.
 
 \subsubsection{Hoisting loads}
 The availability of operand to the load (an address) is checked at the hoisting
