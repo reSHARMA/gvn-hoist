@@ -598,6 +598,26 @@ will be okay to hoist because the register pressure would not decrease.
 
 \section{Experimental Evaluation}
 \label{sec:experimental-results}
+We ran llvm-testsuite (trunk:d87471f8) with the patch (trunk:86940146 and the results are:
+
+\begin{table}[h!]
+  \begin{center}
+    \begin{tabular}{|l|c|}
+      \hline
+      Metric                   	     & Number\\\hline
+      Instructions hoisted & 21616 \\\hline
+      Instructions removed & 30438 \\\hline
+      Loads hoisted        & 14802 \\\hline
+      Loads removed        & 20719 \\\hline
+      Stores hoisted       & 15    \\\hline
+      Stores removed       & 15    \\\hline
+      Calls hoisted        & 8     \\\hline
+      Calls removed        & 8     \\\hline
+\end{tabular}
+  \end{center}
+  \caption{Code hoisting metrics on llvm-testsuite}
+  \label{tab:results}
+\end{table}
 
 \subsection{Comparative analysis of different approaches to hoisting}
 
