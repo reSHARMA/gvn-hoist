@@ -88,14 +88,18 @@ computed for PRE to detect identical computations and has a transformation phase
 whose goal differs from PRE: it removes identical computations from different
 branches of execution.  These identical computations would not be redundant at
 run-time and as the number of run-time computations is not reduced, code
-hoisting is not a redundancy elimination pass.  The goals of code hoisting are:
+hoisting is not a redundancy elimination pass. This is also different from
+global code scheduling \cite{dragonbook} in the sense that code-hoisting will
+only hoist computations when there are two or more identical computation sharing
+a common dominator. The goals of code hoisting are:
+
 \begin{itemize}
 \item to reduce the code size of the program;
 \item to improve function inlining heuristics: functions become cheaper to
   inline by reducing their code size;
 \item to expose more instruction level parallelism: by hoisting identical
-  computations to be executed earlier, schedulers can move heavy computations
-  earlier in order to avoid pipeline bubbles;
+  computations to be executed earlier, instruction schedulers can move heavy
+  computations earlier in order to avoid pipeline bubbles;
 \item to help out-of-order processors with speculative execution of branches: by
   hoisting expressions out of branches, code hoisting can effectively reduce the
   amount of code to be speculatively executed and can reduce the critical path;
@@ -598,21 +602,28 @@ will be okay to hoist because the register pressure would not decrease.
 
 \section{Experimental Evaluation}
 \label{sec:experimental-results}
-We ran llvm-testsuite (trunk:d87471f8) with the patch (trunk:86940146 and the results are:
+We ran llvm-testsuite (trunk:d87471f8) with the patch (trunk:86940146 and the
+results are listed in Table-\ref{tab:results}. The table lists the number of
+scalars, loads, stores and calls hoisted as well as removed. For each category,
+the number of instructions removed is greater or equal to the number of
+instructions hoisted because each hoisting is performed only when at least one
+identical computation is found.
 
 \begin{table}[h!]
   \begin{center}
     \begin{tabular}{|l|c|}
       \hline
       Metric                   	     & Number\\\hline
-      Instructions hoisted & 21616 \\\hline
-      Instructions removed & 30438 \\\hline
+      Scalars hoisted      & 6791  \\\hline
+      Scalars removed      & 9696  \\\hline
       Loads hoisted        & 14802 \\\hline
       Loads removed        & 20719 \\\hline
       Stores hoisted       & 15    \\\hline
       Stores removed       & 15    \\\hline
       Calls hoisted        & 8     \\\hline
       Calls removed        & 8     \\\hline
+      Total Instructions hoisted & 21616 \\\hline
+      Total Instructions removed & 30438 \\\hline
 \end{tabular}
   \end{center}
   \caption{Code hoisting metrics on llvm-testsuite}
