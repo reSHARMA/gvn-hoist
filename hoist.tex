@@ -609,6 +609,12 @@ the number of instructions removed is greater or equal to the number of
 instructions hoisted because each hoisting is performed only when at least one
 identical computation is found.
 
+Loads are hoisted the most followed by scalars, stores and calls in decreasing
+order.  This was the common trend in all our experiments. One reason why loads
+are hoisted more than scalars is the early execution of this pass in the llvm
+pass pipeline where there are many loads (?? Verify). This order may change should this pass
+be scheduled later.
+
 \begin{table}[h!]
   \begin{center}
     \begin{tabular}{|l|c|}
@@ -629,6 +635,9 @@ identical computation is found.
   \caption{Code hoisting metrics on llvm-testsuite}
   \label{tab:results}
 \end{table}
+
+
+TODO: Table for decrease in the code-size of final binaries.
 
 \subsection{Comparative analysis of different approaches to hoisting}
 
