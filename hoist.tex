@@ -611,15 +611,15 @@ identical computation is found.
 
 Loads are hoisted the most followed by scalars, stores and calls in decreasing
 order.  This was the common trend in all our experiments. One reason why loads
-are hoisted more than scalars is the early execution of this pass in the llvm
-pass pipeline where there are many loads (?? Verify). This order may change should this pass
-be scheduled later.
+are hoisted the most is the early execution of this pass (before mem2reg) in the
+llvm pass pipeline. Passes like mem2reg, instcombine might actually remove
+those loads so this order may change should this pass be scheduled later.
 
 \begin{table}[h!]
   \begin{center}
     \begin{tabular}{|l|c|}
       \hline
-      Metric                   	     & Number\\\hline
+      Metric               & Number\\\hline
       Scalars hoisted      & 6791  \\\hline
       Scalars removed      & 9696  \\\hline
       Loads hoisted        & 14802 \\\hline
@@ -638,9 +638,6 @@ be scheduled later.
 
 
 TODO: Table for decrease in the code-size of final binaries.
-
-\subsection{Comparative analysis of different approaches to hoisting}
-
 
 \section{Conclusion and Future Work}
 \label{sec:future-work}
