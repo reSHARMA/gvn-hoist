@@ -603,11 +603,11 @@ will be okay to hoist because the register pressure would not decrease.
 \section{Experimental Evaluation}
 \label{sec:experimental-results}
 We ran llvm-testsuite (trunk:d87471f8) with the patch (trunk:86940146 and the
-results are listed in Table-\ref{tab:results}. The table lists the number of
-scalars, loads, stores and calls hoisted as well as removed. For each category,
-the number of instructions removed is greater or equal to the number of
-instructions hoisted because each hoisting is performed only when at least one
-identical computation is found.
+results are listed in Table-\ref{tab:hoist-results}. The table lists the number
+of scalars, loads, stores and calls hoisted as well as removed. For each
+category, the number of instructions removed is greater or equal to the number
+of instructions hoisted because each hoisting is performed only when at least
+one identical computation is found.
 
 Loads are hoisted the most followed by scalars, stores and calls in decreasing
 order.  This was the common trend in all our experiments. One reason why loads
@@ -633,9 +633,36 @@ those loads so this order may change should this pass be scheduled later.
 \end{tabular}
   \end{center}
   \caption{Code hoisting metrics on llvm-testsuite}
-  \label{tab:results}
+  \label{tab:hoist-results}
 \end{table}
 
+\begin{table}[h!]
+  \begin{center}
+    \begin{tabular}{|l|c|c|}
+      \hline
+      Metric               & Before & After              \\\hline
+      Call sites deleted, not inlined             & 1988    & 1988   \\\hline
+      Functions deleted (all callers found)       & 38250   & 38255  \\\hline
+      Functions inlined                           & 154986  & 154985 \\\hline
+      Allocas merged together                     & 212     & 212    \\\hline
+      Caller-callers analyzed                     & 193042  & 193092 \\\hline
+      Call sites analyzed                         & 414336  & 414381 \\\hline
+      Rematerialized defs for spilling            & 18321   & 18326  \\\hline
+      Rematerialized defs for splitting           & 5719    & 5842   \\\hline
+      Spill slots allocated                       & 42912   & 42970  \\\hline
+      Spilled live ranges                         & 61330   & 61362  \\\hline
+      Spills inserted                             & 50724   & 50784  \\\hline
+\end{tabular}
+  \end{center}
+  \caption{Static metrics before and after code-hoisting on llvm-testsuite}
+  \label{tab:static-results}
+\end{table}
+
+
+Other static metrics are listed in Table-\ref{tab:static-results}. Here we can
+see that except for rematerializing defs for splitting, which has an overhead of ~2\%, all
+other parameters have less than 1\% overhead. This is to explain why the performance does not
+go down with our implementation (and cost-model) of code hoisting pass.
 
 TODO: Table for decrease in the code-size of final binaries.
 
