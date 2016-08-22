@@ -665,7 +665,31 @@ see that except for rematerializing defs for splitting, which has an overhead of
 other parameters have less than 1\% overhead. This is to explain why the performance does not
 go down with our implementation (and cost-model) of code hoisting pass.
 
-TODO: Table for decrease in the code-size of final binaries.
+\begin{table}[h!]
+  \begin{center}
+    \begin{tabular}{|l|c|}
+      \hline
+      Code-size metric  (.text)                   & Number   \\\hline
+      Total  benchmarks                           & 497      \\\hline
+      Total  gained in size                       & 39       \\\hline
+      Total  decrease in size                     & 58       \\\hline
+      Median decrease in size                     & 2.9\%    \\\hline
+      Median increase in size                     & 2.4\%    \\\hline
+    \end{tabular}
+  \end{center}
+  \caption{Code size metrics on llvm-testsuite}
+  \label{tab:code-size}
+\end{table}
+
+While benchmarking llvm-testsuite we see both increase as well as decrease in
+the codesizes of the final binaries. Since the pass runs early, it has affect on
+many optimizations which rely on number of instructions, lenth of the use-def
+chain etc metrics which are affected by code-hoisting. Specially the inliner
+where the total inline cost (in llvm) is heavily dependent on the total count of
+instructions in the caller and callee. Various code-size metrics are shown in
+Table-\ref{tab:code-size}. All but one benchmark varied between -5.32\% and
+5.43\%.  In one benchmark FreeBench/distray/distray.test, the codesize increased
+by 35.38\%.
 
 \section{Conclusion and Future Work}
 \label{sec:future-work}
