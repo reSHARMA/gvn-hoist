@@ -601,11 +601,9 @@ However, in the special case discussed in Section-\ref{hoist:reg-pressure}, it
 will be okay to hoist because the register pressure would not decrease.
 
 
-\newpage
-
 \section{Experimental Evaluation}
 \label{sec:experimental-results}
-We ran llvm-testsuite (trunk:d87471f8) with the patch (trunk:86940146 and the
+We ran llvm-testsuite (trunk:d87471f8) with the patch (trunk:86940146) and the
 results are listed in Table-\ref{tab:hoist-results}. The table lists the number
 of scalars, loads, stores and calls hoisted as well as removed. For each
 category, the number of instructions removed is greater or equal to the number
@@ -681,6 +679,14 @@ Currently, we rerun the algorithm until there are no more instructions left to
 be hoisted. This is not the most optimal approach and results in expensive
 analyses to be recomputed. This can be improved by ranking the computations
 \cite{rosen1988global}.
+
+With the implementation of code-hoisting in llvm, the passes which rely on the
+code-size/instruction-count to make optimization decisions needs to be
+revisited. The first candidate would be the inliner. We have seen different
+inlining decisions (See Table-\ref{tab:code-size}) before and after
+code-hoisting was enabled.  Since inliner has several magic numbers tuned for
+the previous pass layout, it would need some improvement.
+
 
 \bibliographystyle{abbrv}
 {\small
