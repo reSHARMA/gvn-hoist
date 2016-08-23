@@ -152,7 +152,6 @@ code hoisting in a data flow framework.
 
 \section{Code hoisting}
 
-\subsection{}
 The algorithm for code hoisting uses several common representations of the
 program that we shortly describe below:
 \begin{itemize}
@@ -166,35 +165,47 @@ program that we shortly describe below:
   unique number and the expressions that the compiler can prove identical are
   given the same number;
 \item Memory SSA \cite{novillo2007memory}: memory operations that the compiler
-  is able to prove in dependence are linked through use-def chains;
+  is able to prove in dependence are linked through use-def chains.
 \end{itemize}
 
-
-For the code hoisting we follow a very systematic approach to writing a compiler
-optimization pass. As such this pass can be divided into the following five
-steps:
+The code-hoisting pass can be divided into the following steps that we will
+describe in the rest of this section:
+\begin{itemize}
+\item find candidates to hoist and compute hoisting position,
+\item check whether moving the code is legal and profitable,
+\item transform the code.
+\end{itemize}
 
 \subsection{Finding the candidates}
-The first step is to find if a set of instructions perform identical
-computations. Since our code hoisting algorithm is based on GVN, we need the
-facility to compute GVN of instructions.  In llvm \cite{llvm}, GVN
-infrastructure is already set up and works well for most kind of instructions
-except loads and stores so we compute the GVN of loads and stores separately. In
-order to value number loads, we value number (hash) the address from where the
-value is to be loaded. For stores, we value number (hash) the address as well as
-the value to be stored at that address.
+The first step is to find a set of instructions that perform identical
+computations: this is performed by a linear scan of all instructions of the
+program and classifying all instructions by their value given by GVN.  The
+current implementation of GVN in LLVM has some limitations when it comes to
+loads and stores so we compute the GVN of loads and stores separately.  Our
+short-time solution to value number loads is to hash the address from where the
+value is to be loaded. For stores, we value number the address as well as the
+value to be stored at that address.
+
+Another limitation of the current GVN implementation in LLVM is that the
+instructions dependent on the loads will not get numbered correctly, and so
+after hoisting all candidates we need to rerun the GVN analysis in order to
+discover new candidates now available after having hoisted load instructions.
+This limitation should be addressed in a new implementation of the GVN based on
+MemorySSA, that would better account for equivalent loads and their dependent
+instructions.
 
 The process of computing GVN can be on-demand (as we come across an instruction)
 or, precomputed (computing GVN of all the instructions beforehand). Which
 process to choose is determined by the scope of code-hoisting we want to
 perform. In a pessimistic approach (Section-\ref{subsec:pessimistic}) where we
-want to hoist limited set of instructions from the sibing branches as we iterate
+want to hoist limited set of instructions from the sibling branches as we iterate
 the DFS tree bottom-up, it is sufficient to compute values on-demand. Whereas,
 in the optimistic approach (Section-\ref{subsec:optimistic}), where we want to
 hoist as many instructions as possible, would require values to be precomputed.
 
-Whatever approach we take, to find a candidate all we need to do is to compare
-the value number of computations.
+Once the instructions have been classified in equivalence classes, we compute
+for each group of equivalent instructions a point in the program that is both
+legal and profitable for the code-hoisting.
 
 \subsection{Checking for legality}
 \label{subsec:legality}
