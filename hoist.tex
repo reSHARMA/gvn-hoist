@@ -55,22 +55,22 @@ Daniel Berlin\\
 
 \maketitle
 \begin{abstract}
-  Code hoisting identifies identical computations across the program with the
+  Code-hoisting identifies identical computations across the program with the
   help of a Global Value Numbering (GVN) analysis, identifies a hoisting
   position that dominates all the identical computations and in which all
   operands are avaialable, duplicates one of the expressions in the hoisting
   position, and removes all the computations now redundant in their original
   position.
 
-  Code hoisting is often confused with CSE (Common Subexpression Elimination)
-  although hoisting is not bound to find redundancies within a single basic
-  block.  Code hoisting could also be confused with Partial Redundancy
+  Code-hoisting is often confused with CSE (Common Subexpression Elimination)
+  although code-hoisting is not bound to find redundancies within a single basic
+  block.  Code-hoisting could also be confused with Partial Redundancy
   Elimination (PRE) or with Global Common Subexpression Elimination (GCSE)
-  although the main goal of code hoisting is not to remove redundancies: code
-  hoisting effectively exposes redundancies and enables other passes like LICM
-  to remove more redundancies.  The main goal of code hoisting is to reduce code
-  size with the added benefit of exposing more instruction level parallelism and
-  reduced register pressure.
+  although the main goal of code-hoisting is not to remove redundancies:
+  code-hoisting effectively exposes redundancies and enables other passes like
+  LICM to remove more redundancies.  The main goal of code-hoisting is to reduce
+  code size with the added benefit of exposing more instruction level
+  parallelism and reduced register pressure.
 \end{abstract}
 
 \section{Introduction}
@@ -88,15 +88,17 @@ time \cite{briggs1994effective,chow1997new,kennedy1999partial} and brought these
 techniques in the main stream: nowadays SSA based PRE is available in every
 industrial compiler.
 
-This paper describes code hoisting, a technique that uses the information
+This paper describes code-hoisting, a technique that uses the information
 computed for PRE to detect identical computations and has a transformation phase
 whose goal differs from PRE: it removes identical computations from different
-branches of execution.  These identical computations would not be redundant at
-run-time and as the number of run-time computations is not reduced, code
-hoisting is not a redundancy elimination pass. This is also different from
-global code scheduling \cite{dragonbook} in the sense that code-hoisting will
-only hoist computations when there are two or more identical computation sharing
-a common dominator. The goals of code hoisting are:
+branches of execution.  These identical computations in different branches of
+execution are not redundant computations at run-time and the number of run-time
+computations is not reduced. Code-hoisting is not a redundancy elimination pass,
+and thus it has different cost function and heuristics than PRE or CSE.
+Code-hoisting is also different from global code scheduling
+\cite{dragonbook,click1995global} in the sense that code-hoisting will only
+hoist computations when there are identical computations sharing a common
+dominator. The goals of code hoisting are:
 
 \begin{itemize}
 \item to reduce the code size of the program;
@@ -125,12 +127,10 @@ a common dominator. The goals of code hoisting are:
 The main contributions of this paper are:
 \begin{itemize}
 \item a new algorithm to hoist computations from branches,
-\item cost model to reduce live-range and reduce spills,
+\item cost models to reduce live-range and reduce spills,
 \item performance evaluation of the implementation in LLVM,
 \item comparison against other algorithms for code hoisting.
 \end{itemize}
-
-\newpage
 
 \section{Related Work}
 
