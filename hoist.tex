@@ -177,7 +177,7 @@ describe in the rest of this section:
 \item transform the code.
 \end{itemize}
 
-\subsection{Finding the candidates}
+\subsection{Finding candidates to hoist}
 The first step is to find a set of instructions that perform identical
 computations: this is performed by a linear scan of all instructions of the
 program and classifying all instructions by their value given by GVN.
@@ -200,17 +200,17 @@ The process of computing GVN can be on-demand (as we come across an instruction)
 or, precomputed (computing GVN of all the instructions beforehand). Which
 process to choose is determined by the scope of code-hoisting we want to
 perform. In a pessimistic approach, as described in
-Section-\ref{subsec:pessimistic}, we want to hoist a limited set of instructions
+Section~\ref{subsec:pessimistic}, we want to hoist a limited set of instructions
 from the sibling branches as we iterate the DFS tree bottom-up, it is sufficient
 to compute GVN values on-demand. Whereas, in the optimistic approach, as
-described in Section-\ref{subsec:optimistic}, we want to hoist as many
+described in Section~\ref{subsec:optimistic}, we want to hoist as many
 instructions as possible, and it would require GVN values to be precomputed.
 
 Once the instructions have been classified in equivalence classes, we compute
 for each group of equivalent instructions a point in the program that is both
 legal and profitable for the instructions to be moved to.
 
-\subsection{Checking for legality}
+\subsection{Legality check}
 \label{subsec:legality}
 Since the equality of candidates is purely based on the value they compute, we
 need to establish if hoisting them to a common dominator would be feasible. Once
@@ -232,19 +232,19 @@ becomes difficult to prove that all the paths from hoisting point to the end of
 the function would execute the instruction. In our current implementation we
 discard hoisting through such paths.
 
-In the optimistic approach, described in Section-\ref{subsec:optimistic}, it is
+In the optimistic approach, described in Section~\ref{subsec:optimistic}, it is
 possible that a common hoisting point of all the instructions is either too far
 away, or not legally possible. In these cases, it is still possible to
 `partially' hoist a subset of instructions by splitting the set of candidates
 and finding a closer hoisting point for each subset. For more details see
-Section-\ref{subsec:partition}.
+Section~\ref{subsec:partition}.
 
-\subsubsection{Hoisting scalars}
+\subsubsection{Legality of hoisting scalars}
 Scalars are the easiest to hoist because we do not have to analyze them for
 aliasing memory references. As long as all the operands are available (or can be
 made available by rematerialization), the scalar computation can be hoisted.
 
-\subsubsection{Hoisting loads}
+\subsubsection{Legality of hoisting loads}
 The availability of operand to the load (an address) is checked at the hoisting
 point. If that is not available we try to rematerialize the addresss if
 possible.  Along the path, from current position of the load instruction
@@ -252,57 +252,58 @@ backwards on the control flow to the hoisting point, we check whether there are
 writes to memory that may alias with the load, in which case we discard the
 candidate.
 
-\subsubsection{Hoisting stores}
+\subsubsection{Legality of hoisting stores}
 For stores, we check the dependency requirements similar to the hoisting of
 loads. We check that the operands of the store instruction are available at the
 hoisting point, that there are no aliasing loads or store along the path from
 the current position to the hoisting point.
 
-\subsubsection{Hoisting calls}
+\subsubsection{Legality of hoisting calls}
 Call instructions can be divided into three categories: those calls equivalent
 to purely scalar computations, calls reading from memory, and most of the time,
 without further information, calls have to be classified as writing to memory,
 that is the most restrictive form.  Each category of call instructions will be
 handled as described for scalar, load, and store instructions.
 
-\subsection{Checking for profitability}
+\subsection{Profitability check}
 \label{subsec:profitability}
 After the legality checks have passed, we check for profitability of hoisting.
 That takes into account the impact code-hoisting would have on various
-parameters that affects runtime performance e.g., impact on live-range, gain in
-the code size.  We have established a set of cost models \ref{sec:cost-models}
+parameters that affect runtime performance e.g., impact on live-range, gain in
+the code size.  We have established a set of cost models described in Section~\ref{sec:cost-models}
 for each parameter and tuned them for performance against representative
 benchmarks.
 
-\subsubsection{Hoisting scalars}
+\subsubsection{Profitability of hoisting scalars}
 Since scalars are the majority of instructions which are hoisted, we pay special
 attention in case of hoisting scalars too far, as that may increase register
-pressure and result in spills. For example hoisting a scalar past a call
-(Section-\ref{cost:across-calls}).  In our current implementation we hoist
-scalars past a call only when optimizing for code-side (-Os). Ideally, a later
-stage of live-range splitting pass should split the live-ranges for optimal
-performance, however, that is not the case with llvm as we have found
-regressions when scalars are hoisted too far \ref{sec:cost-models}. Another way
-to mitigate this problem is be to reinstantiate (rematerialize) the computation
-after a call (may be as a different optimization pass).
+pressure and result in spills. For example hoisting a scalar past a call, as
+described in Section~\ref{cost:across-calls}.  In our current implementation we
+hoist scalars past a call only when optimizing for code-side (-Os). Ideally, a
+later stage of live-range splitting pass should split the live-ranges for
+optimal performance, however, that is not the case with llvm as we have found
+regressions when scalars are hoisted too far, as in
+Section~\ref{sec:cost-models}. Another way to mitigate this problem is be to
+reinstantiate (rematerialize) the computation after a call (may be as a
+different optimization pass).
 
-\subsubsection{Hoisting loads}
+\subsubsection{Profitability of hoisting loads}
 A load instruction introduces a register where the value loaded will be kept,
 the register pressure increases by one (unless the operand to load becomes dead
 at the load). On the other hand, loading a value early will reduce the stall
 during execution should the value is not in the cache. We generally prefer to
 hoist load except the hoisting point is too far (this distance is computed by
-looking at the experimental results of representative benchmarks see
-Section-\ref{sec:experimental-results}).
+looking at the experimental results of representative benchmarks, see
+Section~\ref{sec:experimental-results}).
 
-\subsubsection{Hoisting stores}
+\subsubsection{Profitability of hoisting stores}
 Since stores do not increase the live-range of any registers, and in some cases
 it ends the liveness of registers, we hoist all the stores.
 
-\subsubsection{Hoisting calls}
+\subsubsection{Profitability of hoisting calls}
 Currently we hoist all the calls that are suitable candidates for hoisting.
 
-\subsection{Making the transformation}
+\subsection{Code generation}
 Once all the legality checks and profitability checks are satisfied for a set of
 identical instructions, they are suitable candidates for hoisting. A copy of the
 computation is inserted at the hoisting point along with any instructions which
@@ -418,13 +419,13 @@ In this approach, the goal is to maximise the total number of hoistings in the
 entire function.  This algorithm is very useful when optimizing for code-size.
 We collect the GVN of all the instructions in the function and iterate on the
 list of instructions having identical GVNs. After that we find the common
-dominator dominating all such identical computations and perform legality checks
-(Section-\ref{subsec:legality}). Often times it is not possible to hoist all the
-instructions to one common dominator, due to legality constraints e.g.,
-intersecting side-effects or, profitability constraints e.g., hoisting point too
-far. In those cases, this algorithmn would partition the list of identical
-instructions into subsets which can be partially hoisted to their respective
-common dominators. The partition algorithm is described as follows:
+dominator dominating all such identical computations and perform legality
+checks, as described in Section~\ref{subsec:legality}. Often times it is not
+possible to hoist all the instructions to one common dominator, due to legality
+constraints e.g., intersecting side-effects or, profitability constraints e.g.,
+hoisting point too far. In those cases, this algorithmn would partition the list
+of identical instructions into subsets which can be partially hoisted to their
+respective common dominators. The partition algorithm is described as follows:
 
 \subsubsection{Partition the list of hoisting candidates to maximize hoisting}
 \label{subsec:partition}
@@ -499,7 +500,7 @@ new hoisting point for the remaining ones. So there are two limitations of the
 current implementation of the partition algorithm: First, sorting by DFSIn
 numbers does not give the desired order when there are fully redundant
 instructions; Second, it lacks cost model for partitioning in order to
-preserve/improve performance \ref{sec:future-work}.
+preserve/improve performance, see Section~\ref{sec:future-work}.
 
 \subsection{Hoisting bottom up with pessimistic approach}
 \label{subsec:pessimistic}
@@ -596,7 +597,7 @@ call, the register pressure is high because the number of available registers
 are reduced by the number of caller saved registers. In that situation if a
 computation is hoisted across the call, that would increase the total number of
 registers required by one, thus contributing to the register pressure. However,
-in the special case discussed in Section-\ref{hoist:reg-pressure}, it will be
+in the special case discussed in Section~\ref{hoist:reg-pressure}, it will be
 okay to hoist because the register pressure would not decrease.
 
 Hoisting loads/stores across calls also require precise analysis of all the
@@ -623,14 +624,14 @@ Also, hoisting a load increases the register pressure by one across all the
 instructions which the load would cross. That could result in spills later in
 the register allocation.
 
-However, in the special case discussed in Section-\ref{hoist:reg-pressure}, it
+However, in the special case discussed in Section~\ref{hoist:reg-pressure}, it
 will be okay to hoist because the register pressure would not decrease.
 
 
 \section{Experimental Evaluation}
 \label{sec:experimental-results}
 We ran llvm-testsuite (trunk:d87471f8) with the patch (trunk:86940146) and the
-results are listed in Table-\ref{tab:hoist-results}. The table lists the number
+results are listed in Table~\ref{tab:hoist-results}. The table lists the number
 of scalars, loads, stores and calls hoisted as well as removed. For each
 category, the number of instructions removed is greater or equal to the number
 of instructions hoisted because each hoisting is performed only when at least
@@ -686,7 +687,7 @@ those loads so this order may change should this pass be scheduled later.
 \end{table}
 
 
-Other static metrics are listed in Table-\ref{tab:static-results}. Here we can
+Other static metrics are listed in Table~\ref{tab:static-results}. Here we can
 see that except for rematerializing defs for splitting, which has an overhead of ~2\%, all
 other parameters have less than 1\% overhead. This is to explain why the performance does not
 go down with our implementation (and cost-model) of code hoisting pass.
@@ -713,7 +714,7 @@ many optimizations which rely on number of instructions, lenth of the use-def
 chain etc metrics which are affected by code-hoisting. Specially the inliner
 where the total inline cost (in llvm) is heavily dependent on the total count of
 instructions in the caller and callee. Various code-size metrics are shown in
-Table-\ref{tab:code-size}. All but one benchmark varied between -5.32\% and
+Table~\ref{tab:code-size}. All but one benchmark varied between -5.32\% and
 5.43\%.  In one benchmark FreeBench/distray/distray.test, the codesize increased
 by 35.38\%. In this benchmark 3 more (15 as compared to 12) functions got
 inlined and because of that 10 more (81 vs. 71) vector instructions got
@@ -727,8 +728,9 @@ generated, 3 calls got hoisted/sunk as (compared to 0), one loop got unswitched
 We have presented the GVN based code hoisting algorithm. The primary goal is to
 reduce the code size but it benefits performance in some cases as well. To
 preserve performance and not hoist too much we have implemented several cost
-models \ref{sec:cost-models}. Since those cost models depend on a set of thresholds,
-it requires tuning, as such, we used representative benchmarks to tune them.
+models described in Section~\ref{sec:cost-models}. Since those cost models
+depend on a set of thresholds, it requires tuning, as such, we used
+representative benchmarks to tune them.
 
 Currently, we rerun the algorithm until there are no more instructions left to
 be hoisted. This is not the most optimal approach and results in expensive
@@ -738,7 +740,7 @@ analyses to be recomputed. This can be improved by ranking the computations
 With the implementation of code-hoisting in llvm, the passes which rely on the
 code-size/instruction-count to make optimization decisions needs to be
 revisited. The first candidate would be the inliner. We have seen different
-inlining decisions (See Table-\ref{tab:code-size}) before and after
+inlining decisions in Table~\ref{tab:code-size}, before and after
 code-hoisting was enabled.  Since inliner has several magic numbers tuned for
 the previous pass layout, it would need some improvement.
 
