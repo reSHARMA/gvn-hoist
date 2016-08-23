@@ -213,51 +213,57 @@ legal and profitable for the instructions to be moved to.
 \subsection{Checking for legality}
 \label{subsec:legality}
 Since the equality of candidates is purely based on the value they compute, we
-need to establish if hoisting them to a common dominator would be feasible. One
-a common dominator is found then we check if all the use-operands of the set of
-instructions are available or not. In some cases when the operands are not
+need to establish if hoisting them to a common dominator would be feasible. Once
+a common dominator is found, we check whether all the use-operands of the set of
+instructions are available at that position. In some cases when the operands are not
 available, it is possible to reinstantiate (remateralize) the use-operands, thus
-passing the legality check. Subsequently, it is checked that the side-effects of
-the computations does not intersect with any side-effects between the
-instructions to be hoisted and their hoisting point. For memory operations like
-loads, stores, calls etc., it is also required to check that all the paths from
-the hoisting point to the end of the function should execute the exact
-instruction, in order to guarantee correctness. Moreover, hoisting of memory
-operations is tricky on paths which have indirect branch targets e.g., landing
-pad, case statements, goto labels etc., because it becomes difficult to prove
-that all the paths from hoisting point to the end of the function would execute
-the instruction. In our current implementation we discard hoisting through such
-paths.
+passing the legality check.
 
-In the optimistic approach (Section-\ref{subsec:optimistic}), it is possible
-that a common hoisting point of all the instructions is either too far away, or
-not legally possible. In these cases, it is still possible to `partially' hoist
-a subset of instructions by splitting the set of candidates and finding a closer
-hoisting point for each subset. For more details see
+Subsequently, it is checked that the side-effects of the computations does not
+intersect with any side-effects between the instructions to be hoisted and their
+hoisting point. For memory operations like loads, stores, calls etc., it is also
+required to check that all the paths from the hoisting point to the end of the
+function should execute the exact instruction, in order to guarantee
+correctness.
+
+Moreover, hoisting of memory operations is tricky on paths which have indirect
+branch targets e.g., landing pad, case statements, goto labels etc., because it
+becomes difficult to prove that all the paths from hoisting point to the end of
+the function would execute the instruction. In our current implementation we
+discard hoisting through such paths.
+
+In the optimistic approach, described in Section-\ref{subsec:optimistic}, it is
+possible that a common hoisting point of all the instructions is either too far
+away, or not legally possible. In these cases, it is still possible to
+`partially' hoist a subset of instructions by splitting the set of candidates
+and finding a closer hoisting point for each subset. For more details see
 Section-\ref{subsec:partition}.
 
 \subsubsection{Hoisting scalars}
 Scalars are the easiest to hoist because we do not have to analyze them for
 aliasing memory references. As long as all the operands are available (or can be
-made available by rematerialization), the scalar can be hoisted.
+made available by rematerialization), the scalar computation can be hoisted.
 
 \subsubsection{Hoisting loads}
 The availability of operand to the load (an address) is checked at the hoisting
 point. If that is not available we try to rematerialize the addresss if
-possible.  Along the path, from current position of the load instruction through
-the hoisting point, we find if there are aliasing writes to memory. In those
-cases we discard the candidate.
+possible.  Along the path, from current position of the load instruction
+backwards on the control flow to the hoisting point, we check whether there are
+writes to memory that may alias with the load, in which case we discard the
+candidate.
 
 \subsubsection{Hoisting stores}
-We need to check the dependency requirements similar to the hoisting of
-loads. We need to check that the operands of the store instruction are available
-at the hoisting point, that there are no aliasing loads or store along the path
-from the current position through the hoisting point.
+For stores, we check the dependency requirements similar to the hoisting of
+loads. We check that the operands of the store instruction are available at the
+hoisting point, that there are no aliasing loads or store along the path from
+the current position to the hoisting point.
 
 \subsubsection{Hoisting calls}
-For hoisting the call instructions, we check that the loads/stores in the call
-would not hazard with any loads/stores (in the caller) along the path from the
-callsite through the hoisting point, just like we did for loads and stores.
+Call instructions can be divided into three categories: those calls equivalent
+to purely scalar computations, calls reading from memory, and most of the time,
+without further information, calls have to be classified as writing to memory,
+that is the most restrictive form.  Each category of call instructions will be
+handled as described for scalar, load, and store instructions.
 
 \subsection{Checking for profitability}
 \label{subsec:profitability}
