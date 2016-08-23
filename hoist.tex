@@ -304,22 +304,27 @@ it ends the liveness of registers, we hoist all the stores.
 Currently we hoist all the calls that are suitable candidates for hoisting.
 
 \subsection{Code generation}
-Once all the legality checks and profitability checks are satisfied for a set of
+Once all the legality and profitability checks are satisfied for a set of
 identical instructions, they are suitable candidates for hoisting. A copy of the
 computation is inserted at the hoisting point along with any instructions which
 needed to be rematerialized. Thereafter, all the computations made redundant by
-the new copy are removed. After that SSA form is restored by updating the
-intermediate representation (IR) to reflect changes. After one iteration of
-algorithm runs through the entire function, it creates more oppportunities for
-\emph{higher ranked} computations \cite{rosen1988global}. Currently, we rerun
-the algorithm until there are no more instructions left to be
-hoisted. Obviously, this is not the most optimal approach and can be improved by
-ranking the computations \cite{rosen1988global}.
+the new copy are removed, and the SSA form is restored by updating the
+intermediate representation (IR) to reflect the changes.
 
-\subsection{Verifying the post-conditions}
-Performing a set of checks (e.g., consistency of use-defs and SSA semantics) to
-establish that program invariants are maintained.
+After one iteration of algorithm runs through the entire function, it creates
+more oppportunities for \emph{higher ranked} computations
+\cite{rosen1988global}. Currently, this is a limitation of the GVN analysis
+pass, and so we rerun the code-hoisting algorithm until there are no more
+instructions left to be hoisted.  Obviously, this is not the most optimal
+approach and can be improved by ranking the computations \cite{rosen1988global},
+or by improving the GVN analysis to correctly number loads and dependent
+instructions.
 
+Finally after the transform is done, we verify a set of post-conditions to
+establish that program invariants are maintained: e.g., consistency of
+use-defs, and SSA semantics.
+
+\newpage
 
 \subsection{Illustrative Example}
 Code hoisting can also reduce the critical path length of execution in out of
