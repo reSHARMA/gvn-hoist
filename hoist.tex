@@ -171,16 +171,18 @@ program that we shortly describe below:
 The code-hoisting pass can be divided into the following steps that we will
 describe in the rest of this section:
 \begin{itemize}
-\item find candidates to hoist and compute hoisting position,
-\item check whether moving the code is legal and profitable,
+\item find candidates: instructions computing same values,
+\item compute a point in the program where it is both legal and profitable to
+  move the code,
 \item transform the code.
 \end{itemize}
 
 \subsection{Finding the candidates}
 The first step is to find a set of instructions that perform identical
 computations: this is performed by a linear scan of all instructions of the
-program and classifying all instructions by their value given by GVN.  The
-current implementation of GVN in LLVM has some limitations when it comes to
+program and classifying all instructions by their value given by GVN.
+
+The current implementation of GVN in LLVM has some limitations when it comes to
 loads and stores so we compute the GVN of loads and stores separately.  Our
 short-time solution to value number loads is to hash the address from where the
 value is to be loaded. For stores, we value number the address as well as the
@@ -197,15 +199,16 @@ instructions.
 The process of computing GVN can be on-demand (as we come across an instruction)
 or, precomputed (computing GVN of all the instructions beforehand). Which
 process to choose is determined by the scope of code-hoisting we want to
-perform. In a pessimistic approach (Section-\ref{subsec:pessimistic}) where we
-want to hoist limited set of instructions from the sibling branches as we iterate
-the DFS tree bottom-up, it is sufficient to compute values on-demand. Whereas,
-in the optimistic approach (Section-\ref{subsec:optimistic}), where we want to
-hoist as many instructions as possible, would require values to be precomputed.
+perform. In a pessimistic approach, as described in
+Section-\ref{subsec:pessimistic}, we want to hoist a limited set of instructions
+from the sibling branches as we iterate the DFS tree bottom-up, it is sufficient
+to compute GVN values on-demand. Whereas, in the optimistic approach, as
+described in Section-\ref{subsec:optimistic}, we want to hoist as many
+instructions as possible, and it would require GVN values to be precomputed.
 
 Once the instructions have been classified in equivalence classes, we compute
 for each group of equivalent instructions a point in the program that is both
-legal and profitable for the code-hoisting.
+legal and profitable for the instructions to be moved to.
 
 \subsection{Checking for legality}
 \label{subsec:legality}
