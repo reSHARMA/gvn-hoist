@@ -149,6 +149,14 @@ Dhamdhere \cite{dhamdhere1988fast}, Muchnick \cite{steven1997advanced} mention
 code hoisting in a data flow framework.
 
 
+GCC implementation: Hoists top down in a predecessor where the value is in
+ANTIC\_IN. This approach may have the problem of hoisting the expression too far
+and to mititage that it only hoists expressions when at least one successor
+computes it. Hence the algorithm will hoist a limited set of computations.  One
+advantage of GCC implementation is that it works in sync with the GVN-PRE such
+that when new hoisting opportunities are created by GVN-PRE, code-hoisting will
+hoist them.
+
 \newpage
 
 \section{Code hoisting}
@@ -741,7 +749,9 @@ representative benchmarks to tune them.
 Currently, we rerun the algorithm until there are no more instructions left to
 be hoisted. This is not the most optimal approach and results in expensive
 analyses to be recomputed. This can be improved by ranking the computations
-\cite{rosen1988global}.
+\cite{rosen1988global}. Also gvn-hoist runs very early in the pass pipeline, it
+will be good to evaluate the codesize/performance impact when it is run in sync
+with gvn-pre just like gcc does.
 
 With the implementation of code-hoisting in llvm, the passes which rely on the
 code-size/instruction-count to make optimization decisions needs to be
