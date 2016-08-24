@@ -147,16 +147,19 @@ A lot of bug reports in GCC and LLVM bugzillas
 
 
 Dhamdhere \cite{dhamdhere1988fast}, Muchnick \cite{steven1997advanced} mention
-code hoisting in a data flow framework.
+code hoisting in a data flow framework. A list of Very Busy Expressions are
+computed which are hoisted in a basic block where the expression is anticipable
+(all the operands are available). This algorithm would hoist as far as possible
+without regarding the impact on register pressure and as such a cost model will
+be required.
 
-
-GCC implementation: Hoists top down in a predecessor where the value is in
-ANTIC\_IN. This approach may have the problem of hoisting the expression too far
-and to mititage that it only hoists expressions when at least one successor
-computes it. Hence the algorithm will hoist a limited set of computations.  One
-advantage of GCC implementation is that it works in sync with the GVN-PRE such
-that when new hoisting opportunities are created by GVN-PRE, code-hoisting will
-hoist them.
+GCC recently got code-hoisting which is implemented as part of GVN-PRE. The
+algorithm hoists top down in a predecessor where the value is in ANTIC\_IN. This
+approach may have the problem of hoisting the expression too far and to mititage
+that it only hoists expressions when at least one successor computes it. Hence
+the algorithm will hoist a limited set of computations.  One advantage of GCC
+implementation is that it works in sync with the GVN-PRE such that when new
+hoisting opportunities are created by GVN-PRE, code-hoisting will hoist them.
 
 \newpage
 
