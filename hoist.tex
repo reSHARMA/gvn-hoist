@@ -55,22 +55,23 @@ Sebastian Pop\\
 
 \maketitle
 \begin{abstract}
-  Code-hoisting identifies identical computations across the program with the
-  help of a Global Value Numbering (GVN) analysis, identifies a hoisting
-  position that dominates all the identical computations and in which all
-  operands are avaialable, duplicates one of the expressions in the hoisting
-  position, and removes all the computations now redundant in their original
-  position.
+  Code-hoisting identifies identical computations across the program and hoists
+  them to a common dominator so as to save code size.  Although the main goal of
+  code-hoisting is not to remove redundancies: it effectively exposes
+  redundancies and enables other passes like LICM to remove more redundancies.
+  The main goal of code-hoisting is to reduce code size with the added benefit
+  of exposing more instruction level parallelism and reduced register pressure.
 
-  Code-hoisting is often confused with CSE (Common Subexpression Elimination)
-  although code-hoisting is not bound to find redundancies within a single basic
-  block.  Code-hoisting could also be confused with Partial Redundancy
-  Elimination (PRE) or with Global Common Subexpression Elimination (GCSE)
-  although the main goal of code-hoisting is not to remove redundancies:
-  code-hoisting effectively exposes redundancies and enables other passes like
-  LICM to remove more redundancies.  The main goal of code-hoisting is to reduce
-  code size with the added benefit of exposing more instruction level
-  parallelism and reduced register pressure.
+  We present a code hoisting pass that we implemented in llvm. It is based on
+  Global Value Numbering infrastructure available in llvm. The experimental
+  results show an average of 2.5\% savings in code size, although the code size
+  increases in many cases because it enables more inlining. This is an
+  optimistic algorithm in the sense that we consider all identical computations
+  in a function as potential candidates to be hoisted. We make an extra effort
+  to hoist candidates by partitioning the potential candidates in a way to
+  enable partial hoisting in case common hoisting points for all the candidates
+  cannot be found. We also formalize cases when register pressure will reduce as
+  a result of hoisting.
 \end{abstract}
 
 \section{Introduction}
