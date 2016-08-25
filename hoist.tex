@@ -17,23 +17,25 @@
 \pagenumbering{arabic}
 
 \begin{document}
-\def \SCoP {SCoP}
 \def \GCC {GCC}
 \def \LLVM {LLVM}
 \def \SESE {SESE}
 \def \CFG {CFG}
 \def \SSA {SSA}
-\def \scev {scev}
+\def \MemorySSA {MemorySSA}
+\def \PRE {PRE}
+\def \GVN {GVN}
+\def \LLVMTestSuite {\LLVM{} test-suite}
 
 \special{papersize=8.5in,11in}
 \setlength{\pdfpageheight}{\paperheight}
 \setlength{\pdfpagewidth}{\paperwidth}
 
-\title{GVN-Hoist: Hoisting Computations from Branches}
+\title{\GVN{}-Hoist: Hoisting Computations from Branches}
 
 \toappear{
    \hrule \vspace{5pt}
-   LLVM-dev 2016
+   \LLVM{}-dev 2016
 }
 \numberofauthors{2}
 
@@ -62,8 +64,8 @@ Sebastian Pop\\
   The main goal of code-hoisting is to reduce code size with the added benefit
   of exposing more instruction level parallelism and reduced register pressure.
 
-  We present a code hoisting pass that we implemented in LLVM. It is based on
-  Global Value Numbering infrastructure available in LLVM. The experimental
+  We present a code hoisting pass that we implemented in \LLVM{}. It is based on
+  Global Value Numbering infrastructure available in \LLVM{}. The experimental
   results show an average of 2.5\% savings in code size, although the code size
   increases in many cases because it enables more inlining. This is an
   optimistic algorithm in the sense that we consider all identical computations
@@ -81,21 +83,21 @@ phase that detects identical computations in the program and a transformation
 phase that reduces the number of run-time computations.  Classical scalar
 optimizations like CSE \cite{dragonbook} work very well on single basic blocks.
 When it comes to detect redundancies across basic blocks these techniques fall
-short: more complex passes like GCSE and PRE have been designed to handle these
+short: more complex passes like GCSE and \PRE{} have been designed to handle these
 cases based on dataflow analysis \cite{morel1979global}.  At first these
 techniques were described in the classical data-flow analysis framework, and
-later the use of the SSA representation lowered the cost in terms of compilation
+later the use of the \SSA{} representation lowered the cost in terms of compilation
 time \cite{briggs1994effective,chow1997new,kennedy1999partial} and brought these
-techniques in the main stream: nowadays SSA based PRE is available in every
+techniques in the main stream: nowadays \SSA{} based \PRE{} is available in every
 industrial compiler.
 
 This paper describes code-hoisting, a technique that uses the information
-computed for PRE to detect identical computations and has a transformation phase
-whose goal differs from PRE: it removes identical computations from different
+computed for \PRE{} to detect identical computations and has a transformation phase
+whose goal differs from \PRE{}: it removes identical computations from different
 branches of execution.  These identical computations in different branches of
 execution are not redundant computations at run-time and the number of run-time
 computations is not reduced. Code-hoisting is not a redundancy elimination pass,
-and thus it has different cost function and heuristics than PRE or CSE.
+and thus it has different cost function and heuristics than \PRE{} or CSE.
 Code-hoisting is also different from global code scheduling
 \cite{dragonbook,click1995global} in the sense that code-hoisting will only
 hoist computations when there are identical computations sharing a common
@@ -129,15 +131,15 @@ The main contributions of this paper are:
 \begin{itemize}
 \item a new algorithm to hoist computations from branches,
 \item cost models to reduce live-range and reduce spills,
-\item performance evaluation of the implementation in LLVM,
+\item performance evaluation of the implementation in \LLVM{},
 \item comparison against other algorithms for code hoisting.
 \end{itemize}
 
 \section{Related Work}
 
-There are a lot of bug reports in GCC and LLVM bugzillas
+There are a lot of bug reports in \GCC{} and \LLVM{} bugzillas
 \cite{GCCCodeHoistingBugs,LLVMCodeHoistingBugs}, showing the interest in having
-a more powerful code hoist transform.  The current LLVM implementation of code
+a more powerful code hoist transform.  The current \LLVM{} implementation of code
 hoisting in SimplifyCFG.cpp $HoistThenElseCodeToIf()$ is very limited to
 hoisting from identical basic blocks: the instructions of two sibling basic
 blocks are read in the same time, and all the instructions of the blocks are
@@ -147,7 +149,7 @@ extension: first in terms of compilation time overhead the implementation would
 become quadratic in number of instructions to bisimulate, and second the
 equivalence of instructions currently uses $$I1->isIdenticalToWhenDefined(I2)$$
 would need to be rewritten to be more general, leading to using a mechanism
-similar to the idea described in this paper based on GVN.
+similar to the idea described in this paper based on \GVN{}.
 
 Rosen et al. explain moving computations successors to remove redundancies
 \cite{rosen1988global}. Their algorithm iterates on computations of same rank
@@ -161,11 +163,11 @@ are computed which are hoisted in a basic block where the expression is
 anticipable (all the operands are available). This algorithm would hoist as far
 as possible without regarding the impact on register pressure and as such a cost
 model will be required.  Also the description of VBE is based on the classic
-dataflow model and an adaptation to a sparse SSA representation is required.
+dataflow model and an adaptation to a sparse \SSA{} representation is required.
 
-GCC recently got code-hoisting \cite{GCCCodeHoisting} which is implemented as
-part of GVN-PRE: it uses the set of ANTIC and AVAIL value expressions computed
-for PRE.  The algorithm hoists top down in a predecessor where the value is in
+\GCC{} recently got code-hoisting \cite{GCCCodeHoisting} which is implemented as
+part of \GVN{}-\PRE{}: it uses the set of ANTIC and AVAIL value expressions computed
+for \PRE{}.  The algorithm hoists top down in a predecessor where the value is in
 ANTIC.  It uses ANTIC[B] to know what expressions will be computed on every
 path from B to exit, and can be computed in B: that is the safety condition.  It
 uses AVAIL[B] to subtract out those values already being computed (because they
@@ -175,9 +177,9 @@ know insertion into B will eliminate all the remaining computations.  It then
 checks to see if at least one successor of B has the value available.  This
 avoids hoisting it way up the chain to ANTIC.  It also checks to ensure that B
 has multiple successors, since hoisting in a straight line is pointless.  The
-algorithm continues on down the dominator tree, iterating with PRE until no more
-changes.  One advantage of GCC implementation is that it works in sync with the
-GVN-PRE such that when new hoisting opportunities are created by GVN-PRE,
+algorithm continues on down the dominator tree, iterating with \PRE{} until no more
+changes.  One advantage of \GCC{} implementation is that it works in sync with the
+\GVN{}-\PRE{} such that when new hoisting opportunities are created by \GVN{}-\PRE{},
 code-hoisting will hoist them.
 
 \newpage
@@ -187,16 +189,16 @@ code-hoisting will hoist them.
 The algorithm for code hoisting uses several common representations of the
 program that we shortly describe below:
 \begin{itemize}
-\item Control Flow Graph (CFG) and the Dominance (DOM) and Post-Dominance (PDOM)
+\item Control Flow Graph (\CFG{}) and the Dominance (DOM) and Post-Dominance (PDOM)
   relations \cite{dragonbook};
-\item Single Entry Single Exit (SESE) \cite{sese} and Single Entry Multiple Exit
+\item Single Entry Single Exit (\SESE{}) \cite{sese} and Single Entry Multiple Exit
   (SEME) regions;
-\item Static Single Assignment (SSA) \cite{cytron};
-\item Global Value Numbering (GVN) \cite{rosen1988global,click1995global}: to
-  identify similar computations compilers use GVN.  Each expression is given a
+\item Static Single Assignment (\SSA{}) \cite{cytron};
+\item Global Value Numbering (\GVN{}) \cite{rosen1988global,click1995global}: to
+  identify similar computations compilers use \GVN{}.  Each expression is given a
   unique number and the expressions that the compiler can prove identical are
   given the same number;
-\item Memory SSA \cite{novillo2007memory}: memory operations that the compiler
+\item Memory \SSA{} \cite{novillo2007memory}: memory operations that the compiler
   is able to prove in dependence are linked through use-def chains.
 \end{itemize}
 
@@ -212,31 +214,31 @@ describe in the rest of this section:
 \subsection{Finding candidates to hoist}
 The first step is to find a set of instructions that perform identical
 computations: this is performed by a linear scan of all instructions of the
-program and classifying all instructions by their value given by GVN.
+program and classifying all instructions by their value given by \GVN{}.
 
-The current implementation of GVN in LLVM has some limitations when it comes to
-loads and stores so we compute the GVN of loads and stores separately.  Our
+The current implementation of \GVN{} in \LLVM{} has some limitations when it comes to
+loads and stores so we compute the \GVN{} of loads and stores separately.  Our
 short-time solution to value number loads is to hash the address from where the
 value is to be loaded. For stores, we value number the address as well as the
 value to be stored at that address.
 
-Another limitation of the current GVN implementation in LLVM is that the
+Another limitation of the current \GVN{} implementation in \LLVM{} is that the
 instructions dependent on the loads will not get numbered correctly, and so
-after hoisting all candidates we need to rerun the GVN analysis in order to
+after hoisting all candidates we need to rerun the \GVN{} analysis in order to
 discover new candidates now available after having hoisted load instructions.
-This limitation should be addressed in a new implementation of the GVN based on
-MemorySSA, that would better account for equivalent loads and their dependent
+This limitation should be addressed in a new implementation of the \GVN{} based on
+\MemorySSA{}, that would better account for equivalent loads and their dependent
 instructions.
 
-The process of computing GVN can be on-demand (as we come across an instruction)
-or, precomputed (computing GVN of all the instructions beforehand). Which
+The process of computing \GVN{} can be on-demand (as we come across an instruction)
+or, precomputed (computing \GVN{} of all the instructions beforehand). Which
 process to choose is determined by the scope of code-hoisting we want to
 perform. In a pessimistic approach, as described in
 Section~\ref{subsec:pessimistic}, we want to hoist a limited set of instructions
 from the sibling branches as we iterate the DFS tree bottom-up, it is sufficient
-to compute GVN values on-demand. Whereas, in the optimistic approach, as
+to compute \GVN{} values on-demand. Whereas, in the optimistic approach, as
 described in Section~\ref{subsec:optimistic}, we want to hoist as many
-instructions as possible, and it would require GVN values to be precomputed.
+instructions as possible, and it would require \GVN{} values to be precomputed.
 
 Once the instructions have been classified in equivalence classes, we compute
 for each group of equivalent instructions a point in the program that is both
@@ -313,7 +315,7 @@ pressure and result in spills. For example hoisting a scalar past a call, as
 described in Section~\ref{cost:across-calls}.  In our current implementation we
 hoist scalars past a call only when optimizing for code-side (-Os). Ideally, a
 later stage of live-range splitting pass should split the live-ranges for
-optimal performance, however, that is not the case with llvm as we have found
+optimal performance, however, that is not the case with \LLVM{} as we have found
 regressions when scalars are hoisted too far, as in
 Section~\ref{sec:cost-models}. Another way to mitigate this problem is be to
 reinstantiate (rematerialize) the computation after a call (may be as a
@@ -340,21 +342,21 @@ Once all the legality and profitability checks are satisfied for a set of
 identical instructions, they are suitable candidates for hoisting. A copy of the
 computation is inserted at the hoisting point along with any instructions which
 needed to be rematerialized. Thereafter, all the computations made redundant by
-the new copy are removed, and the SSA form is restored by updating the
+the new copy are removed, and the \SSA{} form is restored by updating the
 intermediate representation (IR) to reflect the changes.
 
 After one iteration of algorithm runs through the entire function, it creates
 more oppportunities for \emph{higher ranked} computations
-\cite{rosen1988global}. Currently, this is a limitation of the GVN analysis
+\cite{rosen1988global}. Currently, this is a limitation of the \GVN{} analysis
 pass, and so we rerun the code-hoisting algorithm until there are no more
 instructions left to be hoisted.  Obviously, this is not the most optimal
 approach and can be improved by ranking the computations \cite{rosen1988global},
-or by improving the GVN analysis to correctly number loads and dependent
+or by improving the \GVN{} analysis to correctly number loads and dependent
 instructions.
 
 Finally after the transform is done, we verify a set of post-conditions to
 establish that program invariants are maintained: e.g., consistency of
-use-defs, and SSA semantics.
+use-defs, and \SSA{} semantics.
 
 \newpage
 
@@ -386,9 +388,9 @@ computations of tmin and tmax of sibling branch respectively. Both tmax and tmin
 depends on inv which depends on a division operation which is generally more
 expensive than the addition, subtraction and multiplication operations. The
 total latency of computation across each branch is:
-$C(div) + 2(C(sub) + C(mul))$
+$C_{div} + 2(C_{sub} + C_{mul})$
 Or, for out of order processors with two add units and two multiply units:
-$C(div) + C(sub) + C(mul)$
+$C_{div} + C_{sub} + C_{mul}$
 
 Now if the computation of tmax and tmin are hoisted outside the
 conditionals, the C code version would look like this:
@@ -419,47 +421,29 @@ float fun(float d, float min, float max, float a)
 
 In this code the two subtractions and the division operations can be executed in
 parallel because there are no dependencies among them. So the total number of
-cycles will be $max(C(div), C(sub)) + C(mul) = C(div) + C(mul)$; since $C(div)$ is
-usually much greater than $C(sub)$ \cite{x86,aarch64}.
-
-A partial redundancy elimination pass could now remove the entire if-block
-because final operation is an addition (asociative under fast math), and the end
-result is:
-
-\begin{verbatim}
-float fun(float d, float min, float max, float a)
-{
-  float tmin1, tmax1, inv;
-
-  tmin1 = (min - a);
-  tmax1 = (max - a);
-
-  inv = 1.0f / d;
-  tmin1 = tmin1 * inv;
-  tmax1 = tmax1 * inv;
-
-  return tmax1 + tmin1;
-}
-\end{verbatim}
+cycles will be $max(C_{div}, C_{sub}) + C_{mul} = C_{div} + C_{mul}$; since $C_{div}$ is
+usually much greater than $C_{sub}$ \cite{x86,aarch64}.
 
 %GCC: 23286 has interesting test cases.
 
+\newpage
+
 \section{Code hoisting policies}
-The amount of hoisting depends on whether we collect GVN of instructions
+The amount of hoisting depends on whether we collect \GVN{} of instructions
 before finding candidates (optimistic) or, on-demand (pessimistic). It also
-depends on the generality of the GVN algorithm, however, that analysis is beyond
+depends on the generality of the \GVN{} algorithm, however, that analysis is beyond
 the scope of this paper.
 
 \subsection{Hoisting bottom up with optimistic approach}
 \label{subsec:optimistic}
 In this approach, the goal is to maximize the total number of hoistings in the
 entire function.  This algorithm is very useful when optimizing for code-size.
-We collect the GVN of all the instructions in the function and iterate on the
-list of instructions having identical GVNs. After that we find the common
+We collect the \GVN{} of all the instructions in the function and iterate on the
+list of instructions having identical \GVN{}s. After that we find the common
 dominator dominating all such identical computations and perform legality
 checks, as described in Section~\ref{subsec:legality}. Often times it is not
 possible to hoist all the instructions to one common dominator, due to legality
-constraints e.g., intersecting side-effects or, profitability constraints e.g.,
+constraints, e.g., intersecting side-effects, or profitability constraints, e.g.,
 hoisting point too far. In those cases, this algorithmn would partition the list
 of identical instructions into subsets which can be partially hoisted to their
 respective common dominators. The partition algorithm is described as follows:
@@ -494,7 +478,7 @@ DFSIn(B1,B2) < DFSIn(B1,B3) implies
 \end{verbatim}
 
 Same property would hold for instructions I1, I2, I3 provided they are not fully
-redundant i.e., none of the basic blocks containing I1, I2 and I3 respectively
+redundant, i.e., none of the basic blocks containing I1, I2 and I3 respectively
 dominate the other:
 
 \begin{verbatim}
@@ -520,7 +504,7 @@ I3.
 In the presence of fully redundant computations in the list of hoistable
 candidates this equation may not hold. For example, if there is another
 instruction I4 which is dominated by I1, but I4 is present in a basic block
-which is farther than DFSIn(I1, I2) i.e., $DFSIn(I1,I2) < DFSIn(I1,I4)$;
+which is farther than $DFSIn(I1, I2)$, i.e., $DFSIn(I1,I2) < DFSIn(I1,I4)$;
 however, $BBDist(I1,I4) = 0 < BBDist(I1,I2) >=1$.
 
 So by sorting candidates w.r.t. their DFSIn numbers:
@@ -534,28 +518,28 @@ In our current implementation we keep as many candidates in one set as possible
 (greedy approach). We split the list at a point where the legality checks fail
 to hoist subset of candidates which are legal to hoist and then start finding
 new hoisting point for the remaining ones. So there are two limitations of the
-current implementation of the partition algorithm: First, sorting by DFSIn
+current implementation of the partition algorithm: first, sorting by DFSIn
 numbers does not give the desired order when there are fully redundant
-instructions; Second, it lacks cost model for partitioning in order to
+instructions; second, it lacks cost model for partitioning in order to
 preserve/improve performance, see Section~\ref{sec:future-work}.
 
 \subsection{Hoisting bottom up with pessimistic approach}
 \label{subsec:pessimistic}
 In the pessimistic approach, the basic blocks are traversed in the inverse
-depth-first order, computing the GVN of instructions as they come by. The GVN of
+depth-first order, computing the \GVN{} of instructions as they come by. The \GVN{} of
 sibling branches are compared for equality. Once such a candidate is found, it
 is hoisted in the common dominator. All the leaf nodes are visited before the
 non-leaf nodes (bottom-up) because instructions are hoisted upwards.
 
-The pessimistic algorithm is fast, results in fewer spills but hoists very less
+The pessimistic algorithm is fast, results in fewer spills and also hoists fewer
 instructions. We have implemented optimistic approach because it is more general
 and can be tuned down to closely mimic pessimistic approach by changing a flag.
 
 \subsection{Time complexity of algorithm}
 The complexity of code hoisting is linear in number of instructions that could
-be hoisted in the program, matching the complexity of PRE on SSA form.  The
-analysis phase is based on the Global Value Numbering (GVN), the same analysis
-used for PRE, followed by the computation of a partition of identical
+be hoisted in the program, matching the complexity of \PRE{} on \SSA{} form.  The
+analysis phase is based on the Global Value Numbering (\GVN{}), the same analysis
+used for \PRE{}, followed by the computation of a partition of identical
 expressions to be hoisted in a same location to guarantee safety properties and
 program performance, and followed by a simple code generation that adds the
 identified instruction in the hoisting point and removes all the now redundant
@@ -613,7 +597,7 @@ new-live-range = live-range(a01)
 
 If the new live-range is less than the old one it will be a good candidate for
 hoisting. The live ranges can remain same as well if there is only one operand
-on the right hand side e.g., an assignment operation or, one of the operands is
+on the right hand side, e.g., an assignment operation or, one of the operands is
 not a register. That means hoisting upwards will decrease the live-range of its
 use but increase the live-range of its definition.
 
@@ -629,7 +613,7 @@ will either decrease or preserve the register pressure.
 Hoisting scalars across calls is tricky because it can increase the number of
 spills. During the frame lowering of calls, the argument registers, in general,
 the caller saved registers are saved because they might be modified by the
-callee and after the call they are restored \cite{frame-lowering}. So before the
+callee and after the call they are restored. So before the
 call, the register pressure is high because the number of available registers
 are reduced by the number of caller saved registers. In that situation if a
 computation is hoisted across the call, that would increase the total number of
@@ -641,7 +625,7 @@ Hoisting loads/stores across calls also require precise analysis of all the
 memory addresses accessed by the call. Our implementation being an
 intraprocedural pass, the analysis is very conservative. In the presence of pure
 calls, loads can be hoisted but stores can't. Also, if the call throws
-exceptions, or it it may not return, memory references cannot be hoisted.
+exceptions, or if it may not return, memory references cannot be hoisted.
 
 \subsection{Hoisting too far away}
 If there are several instructions in between the hoisting point and the
@@ -652,10 +636,10 @@ current implementation we choose to hoist if the number of instructions crossed
 is below a threshold. Ideally, it should be okay to hoist all the instructions
 and a later a live-range-splitting \cite{cooper1998live} pass should make the
 right decision of rematerializing the instruction should it be beneficial to do
-so. But the current live-range splitting pass of llvm is not making the optimial
-decision and we have found spills if the threshold is exceeded. The threshold
-was computed as a result of tuning the llvm testsuite \cite{llvm-nightly} and
-spec benchmark \cite{Henning2000}.
+so. But the current live-range splitting pass of \LLVM{} is not making the
+optimial decision and we have found spills if the threshold is exceeded. The
+threshold was computed as a result of tuning the \LLVMTestSuite{}, SPEC Cpu2000,
+and Cpu2006 benchmarks \cite{Henning2000}.
 
 Also, hoisting a load increases the register pressure by one across all the
 instructions which the load would cross. That could result in spills later in
@@ -666,7 +650,7 @@ will be okay to hoist because the register pressure would not decrease.
 
 \section{Experimental Evaluation}
 \label{sec:experimental-results}
-We ran llvm-testsuite (trunk:d87471f8) with the patch (trunk:86940146) and the
+We ran \LLVMTestSuite{} (trunk:d87471f8) with the patch (trunk:86940146) and the
 results are listed in Table~\ref{tab:hoist-results}. The table lists the number
 of scalars, loads, stores and calls hoisted as well as removed. For each
 category, the number of instructions removed is greater or equal to the number
@@ -676,7 +660,7 @@ one identical computation is found.
 Loads are hoisted the most followed by scalars, stores and calls in decreasing
 order.  This was the common trend in all our experiments. One reason why loads
 are hoisted the most is the early execution of this pass (before mem2reg) in the
-llvm pass pipeline. Passes like mem2reg, instcombine might actually remove
+\LLVM{} pass pipeline. Passes like mem2reg, instcombine might actually remove
 those loads so this order may change should this pass be scheduled later.
 
 \begin{table}[h!]
@@ -696,7 +680,7 @@ those loads so this order may change should this pass be scheduled later.
       Total Instructions removed & 30438 \\\hline
 \end{tabular}
   \end{center}
-  \caption{Code hoisting metrics on llvm-testsuite}
+  \caption{Code hoisting metrics on \LLVMTestSuite{}}
   \label{tab:hoist-results}
 \end{table}
 
@@ -718,7 +702,7 @@ those loads so this order may change should this pass be scheduled later.
       Spills inserted                             & 50724   & 50784  \\\hline
 \end{tabular}
   \end{center}
-  \caption{Static metrics before and after code-hoisting on llvm-testsuite}
+  \caption{Static metrics before and after code-hoisting on \LLVMTestSuite{}}
   \label{tab:static-results}
 \end{table}
 
@@ -740,27 +724,27 @@ go down with our implementation (and cost-model) of code hoisting pass.
       Median increase in size                     & 2.4\%    \\\hline
     \end{tabular}
   \end{center}
-  \caption{Code size metrics on llvm-testsuite}
+  \caption{Code size metrics on \LLVMTestSuite{}}
   \label{tab:code-size}
 \end{table}
 
-While benchmarking llvm-testsuite we see both increase as well as decrease in
-the codesizes of the final binaries. Since the pass runs early, it has affect on
-many optimizations which rely on number of instructions, lenth of the use-def
-chain etc metrics which are affected by code-hoisting. Specially the inliner
-where the total inline cost (in llvm) is heavily dependent on the total count of
-instructions in the caller and callee. Various code-size metrics are shown in
+While benchmarking \LLVMTestSuite{} we see both increase as well as decrease in
+the codesizes of the final binaries. Since the pass runs early, it affects many
+optimizations which rely on the number of instructions, lenth of the use-def
+chain, and other metrics. For instance, the inliner is impacted by a decrease in
+the number of instructions in the caller and callee, as its heuristics estimate
+the size of functions to be inlined. Various code-size metrics are shown in
 Table~\ref{tab:code-size}. All but one benchmark varied between -5.32\% and
 5.43\%.  In one benchmark FreeBench/distray/distray.test, the codesize increased
-by 35.38\%. In this benchmark 3 more (15 as compared to 12) functions got
-inlined and because of that 10 more (81 vs. 71) vector instructions got
-generated, 3 calls got hoisted/sunk as (compared to 0), one loop got unswitched
-(compared to 0), 6 high latency machine instructions got hoisted out of loop, 59
-(compared ot 30) machine instructions got hoisted out of loop, 70 (compared to
-39) machine instructions were sunk.
+by 35.38\%. In this benchmark 3 more functions got inlined (15 as compared to
+12) and because of that 10 more vector instructions got generated (81 vs. 71), 3
+calls got hoisted/sunk as (compared to 0), one loop got unswitched (compared to
+0), 6 high latency machine instructions got hoisted out of loop, 59 (compared to
+30) machine instructions got hoisted out of loop, 70 (compared to 39) machine
+instructions were sunk.
 
-The code shown in Section~\ref{subsec:example} is a reduced test that appears in
-a hot loop of a proprietary benchmark.  When the expressions are hoisted from
+The code shown in Section~\ref{subsec:example} is a reduced example that appears
+in a hot loop of a proprietary benchmark.  When the expressions are hoisted from
 the conditional clauses, the overall performance of that benchmark improves by
 $15\%$ on an out-of-order processor due to increased instruction level
 parallelism, and better scheduling of the instructions, accommodating for the
@@ -768,7 +752,7 @@ long latency of the division operation.
 
 \section{Conclusion and Future Work}
 \label{sec:future-work}
-We have presented the GVN based code hoisting algorithm. The primary goal is to
+We have presented the \GVN{} based code hoisting algorithm. The primary goal is to
 reduce the code size but it benefits performance in some cases as well. To
 preserve performance and not hoist too much we have implemented several cost
 models described in Section~\ref{sec:cost-models}. Since those cost models
@@ -778,11 +762,11 @@ representative benchmarks to tune them.
 Currently, we rerun the algorithm until there are no more instructions left to
 be hoisted. This is not the most optimal approach and results in expensive
 analyses to be recomputed. This can be improved by ranking the computations
-\cite{rosen1988global}. Also gvn-hoist runs very early in the pass pipeline, it
+\cite{rosen1988global}. Also \GVN{}-hoist runs very early in the pass pipeline, it
 will be good to evaluate the codesize/performance impact when it is run in sync
-with gvn-pre just like gcc does.
+with \GVN{}-\PRE{} just like \GCC{} does.
 
-With the implementation of code-hoisting in llvm, the passes which rely on the
+With the implementation of code-hoisting in \LLVM{}, the passes which rely on the
 code-size/instruction-count to make optimization decisions needs to be
 revisited. The first candidate would be the inliner. We have seen different
 inlining decisions in Table~\ref{tab:code-size}, before and after
