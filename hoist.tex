@@ -648,6 +648,17 @@ the register allocation.
 However, in the special case discussed in Section~\ref{hoist:reg-pressure}, it
 will be okay to hoist because the register pressure would not decrease.
 
+In order to reduce register pressure, we have restricted hoisting of address
+computations away from their corresponding loads and stores when the loads and
+stores cannot be moved.  This restriction is lifted when aggressively optimizing
+for size (in -Oz).  We have seen several uplifts and degradations in performance
+of the generated code on several benchmarks, and to avoid the degradations we
+decided to only enable hoisting of getElementPtrs without their associated
+memory operations when optimizing for size.  This restriction may be lifted in
+the future, either when the register allocation rematerialization pass has been
+improved to catch the regressions, or by implementing more precise heuristics
+for code hoisting.
+
 \section{Experimental Evaluation}
 \label{sec:experimental-results}
 We ran \LLVMTestSuite{} (trunk:d87471f8) with the patch (trunk:86940146) and the
