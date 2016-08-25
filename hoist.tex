@@ -62,8 +62,8 @@ Sebastian Pop\\
   The main goal of code-hoisting is to reduce code size with the added benefit
   of exposing more instruction level parallelism and reduced register pressure.
 
-  We present a code hoisting pass that we implemented in llvm. It is based on
-  Global Value Numbering infrastructure available in llvm. The experimental
+  We present a code hoisting pass that we implemented in LLVM. It is based on
+  Global Value Numbering infrastructure available in LLVM. The experimental
   results show an average of 2.5\% savings in code size, although the code size
   increases in many cases because it enables more inlining. This is an
   optimistic algorithm in the sense that we consider all identical computations
@@ -135,15 +135,26 @@ The main contributions of this paper are:
 
 \section{Related Work}
 
+There are a lot of bug reports in GCC and LLVM bugzillas
+\cite{GCCCodeHoistingBugs,LLVMCodeHoistingBugs}, showing the interest in having
+a more powerful code hoist transform.  The current LLVM implementation of code
+hoisting in SimplifyCFG.cpp $HoistThenElseCodeToIf()$ is very limited to
+hoisting from identical basic blocks: the instructions of two sibling basic
+blocks are read in the same time, and all the instructions of the blocks are
+hoisted to the common parent block as long as the compiler is able to prove that
+the instructions are equivalent.  This implementation does not allow for an easy
+extension: first in terms of compilation time overhead the implementation would
+become quadratic in number of instructions to bisimulate, and second the
+equivalence of instructions currently uses $$I1->isIdenticalToWhenDefined(I2)$$
+would need to be rewritten to be more general, leading to using a mechanism
+similar to GVN.
+
 Rosen et al. explain moving computations successors to remove redundancies
 \cite{rosen1988global}. Their algorithm iterates on computations of same rank
-and move the code with identical computations from the sibling branch. This is a
-pessimistic approach (TODO: is it?). Also there is no notion of partially
-hoisting the computations so their approach may result in missing many hoisting
-opportunities.
+and move the code with identical computations from the sibling branch. Also
+there is no notion of partially hoisting the computations so their approach may
+result in missing many hoisting opportunities.
 
-A lot of bug reports in GCC and LLVM bugzillas
-\cite{GCCCodeHoistingBugs,LLVMCodeHoistingBugs}, no papers on this topic yet.
 
 
 Dhamdhere \cite{dhamdhere1988fast}, Muchnick \cite{steven1997advanced} mention
