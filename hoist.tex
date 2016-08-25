@@ -163,18 +163,18 @@ as possible without regarding the impact on register pressure and as such a cost
 model will be required.  Also the description of VBE is based on the classic
 dataflow model and an adaptation to a sparse SSA representation is required.
 
-GCC recently got code-hoisting which is implemented as part of GVN-PRE: it uses
-the set of ANTIC and AVAIL value expressions computed for PRE.  The algorithm
-hoists top down in a predecessor where the value is in ANTIC\_IN.  It uses
-ANTIC[B] to know what expressions will be computed on every path from B to exit,
-and can be computed in B: that is the safety condition.  It uses AVAIL[B] to
-subtract out those values already being computed (because they are already
-available): this is a redundancy condition.  The cost function is: for each
-hoist candidate, if all successors of B are dominated by B, then we know
-insertion into B will eliminate all the remaining computations.  It then checks
-to see if at least one successor of B has the value available.  This avoids
-hoisting it way up the chain to ANTIC.  It also checks to ensure that B has
-multiple successors, since hoisting in a straight line is pointless.  The
+GCC recently got code-hoisting \cite{GCCCodeHoisting} which is implemented as
+part of GVN-PRE: it uses the set of ANTIC and AVAIL value expressions computed
+for PRE.  The algorithm hoists top down in a predecessor where the value is in
+ANTIC.  It uses ANTIC[B] to know what expressions will be computed on every
+path from B to exit, and can be computed in B: that is the safety condition.  It
+uses AVAIL[B] to subtract out those values already being computed (because they
+are already available): this is a redundancy condition.  The cost function is:
+for each hoist candidate, if all successors of B are dominated by B, then we
+know insertion into B will eliminate all the remaining computations.  It then
+checks to see if at least one successor of B has the value available.  This
+avoids hoisting it way up the chain to ANTIC.  It also checks to ensure that B
+has multiple successors, since hoisting in a straight line is pointless.  The
 algorithm continues on down the dominator tree, iterating with PRE until no more
 changes.  One advantage of GCC implementation is that it works in sync with the
 GVN-PRE such that when new hoisting opportunities are created by GVN-PRE,
@@ -358,14 +358,14 @@ use-defs, and SSA semantics.
 
 \newpage
 
-\subsection{Illustrative Example}
-Code hoisting can also reduce the critical path length of execution in out of
+\subsection{Illustrative Example} \label{subsec:example}
+Code hoisting can reduce the critical path length of execution in out of
 order machines. As more instructios are available at the hoisting point, the
 hardware has more instructions to reorder. Following example illustrates how
 hoisting can improve performance by exposing more ILP.
 
 \begin{verbatim}
-float foo(float d, float min, float max, float a)
+float fun(float d, float min, float max, float a)
 {
   float tmin, tmax, inv;
 
@@ -386,14 +386,14 @@ computations of tmin and tmax of sibling branch respectively. Both tmax and tmin
 depends on inv which depends on a division operation which is generally more
 expensive than the addition, subtraction and multiplication operations. The
 total latency of computation across each branch is:
-$O(div) + 2(O(sub) + O(mul))$
+$C(div) + 2(C(sub) + C(mul))$
 Or, for out of order processors with two add units and two multiply units:
-$O(div) + O(sub) + O(mul)$
+$C(div) + C(sub) + C(mul)$
 
 Now if the computation of tmax and tmin are hoisted outside the
 conditionals, the C code version would look like this:
 \begin{verbatim}
-float foo(float d, float min, float max, float a)
+float fun(float d, float min, float max, float a)
 {
   float tmin, tmax, tmin1, tmax1, inv;
 
@@ -419,14 +419,15 @@ float foo(float d, float min, float max, float a)
 
 In this code the two subtractions and the division operations can be executed in
 parallel because there are no dependencies among them. So the total number of
-cycles will be $max(O(div), O(sub)) + O(mul) = O(div) + O(mul)$; since $O(div)$ is
-usually much greater than $O(sub)$ \cite{x86,aarch64}
+cycles will be $max(C(div), C(sub)) + C(mul) = C(div) + C(mul)$; since $C(div)$ is
+usually much greater than $C(sub)$ \cite{x86,aarch64}.
 
-Of course, a partial redundancy elimination pass could just remove the entire
-if-block because final operation is an addition (asociative under fast math).
+A partial redundancy elimination pass could now remove the entire if-block
+because final operation is an addition (asociative under fast math), and the end
+result is:
 
 \begin{verbatim}
-float foo(float d, float min, float max, float a)
+float fun(float d, float min, float max, float a)
 {
   float tmin1, tmax1, inv;
 
@@ -441,8 +442,7 @@ float foo(float d, float min, float max, float a)
 }
 \end{verbatim}
 
-
-GCC: 23286 has interesting test cases.
+%GCC: 23286 has interesting test cases.
 
 \section{Code hoisting policies}
 The amount of hoisting depends on whether we collect GVN of instructions
@@ -452,7 +452,7 @@ the scope of this paper.
 
 \subsection{Hoisting bottom up with optimistic approach}
 \label{subsec:optimistic}
-In this approach, the goal is to maximise the total number of hoistings in the
+In this approach, the goal is to maximize the total number of hoistings in the
 entire function.  This algorithm is very useful when optimizing for code-size.
 We collect the GVN of all the instructions in the function and iterate on the
 list of instructions having identical GVNs. After that we find the common
@@ -467,7 +467,7 @@ respective common dominators. The partition algorithm is described as follows:
 \subsubsection{Partition the list of hoisting candidates to maximize hoisting}
 \label{subsec:partition}
 In order to hoist a subset of identical instructions, we partition the list of
-all candidates in a way to maximise the total number of hoistings.  By sorting
+all candidates in a way to maximize the total number of hoistings.  By sorting
 the list of all the candidates in the increasing order of their depth first
 search discovery time stamp \cite{clrs} (DFSIn numbers), we make sure that
 candidates closer in the list have their common dominator nearby in cases when
@@ -664,7 +664,6 @@ the register allocation.
 However, in the special case discussed in Section~\ref{hoist:reg-pressure}, it
 will be okay to hoist because the register pressure would not decrease.
 
-
 \section{Experimental Evaluation}
 \label{sec:experimental-results}
 We ran llvm-testsuite (trunk:d87471f8) with the patch (trunk:86940146) and the
@@ -759,6 +758,13 @@ generated, 3 calls got hoisted/sunk as (compared to 0), one loop got unswitched
 (compared to 0), 6 high latency machine instructions got hoisted out of loop, 59
 (compared ot 30) machine instructions got hoisted out of loop, 70 (compared to
 39) machine instructions were sunk.
+
+The code shown in Section~\ref{subsec:example} is a reduced test that appears in
+a hot loop of a proprietary benchmark.  When the expressions are hoisted from
+the conditional clauses, the overall performance of that benchmark improves by
+$15\%$ on an out-of-order processor due to increased instruction level
+parallelism, and better scheduling of the instructions, accommodating for the
+long latency of the division operation.
 
 \section{Conclusion and Future Work}
 \label{sec:future-work}
