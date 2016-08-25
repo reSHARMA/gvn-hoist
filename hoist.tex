@@ -147,7 +147,7 @@ extension: first in terms of compilation time overhead the implementation would
 become quadratic in number of instructions to bisimulate, and second the
 equivalence of instructions currently uses $$I1->isIdenticalToWhenDefined(I2)$$
 would need to be rewritten to be more general, leading to using a mechanism
-similar to GVN.
+similar to the idea described in this paper based on GVN.
 
 Rosen et al. explain moving computations successors to remove redundancies
 \cite{rosen1988global}. Their algorithm iterates on computations of same rank
@@ -155,22 +155,30 @@ and move the code with identical computations from the sibling branch. Also
 there is no notion of partially hoisting the computations so their approach may
 result in missing many hoisting opportunities.
 
-
-
 Dhamdhere \cite{dhamdhere1988fast}, Muchnick \cite{steven1997advanced} mention
-code hoisting in a data flow framework. A list of Very Busy Expressions are
-computed which are hoisted in a basic block where the expression is anticipable
-(all the operands are available). This algorithm would hoist as far as possible
-without regarding the impact on register pressure and as such a cost model will
-be required.
+code hoisting in a data flow framework. A list of Very Busy Expressions (VBE)
+are computed which are hoisted in a basic block where the expression is
+anticipable (all the operands are available). This algorithm would hoist as far
+as possible without regarding the impact on register pressure and as such a cost
+model will be required.  Also the description of VBE is based on the classic
+dataflow model and an adaptation to a sparse SSA representation is required.
 
-GCC recently got code-hoisting which is implemented as part of GVN-PRE. The
-algorithm hoists top down in a predecessor where the value is in ANTIC\_IN. This
-approach may have the problem of hoisting the expression too far and to mititage
-that it only hoists expressions when at least one successor computes it. Hence
-the algorithm will hoist a limited set of computations.  One advantage of GCC
-implementation is that it works in sync with the GVN-PRE such that when new
-hoisting opportunities are created by GVN-PRE, code-hoisting will hoist them.
+GCC recently got code-hoisting which is implemented as part of GVN-PRE: it uses
+the set of ANTIC and AVAIL value expressions computed for PRE.  The algorithm
+hoists top down in a predecessor where the value is in ANTIC\_IN.  It uses
+ANTIC[B] to know what expressions will be computed on every path from B to exit,
+and can be computed in B: that is the safety condition.  It uses AVAIL[B] to
+subtract out those values already being computed (because they are already
+available): this is a redundancy condition.  The cost function is: for each
+hoist candidate, if all successors of B are dominated by B, then we know
+insertion into B will eliminate all the remaining computations.  It then checks
+to see if at least one successor of B has the value available.  This avoids
+hoisting it way up the chain to ANTIC.  It also checks to ensure that B has
+multiple successors, since hoisting in a straight line is pointless.  The
+algorithm continues on down the dominator tree, iterating with PRE until no more
+changes.  One advantage of GCC implementation is that it works in sync with the
+GVN-PRE such that when new hoisting opportunities are created by GVN-PRE,
+code-hoisting will hoist them.
 
 \newpage
 
@@ -775,6 +783,9 @@ inlining decisions in Table~\ref{tab:code-size}, before and after
 code-hoisting was enabled.  Since inliner has several magic numbers tuned for
 the previous pass layout, it would need some improvement.
 
+\section{Acknowledgments}
+We would like to thank Daniel Berlin for his code reviews and for his feedback
+on earlier versions of this paper.
 
 \bibliographystyle{abbrv}
 {\small
