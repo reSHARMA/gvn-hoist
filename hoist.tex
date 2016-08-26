@@ -82,8 +82,8 @@ Sebastian Pop\\
 Compiler techniques to remove redundant computations are composed of an analysis
 phase that detects identical computations in the program and a transformation
 phase that reduces the number of run-time computations.  Classical scalar
-optimizations like CSE \cite{dragonbook} work very well on single basic blocks.
-When it comes to detect redundancies across basic blocks these techniques fall
+optimizations like CSE \cite{dragonbook} work very well on single basic blocks but
+when it comes to detect redundancies across basic blocks these techniques fall
 short: more complex passes like GCSE and \PRE{} have been designed to handle these
 cases based on dataflow analysis \cite{morel1979global}.  At first these
 techniques were described in the classical data-flow analysis framework, and
@@ -93,21 +93,22 @@ techniques in the main stream: nowadays \SSA{} based \PRE{} is available in ever
 industrial compiler.
 
 This paper describes code-hoisting, a technique that uses the information
-computed for \PRE{} to detect identical computations and has a transformation phase
-whose goal differs from \PRE{}: it removes identical computations from different
-branches of execution.  These identical computations in different branches of
-execution are not redundant computations at run-time and the number of run-time
-computations is not reduced. Code-hoisting is not a redundancy elimination pass,
-and thus it has different cost function and heuristics than \PRE{} or CSE.
-Code-hoisting is also different from global code scheduling
-\cite{dragonbook,click1995global} in the sense that code-hoisting will only
-hoist computations when there are identical computations sharing a common
+computed for \PRE{} to detect identical computations and has a transformation
+phase whose goal differs from \PRE{}: it removes identical computations from
+different branches of execution.  These identical computations in different
+branches of execution are not redundant computations at run-time and the number
+of run-time computations is not reduced. Code-hoisting is not a redundancy
+elimination pass, and thus it has different cost function and heuristics than
+\PRE{} or CSE.  Code-hoisting is also different from global code scheduling
+\cite{dragonbook,click1995global} in the sense that it will only hoist
+computations when there are identical computations sharing a common
 dominator. The goals of code hoisting are:
 
 \begin{itemize}
 \item to reduce the code size of the program;
 \item to improve function inlining heuristics: functions become cheaper to
-  inline by reducing their code size;
+  inline when thier code size decreases because inliner heuristics in \LLVM{}
+  depends on instruction count.
 \item to expose more instruction level parallelism: by hoisting identical
   computations to be executed earlier, instruction schedulers can move heavy
   computations earlier in order to avoid pipeline bubbles;
@@ -130,8 +131,10 @@ dominator. The goals of code hoisting are:
 
 The main contributions of this paper are:
 \begin{itemize}
-\item a new algorithm to hoist computations from branches,
+\item a new optimistic algorithm to hoist computations from branches,
 \item cost models to reduce live-range and reduce spills,
+\item a technique to maximize hoisting in an optimistic approach by partitioning
+  the list of potential candidates sorted by their DFS visit number,
 \item performance evaluation of the implementation in \LLVM{},
 \item comparison against other algorithms for code hoisting.
 \end{itemize}
