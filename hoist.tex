@@ -665,12 +665,14 @@ for code hoisting.
 
 \section{Experimental Evaluation}
 \label{sec:experimental-results}
-We ran \LLVMTestSuite{} (trunk:d87471f8) with the patch (trunk:86940146) and the
-results are listed in Table~\ref{tab:hoist-results}. The table lists the number
-of scalars, loads, stores and calls hoisted as well as removed. For each
-category, the number of instructions removed is greater or equal to the number
-of instructions hoisted because each hoisting is performed only when at least
-one identical computation is found.
+We ran \LLVMTestSuite{} (trunk:d87471f8) with the patch (trunk:86940146). All
+the experiments were conducted on x86\_64 Ubuntu-Linux machine and at -Ofast
+optimization level.  The results for code-hoisting are listed in
+Table~\ref{tab:hoist-results}. The table lists the number of scalars, loads,
+stores and calls hoisted as well as removed. For each category, the number of
+instructions removed is greater or equal to the number of instructions hoisted
+because each hoisting is performed only when at least one identical computation
+is found.
 
 Loads are hoisted the most followed by scalars, stores and calls in decreasing
 order.  This was the common trend in all our experiments. One reason why loads
