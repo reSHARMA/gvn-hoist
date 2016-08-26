@@ -58,22 +58,23 @@ Sebastian Pop\\
 \maketitle
 \begin{abstract}
   Code-hoisting identifies identical computations across the program and hoists
-  them to a common dominator so as to save code size.  Although the main goal of
-  code-hoisting is not to remove redundancies: it effectively exposes
-  redundancies and enables other passes like LICM to remove more redundancies.
-  The main goal of code-hoisting is to reduce code size with the added benefit
-  of exposing more instruction level parallelism and reduced register pressure.
+  them to a common dominator so as to save code size.  Not only code-hoisting
+  saves code size, a) It exposes redundancies in some cases, b) It exposes more
+  instruction level parallelism in the basic block a computation is hoisted, and
+  c) It enables other passes like LICM to remove more redundancies.
 
   We present a code hoisting pass that we implemented in \LLVM{}. It is based on
   Global Value Numbering infrastructure available in \LLVM{}. The experimental
   results show an average of 2.5\% savings in code size, although the code size
-  increases in many cases because it enables more inlining. This is an
-  optimistic algorithm in the sense that we consider all identical computations
+  also increases in many cases because it enables more inlining. This is an
+  optimistic algorithm in the sense that it considers all identical computations
   in a function as potential candidates to be hoisted. We make an extra effort
   to hoist candidates by partitioning the potential candidates in a way to
   enable partial hoisting in case common hoisting points for all the candidates
   cannot be found. We also formalize cases when register pressure will reduce as
-  a result of hoisting.
+  a result of hoisting and why sorting the list of potential candidates
+  w.r.t. their DFS numbers helps hoist more candidates with less compile time
+  overhead.
 \end{abstract}
 
 \section{Introduction}
@@ -646,7 +647,7 @@ instructions which the load would cross. That could result in spills later in
 the register allocation.
 
 However, in the special case discussed in Section~\ref{hoist:reg-pressure}, it
-will be okay to hoist because the register pressure would not decrease.
+will be okay to hoist because the register pressure would not increase.
 
 In order to reduce register pressure, we have restricted hoisting of address
 computations away from their corresponding loads and stores when the loads and
