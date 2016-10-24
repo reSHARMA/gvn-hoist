@@ -1,0 +1,145 @@
+\documentclass{beamer}
+\usepackage{hyperref}
+\begin{document}
+
+\def \GVN {GVN}
+
+\title{\GVN{}-Hoist: Hoisting Computations from Branches}
+\author{Sebastian Pop and Aditya Kumar}
+\institute{SARC: Samsung Austin R\&D Center}
+\date{\today}
+
+\frame{\titlepage}
+
+\frame{\frametitle{\GVN{}-Hoist: Hoisting Computations from Branches}
+  \begin{itemize}
+    \item Identifies identical computations in a function
+    \item Hoist identical computations to a common dominator
+    \item Uses GVN infrastructure of LLVM
+    \item Reduces code size
+  \end{itemize}
+}
+
+\frame{\frametitle{Open source tools}
+  \begin{itemize}
+    \item Compiler: gcc, llvm
+    \item Gprof
+    \item Linux Perf
+    \item Create\_gcov
+    \item Gooda
+  \end{itemize}
+}
+
+\frame{\frametitle{PGO: Compiler instrumentation}
+  \begin{itemize}
+    \item Compiler inserts probes in the code.
+    \item Instrumented program collects profile as it executes.
+    \item Gives very precise profile information.
+    \item Good for benchmarking, analyzing small programs.
+    \item gprof/gcov used to process sampled output and display.
+  \end{itemize}
+}
+
+\frame{\frametitle{PGO: Compiler instrumentation (Useful Commands)}
+  gprof:
+  \begin{itemize}
+    \item gcc -fprofile-generate test.cpp
+    \item gprof [exe] [gmon.out] $>$ [outfile]
+  \end{itemize}
+  gcov:
+  \begin{itemize}
+    \item gcc -fprofile-arcs -ftest-coverage test.cpp
+    \item gcov [options] test.cpp
+  \end{itemize}
+}
+
+\frame{\frametitle{AutoFDO: Non Intrusive}
+  \begin{itemize}
+    \item Linux perf collects profiles (Sample based)
+    \item No compiler instrumentation, debug-info required while running.
+    \item Negligible overhead (1-2\%) [Google]
+    \item Run on different machines and at different time intervals. 
+    \item Good for system wide profiling.
+  \end{itemize}
+}
+
+\frame{\frametitle{AutoFDO: Non Intrusive (Useful Commands)}
+  \begin{itemize}
+    \item perf record/report/stat
+    \item collecting profile: perf record -b [exe] [-o perf.data]
+    \item report: perf report [perf.data]
+  \end{itemize}
+}
+
+
+\frame{\frametitle{Results [Baptiste Wicht et al.]}
+    \begin{tabular}{| l | p {2.5cm} | p {3cm} | }
+        \hline
+        PGO Kind & Avg. Run Time Overhead (\%) & Performance Improvement (\%) \\ \hline
+        Instrumented & 16 (highest 53) & 7 to 14  \\ \hline
+        AutoFDO & 1 to 2 & 5 to 10 \\ \hline
+        AutoFDO+LTO & 1 to 2 & 10 to 30 \\ \hline
+    \end{tabular}
+}
+
+\frame{\frametitle{Challenges for non-intrusive AutoFDO}
+  \begin{itemize}
+    \item Value based profiling not available.
+    \item Only works on recent Intel machines.
+    \item Tradeoff between accuracy of profile and overhead.
+    \item Goal is to be as close to the instrumented profile.
+  \end{itemize}
+}
+
+\frame{\frametitle{Challenges for non-intrusive AutoFDO...}
+  \begin{itemize}
+    \item Calculating missing edge/basic-block frequencies based on Equivalence class.
+    \item Calculating accurate profile of execution paths sharing single line of code based on DWARF discriminator [Baptiste Wicht et al.].
+  \end{itemize}
+}
+
+\frame{\frametitle{create\_gcov}
+    \begin{itemize}
+        \item Creates coverage file from perf.data to be used by the compiler.
+        \item optimize with profile information: gcc -fauto-profile=file.gcov -O2 test.cpp
+        \item Source: https://github.com/google/autofdo
+     \end{itemize}
+}
+
+\frame{\frametitle{gooda}
+    \begin{itemize}
+        \item gooda-analyzer
+        \item gooda-visualizer
+        \item Source: https://github.com/David-Levinthal/gooda
+        \item Requires patching linux perf to link against libpfm4 [See: gooda-analyzer/README] 
+        \item Requires LBR (Available in Intel Sandy Bridge, Ivy Bridge, Westmere)
+    \end{itemize}
+}
+
+\frame{\frametitle{Interesting Areas}
+  Tools related:
+  \begin{itemize}
+    \item Extend PGO infrastructure in gcc/llvm:
+      currently PGO benefits inliner, code layout, register allocation.
+    \item Compiler cost model based on profile to enable demand driven optimization.
+    \item Online optimizations driven by hardware performance monitoring [Schneider et al.].
+  \end{itemize}
+  Architecture specific:
+  \begin{itemize}
+    \item No AutoFDO tool for generating value profiles.
+    \item No LBR for ARM.
+  \end{itemize}
+
+}
+
+\frame{\frametitle{References}
+    \begin{itemize}
+    \item \url{http://static.googleusercontent.com/media/research.google.com/en//pubs/archive/36575.pdf}
+    \item Baptiste Wicht et al. ``Hardware Counted Profile-Guided Optimization.''
+    \item \url{http://www.burningcutlery.com/derek/docs/instant-profiling-CGO13.pdf}
+    \item \url{https://github.com/David-Levinthal/gooda}
+    \item \url{https://github.com/google/autofdo}
+    \end{itemize}
+}
+
+\end{document}

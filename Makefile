@@ -1,9 +1,13 @@
 paper = hoist
+slides = slides
 $(paper).pdf: $(paper).tex Bibliography.bib
 	pdflatex -shell-escape $(paper)
 	bibtex $(paper)
 	pdflatex -shell-escape $(paper)
 	pdflatex -shell-escape $(paper)
+
+$(slides).pdf: $(slides).tex
+	pdflatex -shell-escape $(slides)
 
 latexmk: $(paper).tex Bibliography.bib
 	latexmk -pdf -pvc $< -pdflatex="pdflatex --shell-escape %O %S"
