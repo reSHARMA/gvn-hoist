@@ -1,0 +1,45 @@
+\documentclass{beamer}
+\usepackage{hyperref}
+\begin{document}
+
+\def \GVN {GVN}
+
+\title{libcxx}
+\author{Sebastian Pop and Aditya Kumar}
+\institute{SARC: Samsung Austin R\&D Center}
+\date{\today}
+
+\frame{\titlepage}
+
+\frame{\frametitle{libcxx-performance improvements}
+  \begin{itemize}
+  \item PR21192 - Reading from stdin is 1-2 orders of magnitude slower than using libstdc++
+    - implementation of sync\_with\_stdio doesn't disable synchronization \url{http://stackoverflow.com/q/33837349}
+
+  \item PR19708 - std::find is significantly slower than libstdc++
+    - using Duff's device
+    - unrolling the loop
+    - enabling vectorization \url{http://stackoverflow.com/q/2741859}
+
+  \item PR20837 - libc++'s std::sort is O(N^2) in the worst case (instead of O(N*ln(N))).
+    - switching to heapsort for large size
+
+  \item PR26886 - libc++'s std::stable\_sort also has a worst-case complexity issue
+
+  \item PR15456 - A faster implementation of std::function is possible
+
+  \item PR16747 and PR21275 - Our unordered\_multimap insert is much slower than libstdc++'s
+
+  \item Removing Heap usage
+
+  \item Missing features (and performance issues) in <regex> 
+
+  \item Non-conforming allocators in the test suite 
+
+  \item Identifying missing attributes in functions 
+
+  \item Debug mode for the library
+  \end{itemize}
+}
+
+\end{document}
