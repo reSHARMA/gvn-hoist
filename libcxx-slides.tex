@@ -30,6 +30,15 @@
 
   \item PR16747 and PR21275 - Our unordered\_multimap insert is much slower than libstdc++'s
 
+  \item clang+libc++ vs. gcc+libstdc++ performance update. Constructor of vector in libstdc++ contains memcpy
+    in the final assembly.
+
+Benchmark	                        Time (ns)	CPU (ns)	Iterations	Time (ns)	CPU (ns)	Iterations	%(Time)
+BM_ConstructIterIter/vector_char/1024	2125	2127	283762	67	67	10205902	3071.641791
+BM_ConstructIterIter/vector_size_t/1024	382	383	1830386	223	223	3138652	71.30044843
+BM_ConstructIterIter/vector_string/1024	557109	557641	1235	354504	354834	1980	57.15168235
+
+
   \item Removing Heap usage
 
   \item Missing features (and performance issues) in <regex> 
