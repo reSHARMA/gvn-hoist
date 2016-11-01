@@ -38,12 +38,31 @@
 
 \frame{\titlepage}
 
+
+
 \frame{\frametitle{\GVN{}-Hoist: Hoisting Computations from Branches}
   \begin{itemize}
     \item Identifies identical computations in a function
     \item Hoist identical computations to a common dominator
     \item Uses GVN and MemorySSA
     \item Reduces code size
+  \end{itemize}
+}
+
+\frame{\frametitle{CFGSimplify's code hoisting}
+  \begin{itemize}
+  \item identifies computations to be hoisted at the beginning of BB
+  \item stops at first difference
+  \item very fast
+  \item catches a lot of low hanging fruit
+  \end{itemize}
+}
+
+\frame{\frametitle{Code size reduction}
+  \begin{itemize}
+  \item an average of 2.5\% savings in code size
+  \item improve inline heuristics
+  \item more functions inlined
   \end{itemize}
 }
 
