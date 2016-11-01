@@ -59,9 +59,9 @@ Sebastian Pop\\
 \begin{abstract}
   Code-hoisting identifies identical computations across the program and hoists
   them to a common dominator so as to save code size.  Not only code-hoisting
-  saves code size, a) It exposes redundancies in some cases, b) It exposes more
+  saves code size, it exposes redundancies in some cases, it exposes more
   instruction level parallelism in the basic block a computation is hoisted, and
-  c) It enables other passes like LICM to remove more redundancies.
+  it enables other passes like LICM to remove more redundancies.
 
   We present a code hoisting pass that we implemented in \LLVM{}. It is based on
   Global Value Numbering infrastructure available in \LLVM{}. The experimental
@@ -82,7 +82,7 @@ Sebastian Pop\\
 Compiler techniques to remove redundant computations are composed of an analysis
 phase that detects identical computations in the program and a transformation
 phase that reduces the number of run-time computations.  Classical scalar
-optimizations like CSE \cite{dragonbook} work very well on single basic blocks but
+optimizations like CSE \cite{dragonbook} work very well on single basic blocks and
 when it comes to detect redundancies across basic blocks these techniques fall
 short: more complex passes like GCSE and \PRE{} have been designed to handle these
 cases based on dataflow analysis \cite{morel1979global}.  At first these
@@ -107,7 +107,7 @@ dominator. The goals of code hoisting are:
 \begin{itemize}
 \item to reduce the code size of the program;
 \item to improve function inlining heuristics: functions become cheaper to
-  inline when thier code size decreases because inliner heuristics in \LLVM{}
+  inline when their code size decreases because inliner heuristics in \LLVM{}
   depends on instruction count.
 \item to expose more instruction level parallelism: by hoisting identical
   computations to be executed earlier, instruction schedulers can move heavy
