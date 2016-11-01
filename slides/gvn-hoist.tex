@@ -1,13 +1,40 @@
 \documentclass{beamer}
 \usepackage{hyperref}
-\begin{document}
+\usepackage{graphicx}
+\usepackage{amssymb}
+\usepackage{graphviz}
+\usepackage{tikz}
+\usepackage{dot2texi}
+\usepackage{listings}
 
+\pgfdeclarelayer{background}
+\pgfdeclarelayer{foreground}
+\pgfsetlayers{background,main,foreground}
+
+\begin{document}
 \def \GVN {GVN}
 
 \title{\GVN{}-Hoist: Hoisting Computations from Branches}
 \author{Sebastian Pop and Aditya Kumar}
 \institute{SARC: Samsung Austin R\&D Center}
-\date{\today}
+\date{November 3, 2016}
+
+\definecolor{myblue}{rgb}{0.0, 0.0, 0.5}
+\definecolor{myred}{rgb}{0.5, 0.0, 0.0}
+\definecolor{mygreen}{rgb}{0.0, 0.5, 0.0}
+\lstset{language=C++,
+  basicstyle=\ttfamily,
+  keywordstyle=\color{myblue}\ttfamily,
+  stringstyle=\color{myred}\ttfamily,
+  commentstyle=\color{mygreen}\ttfamily,
+  morecomment=[l][\color{magenta}]{\#}
+}
+\addtobeamertemplate{navigation symbols}{}{%
+    \usebeamerfont{footline}%
+    \usebeamercolor[fg]{footline}%
+    \hspace{1em}%
+    \insertframenumber/\inserttotalframenumber
+}
 
 \frame{\titlepage}
 
@@ -18,12 +45,6 @@
     \item Uses GVN and MemorySSA
     \item Reduces code size
   \end{itemize}
-}
-
-
-\frame{\frametitle{References}
-    \begin{itemize}
-    \end{itemize}
 }
 
 \end{document}
