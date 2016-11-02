@@ -49,6 +49,16 @@
   \end{itemize}
 }
 
+\frame{\frametitle{\GVN{}-Hoist: Algorithm}
+  \begin{itemize}
+  \item dfs number all instructions
+  \item collect the value number of scalars, loads, stores, calls in separate containers
+  \item compute insertion points of each type of instructions separately
+    - partition the potential candidates into a set of hoistable instructions
+  \item hoist expressions
+  \end{itemize}
+}
+
 \frame{\frametitle{CFGSimplify's code hoisting}
   \begin{itemize}
   \item identifies computations to be hoisted at the beginning of BB
