@@ -49,30 +49,32 @@
   \end{itemize}
 }
 
-\frame{\frametitle{\GVN{}-Hoist: Algorithm}
+\frame{\frametitle{Optimistic \GVN{}-hoist Algorithm}
   \begin{itemize}
-  \item dfs number all instructions
-  \item compute value number of scalars, loads, stores, calls
-  \item compute insertion points of each type of instructions separately
-  \item hoist expressions
+  \item DFS number all instructions
+  \item Compute value number of scalars, loads, stores, calls
+  \item Compute insertion points of each type of instructions
+  \item Hoist expressions
   \end{itemize}
 }
 
 \frame{\frametitle{\GVN{}-Hoist: Algorithm-collecting value numbers}
   \begin{itemize}
-  \item For loads value number the pointer operand
-  \item For stores value number the pointer operand and the value being stored
-  \item For calls, scalars use the GVN infrastructure
+  \item Loads: value number the pointer operand
+  \item Stores: value number the pointer operand and the value being stored
+  \item Calls, Scalars: use the existing GVN infrastructure
   \end{itemize}
 }
 
 \frame{\frametitle{\GVN{}-Hoist: Algorithm-compute insertion points}
+ Insertion Point: A location where all the operands are either available
+    or, can be made available.
+
   \begin{itemize}
-  \item For a set of instructions having the same value number, compute a common insertion point.
-  \item When no common insertion points can be found, partition the candidates into a smaller set of
-    hoistable candidates.
-  \item Partition such that instructions with closeby DFS numbers are together.
-  \item Cost-models: do not hoist too far, for loads geps shall be rematerialized
+  \item Compute a common insertion point for a set of instructions having the same GVN.
+    (Similar to VBEs but not as strict)
+  \item Partition the candidates into a smaller set of hoistable candidates when
+    no common insertion points can be found (The instructions are sorted by their DFS numbers)
   \end{itemize}
 }
 
@@ -92,6 +94,14 @@
   \item catches a lot of low hanging fruit
   \end{itemize}
 }
+
+\frame{\frametitle{Cost models}
+  \begin{itemize}
+  \item Do not hoist too far
+  \item Do not hoist GEPs
+  \end{itemize}
+}
+
 
 \frame{\frametitle{Code size reduction}
   \begin{itemize}
