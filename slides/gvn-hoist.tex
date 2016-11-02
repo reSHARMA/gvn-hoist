@@ -80,15 +80,17 @@
   \item compute value number of scalars, loads, stores, calls
   \item compute insertion points of each type of instructions
   \item hoist expressions
-  \item propagate changes by upating SSA
+  \item propagate changes by updating SSA
   \end{itemize}
 }
 
 \frame{\frametitle{\GVN{}-Hoist: Algorithm-collecting value numbers}
+  current GVN not accurate for loads and stores:
   \begin{itemize}
-  \item loads: value number the pointer operand
-  \item stores: value number the pointer operand and the value being stored
-  \item calls, Scalars: use the existing GVN infrastructure
+  \item scalars: use the existing GVN infrastructure
+  \item loads: VN the pointer operand
+  \item stores: VN the pointer operand and the value being stored
+  \item calls: as stores, loads, or scalars (following side effects)
   \end{itemize}
 }
 
@@ -97,19 +99,17 @@
     or, can be made available.
 
   \begin{itemize}
-  \item Compute a common insertion point for a set of instructions having the same GVN.
+  \item Compute a common insertion point for a set of instructions having the same GVN
     (Similar to VBEs but not as strict)
   \item Partition the candidates into a smaller set of hoistable candidates when
-    no common insertion points can be found (The instructions are sorted by their DFS numbers)
+    no common insertion points can be found
   \end{itemize}
 }
 
 \frame{\frametitle{\GVN{}-Hoist: Algorithm-hoist expressions}
   \begin{itemize}
-  \item Scalars: Just move one of the instructions to the hoisting point and remove others. Update SSA.
-  \item Loads and Stores: Try to make geps available (if not), and then hoist. Update SSA and memory SSA.
-  \item Calls: Hoist just like scalars. Update SSA.
-  \item Set minimum alignment among all the candidates for loads and stores, maximum for allocas.
+  \item scalars: just move one of the instructions to the hoisting point and remove others; update SSA
+  \item loads and stores: try to make geps available, then hoist; update SSA and memory SSA
   \end{itemize}
 }
 
@@ -146,12 +146,12 @@
 
 \frame{\frametitle{Cost models}
   \begin{itemize}
-  \item Limit the number of Basic Blocks in the path between initial position
+  \item limit the number of basic blocks in the path between initial position
     and the hoisting point
-  \item Limit the number of instructions between the initial position and the
-    beginning of its Basic Block
-  \item Do not hoist GEPs
-  \item Limit the number of dependent instructions to be hoisted
+  \item limit the number of instructions between the initial position and the
+    beginning of its basic block
+  \item do not hoist GEPs
+  \item limit the number of dependent instructions to be hoisted
   \end{itemize}
 }
 
