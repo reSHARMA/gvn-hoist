@@ -44,10 +44,12 @@
   \begin{itemize}
     \item Identifies identical computations in a function
     \item Hoist identical computations to a common dominator
-    \item Uses GVN and MemorySSA
     \item Reduces code size
+    \item Reduces critical path lenth in some cases by exposing more ILP.
   \end{itemize}
 }
+
+; TODO: Examples of hoisting
 
 \frame{\frametitle{Optimistic \GVN{}-hoist Algorithm}
   \begin{itemize}
@@ -55,6 +57,7 @@
   \item Compute value number of scalars, loads, stores, calls
   \item Compute insertion points of each type of instructions
   \item Hoist expressions
+  \item Propagate changes by upating SSA
   \end{itemize}
 }
 
@@ -83,6 +86,7 @@
   \item Scalars: Just move one of the instrutions to the hoisting point and remove others. Update SSA.
   \item Loads and Stores: Try to make geps available (if not), and then hoist. Update SSA and memory SSA.
   \item Calls: Hoist just like scalars. Update SSA.
+  \item Set minimum alignment among all the candidates for loads and stores, maximum for allocas.
   \end{itemize}
 }
 
@@ -97,8 +101,12 @@
 
 \frame{\frametitle{Cost models}
   \begin{itemize}
-  \item Do not hoist too far
+  \item Limit the number of Basic Blocks in the path between initial position
+    and the hoisting point
+  \item Limit the number of instructions between the initial position and the
+    beginning of its Basic Block
   \item Do not hoist GEPs
+  \item Limit the number of dependent instructions to be hoisted
   \end{itemize}
 }
 
