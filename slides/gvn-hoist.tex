@@ -72,6 +72,15 @@
   \item When no common insertion points can be found, partition the candidates into a smaller set of
     hoistable candidates.
   \item Partition such that instructions with closeby DFS numbers are together.
+  \item Cost-models: do not hoist too far, for loads geps shall be rematerialized
+  \end{itemize}
+}
+
+\frame{\frametitle{\GVN{}-Hoist: Algorithm-hoist expressions}
+  \begin{itemize}
+  \item Scalars: Just move one of the instrutions to the hoisting point and remove others. Update SSA.
+  \item Loads and Stores: Try to make geps available (if not), and then hoist. Update SSA and memory SSA.
+  \item Calls: Hoist just like scalars. Update SSA.
   \end{itemize}
 }
 
