@@ -42,35 +42,58 @@
 
 \frame{\frametitle{\GVN{}-Hoist: Hoisting Computations from Branches}
   \begin{itemize}
-    \item Identifies identical computations in a function
-    \item Hoist identical computations to a common dominator
-    \item Reduces code size
-    \item Reduces critical path lenth in some cases by exposing more ILP.
+    \item identifies identical computations in a function
+    \item hoist identical computations to a common dominator
+    \item reduces code size
+    \item reduces critical path lenth by exposing more ILP
   \end{itemize}
 }
 
-; TODO: Examples of hoisting
+\begin{frame}[fragile]{Example of hoisting}
+  \begin{lstlisting}
+  if (inv >= 0) {
+    tmin = (min - a) * inv;
+    tmax = (max - a) * inv;
+  } else {
+    tmin = (max - a) * inv;
+    tmax = (min - a) * inv;
+  }
+  \end{lstlisting}
+
+  $\hspace{2cm}\Big\downarrow$
+
+  \begin{lstlisting}
+  x = (min - a) * inv;
+  y = (max - a) * inv;
+  if (inv >= 0) {
+    tmin = x;
+    tmax = y;
+  } else {
+    tmin = y;
+    tmax = x;
+  }
+  \end{lstlisting}
+\end{frame}
 
 \frame{\frametitle{Optimistic \GVN{}-hoist Algorithm}
   \begin{itemize}
-  \item DFS number all instructions
-  \item Compute value number of scalars, loads, stores, calls
-  \item Compute insertion points of each type of instructions
-  \item Hoist expressions
-  \item Propagate changes by upating SSA
+  \item compute value number of scalars, loads, stores, calls
+  \item compute insertion points of each type of instructions
+  \item hoist expressions
+  \item propagate changes by upating SSA
   \end{itemize}
 }
 
 \frame{\frametitle{\GVN{}-Hoist: Algorithm-collecting value numbers}
   \begin{itemize}
-  \item Loads: value number the pointer operand
-  \item Stores: value number the pointer operand and the value being stored
-  \item Calls, Scalars: use the existing GVN infrastructure
+  \item loads: value number the pointer operand
+  \item stores: value number the pointer operand and the value being stored
+  \item calls, Scalars: use the existing GVN infrastructure
   \end{itemize}
 }
 
 \frame{\frametitle{\GVN{}-Hoist: Algorithm-compute insertion points}
- Insertion Point: A location where all the operands are either available
+  Insertion Point: A location where all the operands are either available
     or, can be made available.
 
   \begin{itemize}
@@ -83,7 +106,7 @@
 
 \frame{\frametitle{\GVN{}-Hoist: Algorithm-hoist expressions}
   \begin{itemize}
-  \item Scalars: Just move one of the instrutions to the hoisting point and remove others. Update SSA.
+  \item Scalars: Just move one of the instructions to the hoisting point and remove others. Update SSA.
   \item Loads and Stores: Try to make geps available (if not), and then hoist. Update SSA and memory SSA.
   \item Calls: Hoist just like scalars. Update SSA.
   \item Set minimum alignment among all the candidates for loads and stores, maximum for allocas.
@@ -92,11 +115,33 @@
 
 \frame{\frametitle{CFGSimplify's code hoisting}
   \begin{itemize}
-  \item identifies computations to be hoisted at the beginning of BB
+  \item hoists computations at the beginning of BB
   \item stops at first difference
-  \item very fast
-  \item catches a lot of low hanging fruit
+  \item very fast: disabling slows the compiler: $1688 \to 1692$ Bn insns
   \end{itemize}
+}
+
+\frame{\frametitle{GVN hoisting}
+  \begin{itemize}
+  \item $1\%$ compile time overhead: $1678 \to 1692$ Bn insns
+  \item more hoists than CFG-simplify: $15048 \to 25318$
+  \end{itemize}
+
+  \begin{center}
+    \begin{tabular}{|l|c|}
+      \hline
+      Scalars hoisted      & 8960  \\\hline
+      Scalars removed      & 11940 \\\hline
+      Loads hoisted        & 16301 \\\hline
+      Loads removed        & 22690 \\\hline
+      Stores hoisted       & 50    \\\hline
+      Stores removed       & 50    \\\hline
+      Calls hoisted        & 7     \\\hline
+      Calls removed        & 7     \\\hline
+      Total Instructions hoisted & 25318 \\\hline
+      Total Instructions removed & 34687 \\\hline
+    \end{tabular}
+  \end{center}
 }
 
 \frame{\frametitle{Cost models}
@@ -110,13 +155,18 @@
   \end{itemize}
 }
 
-
 \frame{\frametitle{Code size reduction}
-  \begin{itemize}
-  \item an average of 2.5\% savings in code size
-  \item improve inline heuristics
-  \item more functions inlined
-  \end{itemize}
+  \begin{center}
+    \begin{tabular}{|l|c|}
+      \hline
+      Code-size metric  (.text)                   & Number   \\\hline
+      Total  benchmarks                           & 497      \\\hline
+      Total  gained in size                       & 39       \\\hline
+      Total  decrease in size                     & 58       \\\hline
+      Median decrease in size                     & 2.9\%    \\\hline
+      Median increase in size                     & 2.4\%    \\\hline
+    \end{tabular}
+  \end{center}
 }
 
 \end{document}
