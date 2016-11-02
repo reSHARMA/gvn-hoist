@@ -79,19 +79,18 @@
   \begin{itemize}
   \item compute value number of scalars, loads, stores, calls
   \item compute insertion points of each type of instructions
-  \item hoist expressions
-  \item propagate changes by updating SSA
+  \item hoist expressions and propagate changes by updating SSA
   \end{itemize}
 }
 
 \frame{\frametitle{\GVN{}-Hoist: Algorithm-collecting value numbers}
-  current GVN not accurate for loads and stores:
   \begin{itemize}
   \item scalars: use the existing GVN infrastructure
   \item loads: VN the pointer operand
   \item stores: VN the pointer operand and the value being stored
   \item calls: as stores, loads, or scalars (following side effects)
   \end{itemize}
+  current GVN not accurate for loads and stores: use ad-hoc change
 }
 
 \frame{\frametitle{\GVN{}-Hoist: Algorithm-compute insertion points}
@@ -110,6 +109,17 @@
   \begin{itemize}
   \item scalars: just move one of the instructions to the hoisting point and remove others; update SSA
   \item loads and stores: try to make geps available, then hoist; update SSA and memory SSA
+  \end{itemize}
+}
+
+\frame{\frametitle{Cost models}
+  \begin{itemize}
+  \item limit the number of basic blocks in the path between initial position
+    and the hoisting point
+  \item limit the number of instructions between the initial position and the
+    beginning of its basic block
+  \item do not hoist GEPs
+  \item limit the number of dependent instructions to be hoisted
   \end{itemize}
 }
 
@@ -142,17 +152,6 @@
       Total Instructions removed & 34687 \\\hline
     \end{tabular}
   \end{center}
-}
-
-\frame{\frametitle{Cost models}
-  \begin{itemize}
-  \item limit the number of basic blocks in the path between initial position
-    and the hoisting point
-  \item limit the number of instructions between the initial position and the
-    beginning of its basic block
-  \item do not hoist GEPs
-  \item limit the number of dependent instructions to be hoisted
-  \end{itemize}
 }
 
 \frame{\frametitle{Code size reduction}
