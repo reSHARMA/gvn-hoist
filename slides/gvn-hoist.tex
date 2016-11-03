@@ -58,11 +58,11 @@
       \begin{lstlisting}
 inv = 1/d;
 if (inv >= 0) {
-  tmin = min * inv;
-  tmax = max * inv;
+  ta = a * inv;
+  tb = b * inv;
 } else {
-  tmin = max * inv;
-  tmax = min * inv;
+  ta = b * inv;
+  tb = a * inv;
 }
       \end{lstlisting}
     \end{block}
@@ -76,14 +76,14 @@ if (inv >= 0) {
     \begin{block}{\small Expressions hoisted}
       \begin{lstlisting}
 inv = 1/d;
-x = min * inv;
-y = max * inv;
+x = a * inv;
+y = b * inv;
 if (inv >= 0) {
-  tmin = x;
-  tmax = y;
+  ta = x;
+  tb = y;
 } else {
-  tmin = y;
-  tmax = x;
+  ta = y;
+  tb = x;
 }
       \end{lstlisting}
     \end{block}
