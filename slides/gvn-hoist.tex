@@ -38,18 +38,15 @@
 
 \frame{\titlepage}
 
-
-
-\frame{\frametitle{\GVN{}-Hoist: Hoisting Computations from Branches}
+\frame{\frametitle{CFGSimplify's code hoisting}
   \begin{itemize}
-    \item identifies identical computations in a function
-    \item hoist identical computations to a common dominator
-    \item reduces code size
-    \item reduces critical path lenth by exposing more ILP
+  \item hoists computations at the beginning of BB
+  \item stops at first difference
+  \item very fast: disabling slows the compiler: $1688 \to 1692$ Bn insns
   \end{itemize}
 }
 
-\begin{frame}[fragile]{Example of hoisting}
+\begin{frame}[fragile]{CFGSimplify limits}
   \begin{lstlisting}
   if (inv >= 0) {
     tmin = (min - a) * inv;
@@ -75,6 +72,16 @@
   \end{lstlisting}
 \end{frame}
 
+\frame{\frametitle{\GVN{}-Hoist: Hoisting Computations from Branches}
+  \begin{itemize}
+    \item identifies identical computations in a function
+    \item hoist identical computations to a common dominator
+    \item reduces code size
+    \item reduces critical path lenth by exposing more ILP
+  \end{itemize}
+}
+
+
 \frame{\frametitle{Optimistic \GVN{}-hoist Algorithm}
   \begin{itemize}
   \item compute value number of scalars, loads, stores, calls
@@ -82,6 +89,39 @@
   \item hoist expressions and propagate changes by updating SSA
   \end{itemize}
 }
+
+\begin{frame}[fragile]{Value Numbering}
+
+  \begin{columns}[T,onlytextwidth] % align columns
+    \column{.3\textwidth}
+    \begin{block}{\small Simple program}
+      \begin{lstlisting}
+a = x + y
+b = x + 1
+c = y + 1
+d = b + c
+e = a + 2
+      \end{lstlisting}
+    \end{block}
+    \pause
+    \column{.2\textwidth}
+    \begin{center}
+      \vspace{1cm}
+      $\rightarrow$
+    \end{center}
+    \column{.3\textwidth}
+    \begin{block}{\small Value Numbering}
+      \begin{lstlisting}
+a -> 1
+b -> 2
+c -> 3
+d -> 4
+e -> 4
+      \end{lstlisting}
+    \end{block}
+  \end{columns}
+
+\end{frame}
 
 \frame{\frametitle{\GVN{}-Hoist: Algorithm-collecting value numbers}
   \begin{itemize}
@@ -120,14 +160,6 @@
     beginning of its basic block
   \item do not hoist GEPs
   \item limit the number of dependent instructions to be hoisted
-  \end{itemize}
-}
-
-\frame{\frametitle{CFGSimplify's code hoisting}
-  \begin{itemize}
-  \item hoists computations at the beginning of BB
-  \item stops at first difference
-  \item very fast: disabling slows the compiler: $1688 \to 1692$ Bn insns
   \end{itemize}
 }
 
