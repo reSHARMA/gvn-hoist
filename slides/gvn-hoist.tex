@@ -6,6 +6,7 @@
 \usepackage{tikz}
 \usepackage{dot2texi}
 \usepackage{listings}
+\usepackage{adjustbox}
 
 \pgfdeclarelayer{background}
 \pgfdeclarelayer{foreground}
@@ -151,6 +152,72 @@ e -> 4
   \item loads and stores: try to make geps available, then hoist; update SSA and memory SSA
   \end{itemize}
 }
+
+\newlength\someheight
+\setlength\someheight{4cm}
+
+\begin{frame}[fragile]{Example}
+\begin{adjustbox}{width=\textwidth,height=\someheight,keepaspectratio}
+\begin{lstlisting}
+define float @f(float %d, float %min, float %max, float %a) {
+entry:
+  %div = fdiv float 1.000000e+00, %d
+  %cmp = fcmp oge float %div, 0.000000e+00
+  br i1 %cmp, label %if.then, label %if.else
+
+if.then:                                          ; preds = %entry
+  %sub = fsub float %min, %a
+  %mul = fmul float %sub, %div
+  %sub1 = fsub float %max, %a
+  %mul2 = fmul float %sub1, %div
+  br label %if.end
+
+if.else:                                          ; preds = %entry
+  %sub3 = fsub float %max, %a
+  %mul4 = fmul float %sub3, %div
+  %sub5 = fsub float %min, %a
+  %mul6 = fmul float %sub5, %div
+  br label %if.end
+
+if.end:                                           ; preds = %if.else, %if.then
+  %tmax.0 = phi float [ %mul2, %if.then ], [ %mul6, %if.else ]
+  %tmin.0 = phi float [ %mul, %if.then ], [ %mul4, %if.else ]
+  %add = fadd float %tmax.0, %tmin.0
+  ret float %add
+}
+\end{lstlisting}
+\end{adjustbox}
+\end{frame}
+
+\begin{frame}[fragile]{Example}
+\begin{adjustbox}{width=\textwidth,height=\someheight,keepaspectratio}
+\begin{lstlisting}
+define float @f(float %d, float %min, float %max, float %a) {
+entry:
+  %div = fdiv float 1.000000e+00, %d
+  %cmp = fcmp oge float %div, 0.000000e+00
+  %sub1 = fsub float %max, %a
+  %sub = fsub float %min, %a
+  %mul2 = fmul float %sub1, %div
+  %mul = fmul float %sub, %div
+  br i1 %cmp, label %if.then, label %if.else
+
+if.then:                                          ; preds = %entry
+  br label %if.end
+
+if.else:                                          ; preds = %entry
+  br label %if.end
+
+if.end:                                           ; preds = %if.else, %if.then
+  %tmax.0 = phi float [ %mul2, %if.then ], [ %mul, %if.else ]
+  %tmin.0 = phi float [ %mul, %if.then ], [ %mul2, %if.else ]
+  %add = fadd float %tmax.0, %tmin.0
+  ret float %add
+}
+\end{lstlisting}
+\end{adjustbox}
+\end{frame}
+
 
 \frame{\frametitle{Cost models}
   \begin{itemize}
