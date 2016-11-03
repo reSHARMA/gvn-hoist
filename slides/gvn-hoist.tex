@@ -14,6 +14,8 @@
 
 \begin{document}
 \def \GVN {GVN}
+\def \SSA {SSA}
+\def \MemorySSA {Memory-\SSA{}}
 
 \title{\GVN{}-Hoist: Hoisting Computations from Branches}
 \author{Sebastian Pop and Aditya Kumar}
@@ -42,57 +44,71 @@
 \frame{\frametitle{CFGSimplify's code hoisting}
   \begin{itemize}
   \item hoists computations at the beginning of BB
+  \item uses operands equality to detect same computations
   \item stops at first difference
-  \item very fast: disabling slows the compiler: $1688 \to 1692$ Bn insns
+  \item very fast: disabling it slows the compiler: {\small $1688 \to 1692$ Bn insns
+    (callgrind compiling the test-suite on x86\_64-linux)}
   \end{itemize}
 }
 
 \begin{frame}[fragile]{CFGSimplify limits}
-  \begin{lstlisting}
-  if (inv >= 0) {
-    tmin = (min - a) * inv;
-    tmax = (max - a) * inv;
-  } else {
-    tmin = (max - a) * inv;
-    tmax = (min - a) * inv;
-  }
-  \end{lstlisting}
-
-  $\hspace{2cm}\Big\downarrow$
-
-  \begin{lstlisting}
-  x = (min - a) * inv;
-  y = (max - a) * inv;
-  if (inv >= 0) {
-    tmin = x;
-    tmax = y;
-  } else {
-    tmin = y;
-    tmax = x;
-  }
-  \end{lstlisting}
+  \begin{columns}[T,onlytextwidth] % align columns
+    \column{.4\textwidth}
+    \begin{block}{\small Original program}
+      \begin{lstlisting}
+inv = 1/d;
+if (inv >= 0) {
+  tmin = min * inv;
+  tmax = max * inv;
+} else {
+  tmin = max * inv;
+  tmax = min * inv;
+}
+      \end{lstlisting}
+    \end{block}
+    \pause
+    \column{.1\textwidth}
+    \begin{center}
+      \vspace{2cm}
+      $\longrightarrow$
+    \end{center}
+    \column{.4\textwidth}
+    \begin{block}{\small Expressions hoisted}
+      \begin{lstlisting}
+inv = 1/d;
+x = min * inv;
+y = max * inv;
+if (inv >= 0) {
+  tmin = x;
+  tmax = y;
+} else {
+  tmin = y;
+  tmax = x;
+}
+      \end{lstlisting}
+    \end{block}
+  \end{columns}
 \end{frame}
 
 \frame{\frametitle{\GVN{}-Hoist: Hoisting Computations from Branches}
   \begin{itemize}
-    \item identifies identical computations in a function
-    \item hoist identical computations to a common dominator
-    \item reduces code size
-    \item reduces critical path length by exposing more ILP
+  \item removes all limitations of CFGSimplify implementation
+  \item works across several BBs: hoists to a common dominator
+  \item hoist past ld/st side effects: uses \MemorySSA{} for fast dependence analysis
+  \item reduces code size
+  \item reduces critical path length by exposing more ILP
   \end{itemize}
 }
-
 
 \frame{\frametitle{Optimistic \GVN{}-hoist Algorithm}
-  \begin{itemize}
+  \begin{enumerate}
   \item compute value number of scalars, loads, stores, calls
   \item compute insertion points of each type of instructions
-  \item hoist expressions and propagate changes by updating SSA
-  \end{itemize}
+  \item hoist expressions and propagate changes by updating \SSA{}
+  \end{enumerate}
 }
 
-\begin{frame}[fragile]{Value Numbering}
-
+\begin{frame}[fragile]{\GVN{}: Value Numbering Example and Limitations}
   \begin{columns}[T,onlytextwidth] % align columns
     \column{.3\textwidth}
     \begin{block}{\small Simple program}
@@ -102,54 +118,65 @@ b = x + 1
 c = y + 1
 d = b + c
 e = a + 2
+f = load d
+g = load e
       \end{lstlisting}
     \end{block}
     \pause
-    \column{.2\textwidth}
+    \column{.1\textwidth}
     \begin{center}
       \vspace{1cm}
-      $\rightarrow$
+      $\longrightarrow$
     \end{center}
-    \column{.3\textwidth}
+    \column{.4\textwidth}
     \begin{block}{\small Value Numbering}
       \begin{lstlisting}
-a -> 1
-b -> 2
-c -> 3
-d -> 4
-e -> 4
+(a, 1)
+(b, 2)
+(c, 3)
+(d, 4)
+(e, 4)
+      \end{lstlisting}
+    \end{block}
+    \pause
+    \begin{block}{\small Limitations to current \GVN{} implementation}
+      \begin{lstlisting}
+(f, 5)
+(g, 6)
+// should be (g, 5)
       \end{lstlisting}
     \end{block}
   \end{columns}
 
 \end{frame}
 
-\frame{\frametitle{\GVN{}-Hoist: Algorithm-collecting value numbers}
+\frame{\frametitle{\GVN{}-Hoist Step 1: Collect Value Numbers}
   \begin{itemize}
-  \item scalars: use the existing GVN infrastructure
-  \item loads: VN the pointer operand
-  \item stores: VN the pointer operand and the value being stored
-  \item calls: as stores, loads, or scalars (following side effects)
+  \item scalars: use the existing \GVN{} infrastructure
   \end{itemize}
-  current GVN not accurate for loads and stores: use ad-hoc change
+  current \GVN{} not accurate for loads and stores: use ad-hoc change
+  \begin{itemize}
+  \item loads: VN the gep
+  \item stores: VN the gep and stored value
+  \item calls: as stores, loads, or scalars (following calls' side-effects)
+  \end{itemize}
 }
 
-\frame{\frametitle{\GVN{}-Hoist: Algorithm-compute insertion points}
-  Insertion Point: A location where all the operands are either available
-    or, can be made available.
+\frame{\frametitle{\GVN{}-Hoist Step 2: Compute Insertion Points}
+  insertion point: location where all the operands are available
 
   \begin{itemize}
-  \item Compute a common insertion point for a set of instructions having the same GVN
-    (Similar to VBEs but not as strict)
-  \item Partition the candidates into a smaller set of hoistable candidates when
+  \item compute a common insertion point for a set of instructions having the same \GVN{}
+    (similar to VBEs but not as strict)
+  \item partition the candidates into a smaller set of hoistable candidates when
     no common insertion points can be found
   \end{itemize}
 }
 
-\frame{\frametitle{\GVN{}-Hoist: Algorithm-hoist expressions}
+\frame{\frametitle{\GVN{}-Hoist Step 3: Move the Code}
   \begin{itemize}
-  \item scalars: just move one of the instructions to the hoisting point and remove others; update SSA
-  \item loads and stores: try to make geps available, then hoist; update SSA and memory SSA
+  \item scalars: just move one of the instructions to the hoisting point and remove others; update \SSA{}
+  \item loads and stores: make geps available, then hoist; update \SSA{} and \MemorySSA{}
   \end{itemize}
 }
 
@@ -220,20 +247,36 @@ if.end:                                           ; preds = %if.else, %if.then
 
 
 \frame{\frametitle{Cost models}
+  tuned on x86\_64 and AArch64 Linux: test-suite, SPEC 2k, 2k6, \ldots{}
   \begin{itemize}
   \item limit the number of basic blocks in the path between initial position
     and the hoisting point
   \item limit the number of instructions between the initial position and the
     beginning of its basic block
-  \item do not hoist GEPs
+  \item do not hoist GEPs (except at -Os)
   \item limit the number of dependent instructions to be hoisted
   \end{itemize}
 }
 
-\frame{\frametitle{GVN hoisting}
+\frame{\frametitle{Knobs}
   \begin{itemize}
-  \item $1\%$ compile time overhead: $1678 \to 1692$ Bn insns
-  \item more hoists than CFG-simplify: $15048 \to 25318$
+  \item {\bf -enable-gvn-hoist:} enable the \GVN{}-hoist pass {\small(default = on)}
+  \item {\bf -Os, -Oz:} allow GEPs to be hoisted independently of ld/st
+  \item {\bf -gvn-hoist-max-bbs:} max number of basic blocks on the path between
+    hoisting locations {\small (default = 4, unlimited = -1)}
+  \item {\bf -gvn-hoist-max-depth:} hoist instructions from the beginning of the BB up
+    to the maximum specified depth {\small (default = 100, unlimited = -1)}
+  \item {\bf -gvn-hoist-max-chain-length:} maximum length of dependent chains to hoist
+    {\small (default = 10, unlimited = -1)}
+  \item {\bf -gvn-max-hoisted:} max number of instructions to hoist {\small (default unlimited = -1)}
+  \end{itemize}
+}
+\frame{\frametitle{\GVN{}-Hoist: Evaluation}
+  \begin{itemize}
+  \item $<1\%$ compile time overhead: $1678 \to 1692$ Bn insns \\
+    {\small (callgrind compiling the test-suite at -O3 on x86\_64-linux)}
+  \item more hoists than CFG-simplify: $15048 \to 25318$ \\
+    {\small (compiling the test-suite for x86\_64 at -O3)}
   \end{itemize}
 
   \begin{center}
@@ -265,6 +308,24 @@ if.end:                                           ; preds = %if.else, %if.then
       Median increase in size                     & 2.4\%    \\\hline
     \end{tabular}
   \end{center}
+  \begin{itemize}
+  \item test-suite compiled at -O3 for x86\_64-linux
+  \item increase in size due to more inlining
+  \item many effects due to early scheduling of the pass
+  \end{itemize}
+}
+
+\frame{\frametitle{Discussion}
+  \begin{itemize}
+  \item schedule \GVN{}-hoist pass several times?
+  \item remove CFGSimplify's hoisting?
+  \item hoist + sink interactions (discuss with James Molloy)
+  \item early scheduling in opt needs tuning with target info?
+  \item make \GVN{}-hoist more aggressive for -Os and -Oz?
+  \item need a better \GVN{} implementation?
+  \item \MemorySSA{} is easy to use and fast: {\bf \color{myred}so please use it!} \\
+    {\small(thanks Danny, Georges, and others)}
+  \end{itemize}
 }
 
 \end{document}
