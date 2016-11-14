@@ -325,12 +325,17 @@ Section~\ref{sec:cost-models}. Another way to mitigate this problem is be to
 reinstantiate (rematerialize) the computation after a call (may be as a
 different optimization pass).
 
+When aggressively for code-size (at optimization level -Oz), we allow hoisting
+of scalars even when the expression is not very busy. This creates unnecessary
+computation on paths where the expression is not needed so the program may run slow
+but reduces the code size. TODO: Experimental results.
+
 \subsubsection{Profitability of hoisting loads}
 A load instruction introduces a register where the value loaded will be kept,
 the register pressure increases by one (unless the operand to load becomes dead
 at the load). On the other hand, loading a value early will reduce the stall
 during execution should the value is not in the cache. We generally prefer to
-hoist load except the hoisting point is too far (this distance is computed by
+hoist load except when the hoisting point is too far (this distance is computed by
 looking at the experimental results of representative benchmarks, see
 Section~\ref{sec:experimental-results}).
 
