@@ -1,0 +1,119 @@
+From b057a68926a09dba94e78f0c2b97392986781d14 Mon Sep 17 00:00:00 2001
+From: hiraditya <hiraditya@gmail.com>
+Date: Tue, 29 Nov 2016 00:42:54 -0600
+Subject: [PATCH] liveness for mergepoints
+
+---
+ lib/Transforms/Scalar/GVNHoist.cpp | 56 +++++++++++++++++++++++++++-----------
+ 1 file changed, 40 insertions(+), 16 deletions(-)
+
+diff --git a/lib/Transforms/Scalar/GVNHoist.cpp b/lib/Transforms/Scalar/GVNHoist.cpp
+index 1efdff4..5a77596 100644
+--- a/lib/Transforms/Scalar/GVNHoist.cpp
++++ b/lib/Transforms/Scalar/GVNHoist.cpp
+@@ -297,7 +297,7 @@ public:
+     ++Pos;
+   }*/
+ 
+-  bool constructMergeSet(MergeSetT &MergeSet, DomLevelsT &DomLevels,
++  bool constructMergeSet(DomLevelsT &DomLevels,
+                          DenseSet<EdgeT> &JEdges, BBLevelT &BBLevels) {
+     bool Repeat = false;
+     DenseSet<EdgeT> VJEdges;
+@@ -342,35 +342,56 @@ public:
+     return Repeat;
+   }
+ 
+-  bool isLiveOutUsingMergeSet(const MergeSetT &MergeSet, BasicBlock *BB, Use& Op) {
++  // Returns true if the Use \p Op is live-out from BB.
++  bool isLiveOutUsingMergeSet(BasicBlock *BB, Use& Op) const {
+     Value *Val = Op.get();
+-    // Case when Op is defined in BB.
+-    if (Instruction *I = dyn_cast<Instruction>(Val)) {
+-      if (I->getParent() == BB)
+-        for (auto &U : Val->users()) {
+-          if (cast<Instruction>(U)->getParent() != BB)
+-            return true;
+-        }
+-    }
++    const BasicBlock *DefBB = nullptr;
++    if (Instruction *I = dyn_cast<Instruction>(Val))
++      DefBB = I->getParent();
++    else // Assuming live-out conservatively.
++      return true;
++
++    // Case when Op is defined in BB, if any of the use is outside BB (DefBB)
++    // then it must be live-out.
++    if (DefBB == BB)
++      for (User *U : Val->users()) {
++        if (cast<Instruction>(U)->getParent() != BB)
++          return true;
++      }
+ 
+-    SmallSetBB Ms = MergeSet[BB];
+-    Ms.insert(BB);
++    // Mr(n) = M(n) U {n}; Create a new set from the merge set
++    // Ms(n) = Ms(n) U Mr(w); For each successor w of BB
++    SmallSetBB Ms; // Ms = null-set
+     for (BasicBlock *Succ : BB->getTerminator()->successors()) {
+-      Ms.insert(MergeSet[Succ].begin(), MergeSet[Succ].end());
++      Ms.insert(Succ); // Mr(Succ) = Succ U M(Succ)
++      Ms.insert(MergeSet.lookup(Succ).begin(), MergeSet.lookup(Succ).end()); // M(Succ)
++    }
++
++    // Iterate over all the uses of a
++    for (User *U : Op->users()) {
++      BasicBlock *UseDefBB = nullptr;
++      if (Instruction *I = dyn_cast<Instruction>(U))
++        UseDefBB = I->getParent();
++      else // Assuming live-out conservatively.
++        return true;
++      while (UseDefBB != DefBB) {
++        if (Ms.count(UseDefBB))  // if t ∩ M s (n) then return true;
++          return true;
++        UseDefBB = DT->getIDom(UseDefBB);
++      }
+     }
+     return false;
+   }
+ 
+   bool run(Function &F) {
+     DT->updateDFSNumbers();
+-    MergeSetT MergeSet;
+     DomLevelsT DomLevels;
+     DenseSet<EdgeT> JEdges;
+     BBLevelT BBLevels;
+     constructDJGraph(DomLevels, JEdges, BBLevels);
+     printBBLevels(BBLevels);
+     printJEdges(JEdges);
+-    while(constructMergeSet(MergeSet, DomLevels, JEdges, BBLevels));
++    while(constructMergeSet(DomLevels, JEdges, BBLevels));
+     printMergeSet(MergeSet);
+     VN.setDomTree(DT);
+     VN.setAliasAnalysis(AA);
+@@ -418,6 +439,7 @@ private:
+   const bool HoistingGeps;
+   DenseMap<const Value *, unsigned> DFSNumber;
+   BBSideEffectsSet BBSideEffects;
++  MergeSetT MergeSet;
+   int HoistedCtr;
+ 
+   enum InsKind { Unknown, Scalar, Load, Store };
+@@ -687,11 +709,13 @@ private:
+       // If Op is a kill then it will not be live-out from its basic block
+       // but the reverse is not true. We will conservatively hoist
+       // when it is not a live-out.
+-      for (const Use &Op : I->operands()) {
++      for (Use &Op : I->operands()) {
+         //if (const auto *Inst = dyn_cast<Instruction>(&Op))
+         // TODO: See if any operand is a kill.
+         if (!isa<Constant>(Op))
+           ++NonConst;
++        if (isLiveOutUsingMergeSet(I->getParent(), Op))
++          return false;
+       }
+       if (I->getNumOperands() - NonConst > 1)
+         return false;
+-- 
+2.5.0
+
