@@ -1,16 +1,16 @@
-From 70b2de0cd3c99fa41a6a60a72681615a1045161f Mon Sep 17 00:00:00 2001
-From: hiraditya <hiraditya@gmail.com>
-Date: Sun, 27 Nov 2016 10:59:54 -0600
-Subject: [PATCH 11/12] liveout
+From 2eb329679cefbd8e3904b1e061335f548d160633 Mon Sep 17 00:00:00 2001
+From: Aditya Kumar <aditya.k7@samsung.com>
+Date: Tue, 29 Nov 2016 10:45:45 -0600
+Subject: [PATCH 06/10] liveout
 
 ---
- lib/Transforms/Scalar/GVNHoist.cpp | 22 ++++++++++++++++++++++
+ llvm/lib/Transforms/Scalar/GVNHoist.cpp | 22 ++++++++++++++++++++++
  1 file changed, 22 insertions(+)
 
-diff --git a/lib/Transforms/Scalar/GVNHoist.cpp b/lib/Transforms/Scalar/GVNHoist.cpp
+diff --git a/llvm/lib/Transforms/Scalar/GVNHoist.cpp b/llvm/lib/Transforms/Scalar/GVNHoist.cpp
 index 73db1e0..1efdff4 100644
---- a/lib/Transforms/Scalar/GVNHoist.cpp
-+++ b/lib/Transforms/Scalar/GVNHoist.cpp
+--- a/llvm/lib/Transforms/Scalar/GVNHoist.cpp
++++ b/llvm/lib/Transforms/Scalar/GVNHoist.cpp
 @@ -342,6 +342,25 @@ public:
      return Repeat;
    }
@@ -48,5 +48,5 @@ index 73db1e0..1efdff4 100644
          //if (const auto *Inst = dyn_cast<Instruction>(&Op))
          // TODO: See if any operand is a kill.
 -- 
-2.5.0
+2.6.3
 

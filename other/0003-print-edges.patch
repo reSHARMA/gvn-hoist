@@ -1,0 +1,184 @@
+From a2efe233dbe4b0e5553d6c3409327557f998e8ca Mon Sep 17 00:00:00 2001
+From: Aditya Kumar <aditya.k7@samsung.com>
+Date: Tue, 29 Nov 2016 10:44:47 -0600
+Subject: [PATCH 03/10] print edges
+
+---
+ llvm/include/llvm/Support/GenericDomTree.h |   5 +-
+ llvm/lib/Transforms/Scalar/GVNHoist.cpp    | 106 ++++++++++++++++++++++++-----
+ 2 files changed, 91 insertions(+), 20 deletions(-)
+
+diff --git a/llvm/include/llvm/Support/GenericDomTree.h b/llvm/include/llvm/Support/GenericDomTree.h
+index 07a5343..a686e25 100644
+--- a/llvm/include/llvm/Support/GenericDomTree.h
++++ b/llvm/include/llvm/Support/GenericDomTree.h
+@@ -677,11 +677,12 @@ protected:
+                 llvm::make_unique<DomTreeNodeBase<NodeT>>(BB, IDomNode))).get();
+   }
+ 
+-  NodeT *getIDom(NodeT *BB) const { return IDoms.lookup(BB); }
+-
+   void addRoot(NodeT *BB) { this->Roots.push_back(BB); }
+ 
+ public:
++
++  NodeT *getIDom(NodeT *BB) const { return IDoms.lookup(BB); }
++
+   /// updateDFSNumbers - Assign In and Out numbers to the nodes while walking
+   /// dominator tree in dfs order.
+   void updateDFSNumbers() const {
+diff --git a/llvm/lib/Transforms/Scalar/GVNHoist.cpp b/llvm/lib/Transforms/Scalar/GVNHoist.cpp
+index 76b7699..4261e47 100644
+--- a/llvm/lib/Transforms/Scalar/GVNHoist.cpp
++++ b/llvm/lib/Transforms/Scalar/GVNHoist.cpp
+@@ -191,6 +191,12 @@ public:
+ typedef DenseMap<const BasicBlock *, bool> BBSideEffectsSet;
+ typedef SmallVector<Instruction *, 4> SmallVecInsn;
+ typedef SmallVectorImpl<Instruction *> SmallVecImplInsn;
++typedef SmallSet<BasicBlock *, 2> SmallSetBB;
++typedef DenseMap<BasicBlock *, SmallSetBB> MergeSetT;
++typedef SmallVector<BasicBlock *, 4> BBLevelKeyT;
++typedef DenseMap<unsigned, BBLevelKeyT> BBLevelT;
++typedef DenseMap<BasicBlock *, unsigned> DomLevelsT;
++typedef std::pair<BasicBlock *, BasicBlock *> EdgeT;
+ 
+ static void combineKnownMetadata(Instruction *ReplInst, Instruction *I) {
+   static const unsigned KnownIDs[] = {
+@@ -201,6 +207,34 @@ static void combineKnownMetadata(Instruction *ReplInst, Instruction *I) {
+   combineMetadata(ReplInst, I, KnownIDs);
+ }
+ 
++void printBBLevels(const BBLevelT &BBLevels) {
++  for (const std::pair<unsigned, BBLevelKeyT> &P: BBLevels) {
++    dbgs() << "\nLevel: " << P.first << "\n";
++    for (const BasicBlock* BB: P.second)
++      dbgs() << *BB << "\n";
++  }
++}
++
++void printMergeSet(const MergeSetT &M) {
++  for (const std::pair<BasicBlock *, SmallSetBB> &P: M) {
++    dbgs() << "\nMergeSet of: " << P.first->getName() << ": ";
++    for (const BasicBlock* BB: P.second)
++      dbgs() << BB->getName() << ", ";
++  }
++}
++
++void printJEdges(const DenseSet<EdgeT> &Edges) {
++  for (const EdgeT & E: Edges)
++    dbgs() << "\nFound a JEdge: " << E.first->getName()
++           << " -> " << E.second->getName();
++}
++
++void printSmallSet(SmallSetBB &S) {
++  dbgs() << "\nPrinting SmallSet: ";
++  for (const auto& BB: S)
++    dbgs() << BB->getName() << ",";
++}
++
+ // This pass hoists common computations across branches sharing common
+ // dominator. The primary goal is to reduce the code size, and in some
+ // cases reduce critical path (by exposing more ILP).
+@@ -215,45 +249,81 @@ public:
+         MaxNumberOfBBSInPath = -1;
+   }
+ 
+-  typedef SmallVector<const BasicBlock *, 4> BBLevelKeyT;
+-  typedef DenseMap<unsigned, BBLevelKeyT> BBLevelT;
+-  typedef std::pair<const BasicBlock *, const BasicBlock *> EdgeT;
+-
+-  void constructDJGraph(DenseMap<DomTreeNode *, unsigned> &DomLevels,
++  void constructDJGraph(DomLevelsT &DomLevels,
+     DenseSet<EdgeT> &JEdges, BBLevelT &BBLevels) {
+     for (auto DFI = df_begin(DT->getRootNode()),
+          DFE = df_end(DT->getRootNode()); DFI != DFE; ++DFI) {
+       unsigned l = DFI.getPathLength() - 1;
+-      DomLevels[*DFI] = l;
+-      const BasicBlock *BB = (*DFI)->getBlock();
++      BasicBlock *BB = (*DFI)->getBlock();
++      DomLevels[BB] = l;
+       BBLevels[l].push_back(BB);
+-      for (const BasicBlock *Succ : BB->getTerminator()->successors())
++      for (BasicBlock *Succ : BB->getTerminator()->successors())
+         if (!DT->properlyDominates(BB, Succ)) {
+           JEdges.insert(std::make_pair(BB, Succ));
+-          llvm_unreachable("testcase");
+         }
+     }
+   }
+ 
+-  void printBBLevels(const BBLevelT &BBLevels) {
+-    for (const std::pair<unsigned, BBLevelKeyT> &P: BBLevels) {
+-      dbgs() << "\nLevel: " << P.first << "\n";
+-      for (const BasicBlock* BB: P.second)
+-        dbgs() << *BB << "\n";
++  // Return true if S1 is a subset of S2.
++  bool subset(const SmallSetBB &S1, const SmallSetBB &S2) {
++    if (S2.size() < S1.size())
++      return false;
++    for (BasicBlock *BB : S1) {
++      if (!S2.count(BB))
++        return false;
+     }
++    return true;
+   }
+ 
+-  unsigned constructMergeSet() {
+-    DenseMap<DomTreeNode *, unsigned> DomLevels;
++  bool constructMergeSet(MergeSetT &MergeSet) {
++    bool Repeat = false;
++    DomLevelsT DomLevels;
+     BBLevelT BBLevels;
+     DenseSet<EdgeT> JEdges;
++    DenseSet<EdgeT> VJEdges;
+     constructDJGraph(DomLevels, JEdges, BBLevels);
+     printBBLevels(BBLevels);
+-    return DomLevels.size() + JEdges.size();
++    printJEdges(JEdges);
++    for (std::pair<unsigned ,BBLevelKeyT> &P: BBLevels) {
++      for (BasicBlock* BB: P.second) {
++        for (auto PB = pred_begin(BB), PE = pred_end(BB);
++             PB != PE; ++PB) {
++          EdgeT Edge(*PB, BB);
++          if (JEdges.count(Edge) && !VJEdges.count(Edge)) {
++            VJEdges.insert(Edge); // Visit
++            BasicBlock *SNode = Edge.first;
++            BasicBlock *TNode = Edge.second;
++            BasicBlock *Tmp = SNode;
++            BasicBlock *INode = nullptr;
++            MergeSet[TNode].insert(TNode); // The target of JEdge.
++            while (DomLevels[Tmp] >= DomLevels[TNode]) {
++              MergeSet[Tmp].insert(MergeSet[TNode].begin(), MergeSet[TNode].end());
++              MergeSet[Tmp].insert(TNode);
++              INode = Tmp;
++              Tmp = DT->getIDom(Tmp);
++            }
++            for (auto PINode = pred_begin(INode), PENode = pred_end(INode);
++                 PINode != PENode; ++PINode) { // INode is an ancestor of SNode.
++              EdgeT Edge(*PINode, INode);
++              if (VJEdges.count(Edge)) {
++                assert (JEdges.count(Edge));
++                BasicBlock *SNode = *PINode;
++                // Check inconsistency.
++                if (!subset(MergeSet[SNode], MergeSet[INode]))
++                  Repeat = true;
++              }
++            }
++          }
++        }
++      }
++    }
++    return Repeat;
+   }
+ 
+   bool run(Function &F) {
+-    constructMergeSet();
++    MergeSetT MergeSet;
++    while(constructMergeSet(MergeSet));
++    printMergeSet(MergeSet);
+     VN.setDomTree(DT);
+     VN.setAliasAnalysis(AA);
+     VN.setMemDep(MD);
+-- 
+2.6.3
+

@@ -1,0 +1,90 @@
+From 339e65bf6eeaf918b137c79b4beb0b34049ea37c Mon Sep 17 00:00:00 2001
+From: Aditya Kumar <aditya.k7@samsung.com>
+Date: Tue, 29 Nov 2016 15:04:24 -0600
+Subject: [PATCH 10/10] fix
+
+---
+ llvm/lib/Transforms/Scalar/GVNHoist.cpp | 29 ++++++++++++-----------------
+ 1 file changed, 12 insertions(+), 17 deletions(-)
+
+diff --git a/llvm/lib/Transforms/Scalar/GVNHoist.cpp b/llvm/lib/Transforms/Scalar/GVNHoist.cpp
+index 2c01cc3b..20f4997 100644
+--- a/llvm/lib/Transforms/Scalar/GVNHoist.cpp
++++ b/llvm/lib/Transforms/Scalar/GVNHoist.cpp
+@@ -313,16 +313,16 @@ public:
+             BasicBlock *INode = nullptr;
+             MergeSet[Dst].insert(Dst); // The target of JEdge.
+             while (DomLevels[Src] >= DomLevels[Dst]) {
+-              dbgs() << "\nVisiting: " << Src->getName() << " -> " << Dst->getName();
++              DEBUG(dbgs() << "\nVisiting: " << Src->getName() << " -> " << Dst->getName());
+               // Merge (tmp) = Merge (tmp) U Merge (tnode) U { tnode }
+               for (BasicBlock *DstMerge : MergeSet[Dst])
+                 MergeSet[Src].insert(DstMerge);
+               //MergeSet[Src].insert(MergeSet[Dst].begin(), MergeSet[Dst].end());
+               //MergeSet[Src].insert(Dst);
+               INode = Src;
+-              dbgs() << "IDom of " << Src->getName() << " is ";
++              DEBUG(dbgs() << "IDom of " << Src->getName() << " is ");
+               Src = DT->getIDom(Src);
+-              dbgs() << Src->getName();
++              DEBUG(dbgs() << Src->getName());
+             }
+             for (auto PINode = pred_begin(INode), PENode = pred_end(INode);
+                  PINode != PENode; ++PINode) { // INode is an ancestor of SNode.
+@@ -344,11 +344,12 @@ public:
+ 
+   // Returns true if the \p Op is live-out from \p BB.
+   bool isLiveOutUsingMergeSet(BasicBlock *BB, Value *Val) const {
++    assert (BB);
+     const BasicBlock *DefBB = nullptr;
+     if (Instruction *I = dyn_cast<Instruction>(Val))
+       DefBB = I->getParent();
+-    else // Assuming live-out conservatively. FIXME!
+-      return true;
++    // FIXME!
++    // We are assuming when DefBB is not defined then the value is a parameter.
+ 
+     // Case when Val is defined in BB, if any of the use is outside BB (DefBB)
+     // then it must be live-out.
+@@ -389,10 +390,10 @@ public:
+     DenseSet<EdgeT> JEdges;
+     BBLevelT BBLevels;
+     constructDJGraph(DomLevels, JEdges, BBLevels);
+-    printBBLevels(BBLevels);
+-    printJEdges(JEdges);
++    //printBBLevels(BBLevels);
++    //printJEdges(JEdges);
+     while(constructMergeSet(DomLevels, JEdges, BBLevels));
+-    printMergeSet(MergeSet);
++    //printMergeSet(MergeSet);
+     VN.setDomTree(DT);
+     VN.setAliasAnalysis(AA);
+     VN.setMemDep(MD);
+@@ -705,21 +706,15 @@ private:
+     // For -O3/-O2 hoist only when the liveness decreases i.e., no more than
+     // one operand can be a use without kill.
+     for (Instruction *I : { I1, I2 }) {
+-      unsigned NonConst = 0;
+       // If Op is a kill then it will not be live-out from its basic block
+-      // but the reverse is not true. We will conservatively hoist
+-      // when it is not a live-out.
++      // but the reverse is not true. We will conservatively disregard
++      // only when Op is a live-out.
+       for (unsigned op = 0, e = I->getNumOperands(); op != e; ++op) {
+         Value *Op = I->getOperand(op);
+-        //if (const auto *Inst = dyn_cast<Instruction>(&Op))
+         // TODO: See if any operand is a kill.
+-        //if (!isa<Constant>(Op))
+-        //  ++NonConst;
+-        if (isLiveOutUsingMergeSet(I->getParent(), Op))
++        if (!isa<Constant>(Op) && isLiveOutUsingMergeSet(I->getParent(), Op))
+           return false;
+       }
+-      if (I->getNumOperands() - NonConst > 1)
+-        return false;
+     }
+     return true;
+   }
+-- 
+2.6.3
+

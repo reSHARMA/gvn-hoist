@@ -1,38 +1,16 @@
-From 9e1be1d507eaf1cec3785f7bd6ebd78b32aee76d Mon Sep 17 00:00:00 2001
-From: hiraditya <hiraditya@gmail.com>
-Date: Fri, 25 Nov 2016 12:17:29 -0600
-Subject: [PATCH 06/12] build dj graph
+From b387bd048729b07dc53bc00f5a9117a3b35ad7ff Mon Sep 17 00:00:00 2001
+From: Aditya Kumar <aditya.k7@samsung.com>
+Date: Tue, 29 Nov 2016 10:44:15 -0600
+Subject: [PATCH 02/10] build dj graph
 
 ---
- lib/Analysis/CFG.cpp               |  8 +++-----
- lib/Transforms/Scalar/GVNHoist.cpp | 39 ++++++++++++++++++++++++++++++++++++++
- 2 files changed, 42 insertions(+), 5 deletions(-)
+ llvm/lib/Transforms/Scalar/GVNHoist.cpp | 39 +++++++++++++++++++++++++++++++++
+ 1 file changed, 39 insertions(+)
 
-diff --git a/lib/Analysis/CFG.cpp b/lib/Analysis/CFG.cpp
-index b643451..d131886 100644
---- a/lib/Analysis/CFG.cpp
-+++ b/lib/Analysis/CFG.cpp
-@@ -288,13 +288,11 @@ bool llvm::isPotentiallyReachableNotViaDef(Instruction *SP, Instruction *USE,
- 
-   bool DefIsArg = isa<Argument>(DEF);
- 
--  BasicBlock *UseBlock = const_cast<BasicBlock *>(USE->getParent());
--  BasicBlock *SpBlock = const_cast<BasicBlock *>(SP->getParent());
-+  BasicBlock *UseBlock = USE->getParent();
-+  BasicBlock *SpBlock = SP->getParent();
- 
-   // def could be an argument which has no basicblock
--  BasicBlock *DefBlock =
--      DefIsArg ? NULL
--               : const_cast<BasicBlock *>(cast<Instruction>(DEF)->getParent());
-+  BasicBlock *DefBlock = DefIsArg ? NULL : cast<Instruction>(DEF)->getParent();
- 
-   // If use is live at the original call site which triggers the safepoint, it
-   // will be live during the call
-diff --git a/lib/Transforms/Scalar/GVNHoist.cpp b/lib/Transforms/Scalar/GVNHoist.cpp
+diff --git a/llvm/lib/Transforms/Scalar/GVNHoist.cpp b/llvm/lib/Transforms/Scalar/GVNHoist.cpp
 index ba45117b..76b7699 100644
---- a/lib/Transforms/Scalar/GVNHoist.cpp
-+++ b/lib/Transforms/Scalar/GVNHoist.cpp
+--- a/llvm/lib/Transforms/Scalar/GVNHoist.cpp
++++ b/llvm/lib/Transforms/Scalar/GVNHoist.cpp
 @@ -23,6 +23,7 @@
  // Compute kill-sets
  // For -Oz scalars are always safe to hoist.
@@ -88,5 +66,5 @@ index ba45117b..76b7699 100644
      VN.setAliasAnalysis(AA);
      VN.setMemDep(MD);
 -- 
-2.5.0
+2.6.3
 

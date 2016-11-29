@@ -1,16 +1,16 @@
-From b057a68926a09dba94e78f0c2b97392986781d14 Mon Sep 17 00:00:00 2001
-From: hiraditya <hiraditya@gmail.com>
-Date: Tue, 29 Nov 2016 00:42:54 -0600
-Subject: [PATCH] liveness for mergepoints
+From 2e6efaf623d108e59a87adf90cecdb0ef0f17c7a Mon Sep 17 00:00:00 2001
+From: Aditya Kumar <aditya.k7@samsung.com>
+Date: Tue, 29 Nov 2016 10:48:16 -0600
+Subject: [PATCH 08/10] liveness for mergepoints
 
 ---
- lib/Transforms/Scalar/GVNHoist.cpp | 56 +++++++++++++++++++++++++++-----------
+ llvm/lib/Transforms/Scalar/GVNHoist.cpp | 56 +++++++++++++++++++++++----------
  1 file changed, 40 insertions(+), 16 deletions(-)
 
-diff --git a/lib/Transforms/Scalar/GVNHoist.cpp b/lib/Transforms/Scalar/GVNHoist.cpp
+diff --git a/llvm/lib/Transforms/Scalar/GVNHoist.cpp b/llvm/lib/Transforms/Scalar/GVNHoist.cpp
 index 1efdff4..5a77596 100644
---- a/lib/Transforms/Scalar/GVNHoist.cpp
-+++ b/lib/Transforms/Scalar/GVNHoist.cpp
+--- a/llvm/lib/Transforms/Scalar/GVNHoist.cpp
++++ b/llvm/lib/Transforms/Scalar/GVNHoist.cpp
 @@ -297,7 +297,7 @@ public:
      ++Pos;
    }*/
@@ -115,5 +115,5 @@ index 1efdff4..5a77596 100644
        if (I->getNumOperands() - NonConst > 1)
          return false;
 -- 
-2.5.0
+2.6.3
 

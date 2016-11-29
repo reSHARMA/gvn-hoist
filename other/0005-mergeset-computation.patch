@@ -1,17 +1,17 @@
-From 49cbbd846ce4a966d63797328db21ce70cb17ded Mon Sep 17 00:00:00 2001
-From: hiraditya <hiraditya@gmail.com>
-Date: Sat, 26 Nov 2016 12:35:26 -0600
-Subject: [PATCH 10/12] mergeset computation
+From 900f4fb084cbf559807964f93cefe5d3199a3602 Mon Sep 17 00:00:00 2001
+From: Aditya Kumar <aditya.k7@samsung.com>
+Date: Tue, 29 Nov 2016 10:45:30 -0600
+Subject: [PATCH 05/10] mergeset-computation
 
 ---
- include/llvm/Support/GenericDomTreeConstruction.h |  2 +-
- lib/Transforms/Scalar/GVNHoist.cpp                | 29 +++++++++++++----------
+ .../llvm/Support/GenericDomTreeConstruction.h      |  2 +-
+ llvm/lib/Transforms/Scalar/GVNHoist.cpp            | 29 ++++++++++++----------
  2 files changed, 17 insertions(+), 14 deletions(-)
 
-diff --git a/include/llvm/Support/GenericDomTreeConstruction.h b/include/llvm/Support/GenericDomTreeConstruction.h
+diff --git a/llvm/include/llvm/Support/GenericDomTreeConstruction.h b/llvm/include/llvm/Support/GenericDomTreeConstruction.h
 index 54e55cc..41aeb75 100644
---- a/include/llvm/Support/GenericDomTreeConstruction.h
-+++ b/include/llvm/Support/GenericDomTreeConstruction.h
+--- a/llvm/include/llvm/Support/GenericDomTreeConstruction.h
++++ b/llvm/include/llvm/Support/GenericDomTreeConstruction.h
 @@ -275,7 +275,7 @@ void Calculate(DominatorTreeBaseByGraphTraits<GraphTraits<NodeT>> &DT,
    }
  
@@ -21,10 +21,10 @@ index 54e55cc..41aeb75 100644
    DT.Info.clear();
    DT.Vertex.clear();
    DT.Vertex.shrink_to_fit();
-diff --git a/lib/Transforms/Scalar/GVNHoist.cpp b/lib/Transforms/Scalar/GVNHoist.cpp
+diff --git a/llvm/lib/Transforms/Scalar/GVNHoist.cpp b/llvm/lib/Transforms/Scalar/GVNHoist.cpp
 index 1cacd36..73db1e0 100644
---- a/lib/Transforms/Scalar/GVNHoist.cpp
-+++ b/lib/Transforms/Scalar/GVNHoist.cpp
+--- a/llvm/lib/Transforms/Scalar/GVNHoist.cpp
++++ b/llvm/lib/Transforms/Scalar/GVNHoist.cpp
 @@ -308,19 +308,21 @@ public:
            EdgeT Edge(*PB, CurrBB);
            if (JEdges.count(Edge) && !VJEdges.count(Edge)) {
@@ -77,5 +77,5 @@ index 1cacd36..73db1e0 100644
      DomLevelsT DomLevels;
      DenseSet<EdgeT> JEdges;
 -- 
-2.5.0
+2.6.3
 

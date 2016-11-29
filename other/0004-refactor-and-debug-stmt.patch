@@ -1,16 +1,16 @@
-From a1423857ca94ac311d913b897679a2453383184a Mon Sep 17 00:00:00 2001
-From: hiraditya <hiraditya@gmail.com>
-Date: Sat, 26 Nov 2016 11:46:46 -0600
-Subject: [PATCH 09/12] refactor and debug stmt
+From a9373b2f41fbf1cb38b5493529be18178bfd64d6 Mon Sep 17 00:00:00 2001
+From: Aditya Kumar <aditya.k7@samsung.com>
+Date: Tue, 29 Nov 2016 10:45:06 -0600
+Subject: [PATCH 04/10] refactor-and-debug-stmt
 
 ---
- lib/Transforms/Scalar/GVNHoist.cpp | 50 +++++++++++++++++++++++++++++---------
+ llvm/lib/Transforms/Scalar/GVNHoist.cpp | 50 +++++++++++++++++++++++++--------
  1 file changed, 38 insertions(+), 12 deletions(-)
 
-diff --git a/lib/Transforms/Scalar/GVNHoist.cpp b/lib/Transforms/Scalar/GVNHoist.cpp
+diff --git a/llvm/lib/Transforms/Scalar/GVNHoist.cpp b/llvm/lib/Transforms/Scalar/GVNHoist.cpp
 index 4261e47..1cacd36 100644
---- a/lib/Transforms/Scalar/GVNHoist.cpp
-+++ b/lib/Transforms/Scalar/GVNHoist.cpp
+--- a/llvm/lib/Transforms/Scalar/GVNHoist.cpp
++++ b/llvm/lib/Transforms/Scalar/GVNHoist.cpp
 @@ -275,20 +275,37 @@ public:
      return true;
    }
@@ -95,5 +95,5 @@ index 4261e47..1cacd36 100644
      VN.setDomTree(DT);
      VN.setAliasAnalysis(AA);
 -- 
-2.5.0
+2.6.3
 

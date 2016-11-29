@@ -1,16 +1,16 @@
-From e2cd9a995b965c5578056b9e0a0a8014ae505523 Mon Sep 17 00:00:00 2001
-From: hiraditya <hiraditya@gmail.com>
-Date: Thu, 24 Nov 2016 11:41:03 -0600
-Subject: [PATCH 03/12] liveness
+From ce39824fc56fea6c654bca1b52dbea217eb5e4d8 Mon Sep 17 00:00:00 2001
+From: Aditya Kumar <aditya.k7@samsung.com>
+Date: Tue, 29 Nov 2016 10:42:41 -0600
+Subject: [PATCH 01/10] liveness
 
 ---
- lib/Transforms/Scalar/GVNHoist.cpp | 24 +++++++++++++++++++++---
+ llvm/lib/Transforms/Scalar/GVNHoist.cpp | 24 +++++++++++++++++++++---
  1 file changed, 21 insertions(+), 3 deletions(-)
 
-diff --git a/lib/Transforms/Scalar/GVNHoist.cpp b/lib/Transforms/Scalar/GVNHoist.cpp
+diff --git a/llvm/lib/Transforms/Scalar/GVNHoist.cpp b/llvm/lib/Transforms/Scalar/GVNHoist.cpp
 index 230558b..ba45117b 100644
---- a/lib/Transforms/Scalar/GVNHoist.cpp
-+++ b/lib/Transforms/Scalar/GVNHoist.cpp
+--- a/llvm/lib/Transforms/Scalar/GVNHoist.cpp
++++ b/llvm/lib/Transforms/Scalar/GVNHoist.cpp
 @@ -17,6 +17,12 @@
  // is disabled in the following cases.
  // 1. Scalars across calls.
@@ -64,5 +64,5 @@ index 230558b..ba45117b 100644
            HoistPt = NewHoistPt;
            HoistBB = NewHoistBB;
 -- 
-2.5.0
+2.6.3
 

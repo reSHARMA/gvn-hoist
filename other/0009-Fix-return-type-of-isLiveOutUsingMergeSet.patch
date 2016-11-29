@@ -1,0 +1,84 @@
+From 57452022c909fa44374d0c769c1a1739d1f11c36 Mon Sep 17 00:00:00 2001
+From: Aditya Kumar <aditya.k7@samsung.com>
+Date: Tue, 29 Nov 2016 11:12:54 -0600
+Subject: [PATCH 09/10] Fix return type of isLiveOutUsingMergeSet
+
+---
+ llvm/lib/Transforms/Scalar/GVNHoist.cpp | 35 +++++++++++++++++----------------
+ 1 file changed, 18 insertions(+), 17 deletions(-)
+
+diff --git a/llvm/lib/Transforms/Scalar/GVNHoist.cpp b/llvm/lib/Transforms/Scalar/GVNHoist.cpp
+index 5a77596..2c01cc3b 100644
+--- a/llvm/lib/Transforms/Scalar/GVNHoist.cpp
++++ b/llvm/lib/Transforms/Scalar/GVNHoist.cpp
+@@ -342,16 +342,15 @@ public:
+     return Repeat;
+   }
+ 
+-  // Returns true if the Use \p Op is live-out from BB.
+-  bool isLiveOutUsingMergeSet(BasicBlock *BB, Use& Op) const {
+-    Value *Val = Op.get();
++  // Returns true if the \p Op is live-out from \p BB.
++  bool isLiveOutUsingMergeSet(BasicBlock *BB, Value *Val) const {
+     const BasicBlock *DefBB = nullptr;
+     if (Instruction *I = dyn_cast<Instruction>(Val))
+       DefBB = I->getParent();
+-    else // Assuming live-out conservatively.
++    else // Assuming live-out conservatively. FIXME!
+       return true;
+ 
+-    // Case when Op is defined in BB, if any of the use is outside BB (DefBB)
++    // Case when Val is defined in BB, if any of the use is outside BB (DefBB)
+     // then it must be live-out.
+     if (DefBB == BB)
+       for (User *U : Val->users()) {
+@@ -364,20 +363,21 @@ public:
+     SmallSetBB Ms; // Ms = null-set
+     for (BasicBlock *Succ : BB->getTerminator()->successors()) {
+       Ms.insert(Succ); // Mr(Succ) = Succ U M(Succ)
+-      Ms.insert(MergeSet.lookup(Succ).begin(), MergeSet.lookup(Succ).end()); // M(Succ)
++      for (BasicBlock *BB : MergeSet.lookup(Succ))
++        Ms.insert(BB); // M(Succ)
+     }
+ 
+-    // Iterate over all the uses of a
+-    for (User *U : Op->users()) {
+-      BasicBlock *UseDefBB = nullptr;
++    // Iterate over all the uses of Val
++    for (User *U : Val->users()) {
++      BasicBlock *DefUserBB = nullptr;
+       if (Instruction *I = dyn_cast<Instruction>(U))
+-        UseDefBB = I->getParent();
++        DefUserBB = I->getParent();
+       else // Assuming live-out conservatively.
+-        return true;
+-      while (UseDefBB != DefBB) {
+-        if (Ms.count(UseDefBB))  // if t ∩ M s (n) then return true;
++        llvm_unreachable("User is not an instruction.");
++      while (DefUserBB != DefBB) {
++        if (Ms.count(DefUserBB))  // if t ∩ M s (n) then return true;
+           return true;
+-        UseDefBB = DT->getIDom(UseDefBB);
++        DefUserBB = DT->getIDom(DefUserBB);
+       }
+     }
+     return false;
+@@ -709,11 +709,12 @@ private:
+       // If Op is a kill then it will not be live-out from its basic block
+       // but the reverse is not true. We will conservatively hoist
+       // when it is not a live-out.
+-      for (Use &Op : I->operands()) {
++      for (unsigned op = 0, e = I->getNumOperands(); op != e; ++op) {
++        Value *Op = I->getOperand(op);
+         //if (const auto *Inst = dyn_cast<Instruction>(&Op))
+         // TODO: See if any operand is a kill.
+-        if (!isa<Constant>(Op))
+-          ++NonConst;
++        //if (!isa<Constant>(Op))
++        //  ++NonConst;
+         if (isLiveOutUsingMergeSet(I->getParent(), Op))
+           return false;
+       }
+-- 
+2.6.3
+
