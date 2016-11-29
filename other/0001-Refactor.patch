@@ -1,0 +1,111 @@
+From 5fbd7b3d71e384b8e6d338d15751b55a0d24cf0f Mon Sep 17 00:00:00 2001
+From: hiraditya <hiraditya@gmail.com>
+Date: Thu, 24 Nov 2016 11:33:07 -0600
+Subject: [PATCH 01/12] Refactor
+
+fix
+---
+ lib/Transforms/Scalar/GVNHoist.cpp | 30 ++++++++++++++++--------------
+ 1 file changed, 16 insertions(+), 14 deletions(-)
+
+diff --git a/lib/Transforms/Scalar/GVNHoist.cpp b/lib/Transforms/Scalar/GVNHoist.cpp
+index 7de1b37..4cb9fa4 100644
+--- a/lib/Transforms/Scalar/GVNHoist.cpp
++++ b/lib/Transforms/Scalar/GVNHoist.cpp
+@@ -391,6 +391,10 @@ private:
+         continue;
+       }
+ 
++      // Stop walk once the limit is reached.
++      if (NBBsOnAllPaths == 0)
++        return true;
++
+       // Impossible to hoist with exceptions on the path.
+       if (hasEH(*I))
+         return true;
+@@ -399,10 +403,6 @@ private:
+       if (hasMemoryUse(NewPt, Def, *I))
+         return true;
+ 
+-      // Stop walk once the limit is reached.
+-      if (NBBsOnAllPaths == 0)
+-        return true;
+-
+       // -1 is unlimited number of blocks on all paths.
+       if (NBBsOnAllPaths != -1)
+         --NBBsOnAllPaths;
+@@ -433,14 +433,14 @@ private:
+         continue;
+       }
+ 
+-      // Impossible to hoist with exceptions on the path.
+-      if (hasEH(*I))
+-        return true;
+-
+       // Stop walk once the limit is reached.
+       if (NBBsOnAllPaths == 0)
+         return true;
+ 
++      // Impossible to hoist with exceptions on the path.
++      if (hasEH(*I))
++        return true;
++
+       // -1 is unlimited number of blocks on all paths.
+       if (NBBsOnAllPaths != -1)
+         --NBBsOnAllPaths;
+@@ -530,7 +530,7 @@ private:
+       std::sort(InstructionsToHoist.begin(), InstructionsToHoist.end(), Pred);
+     }
+ 
+-    int NBBsOnAllPaths = MaxNumberOfBBSInPath;
++    int NumBBsOnAllPaths = MaxNumberOfBBSInPath;
+ 
+     SmallVecImplInsn::iterator II = InstructionsToHoist.begin();
+     SmallVecImplInsn::iterator Start = II;
+@@ -546,10 +546,12 @@ private:
+       BasicBlock *NewHoistBB;
+       Instruction *NewHoistPt;
+ 
+-      if (BB == HoistBB) {
++      if (BB == HoistBB) { // Both are in the same Basic Block.
+         NewHoistBB = HoistBB;
+         NewHoistPt = firstInBB(Insn, HoistPt) ? Insn : HoistPt;
+       } else {
++        // If the hoisting point contains one of the instructions,
++        // then hoist there, otherwise hoist before the terminator.
+         NewHoistBB = DT->findNearestCommonDominator(HoistBB, BB);
+         if (NewHoistBB == BB)
+           NewHoistPt = Insn;
+@@ -564,7 +566,7 @@ private:
+       WL.insert(BB);
+ 
+       if (K == InsKind::Scalar) {
+-        if (safeToHoistScalar(NewHoistBB, WL, NBBsOnAllPaths)) {
++        if (safeToHoistScalar(NewHoistBB, WL, NumBBsOnAllPaths)) {
+           // Extend HoistPt to NewHoistPt.
+           HoistPt = NewHoistPt;
+           HoistBB = NewHoistBB;
+@@ -581,9 +583,9 @@ private:
+              hoistingFromAllPaths(NewHoistBB, WL)) &&
+             // Also check that it is safe to move the load or store from HoistPt
+             // to NewHoistPt, and from Insn to NewHoistPt.
+-            safeToHoistLdSt(NewHoistPt, HoistPt, UD, K, NBBsOnAllPaths) &&
++            safeToHoistLdSt(NewHoistPt, HoistPt, UD, K, NumBBsOnAllPaths) &&
+             safeToHoistLdSt(NewHoistPt, Insn, MSSA->getMemoryAccess(Insn),
+-                            K, NBBsOnAllPaths)) {
++                            K, NumBBsOnAllPaths)) {
+           // Extend HoistPt to NewHoistPt.
+           HoistPt = NewHoistPt;
+           HoistBB = NewHoistBB;
+@@ -602,7 +604,7 @@ private:
+         UD = MSSA->getMemoryAccess(*Start);
+       HoistPt = Insn;
+       HoistBB = BB;
+-      NBBsOnAllPaths = MaxNumberOfBBSInPath;
++      NumBBsOnAllPaths = MaxNumberOfBBSInPath;
+     }
+ 
+     // Save the last partition.
+-- 
+2.5.0
+

@@ -1,0 +1,49 @@
+From 750265a20c76e1ed53e602d151b63164ca25ffca Mon Sep 17 00:00:00 2001
+From: hiraditya <hiraditya@gmail.com>
+Date: Thu, 24 Nov 2016 11:53:40 -0600
+Subject: [PATCH 02/12] Os
+
+fix
+---
+ lib/Transforms/Scalar/GVNHoist.cpp | 18 +++++++++++++-----
+ 1 file changed, 13 insertions(+), 5 deletions(-)
+
+diff --git a/lib/Transforms/Scalar/GVNHoist.cpp b/lib/Transforms/Scalar/GVNHoist.cpp
+index 4cb9fa4..230558b 100644
+--- a/lib/Transforms/Scalar/GVNHoist.cpp
++++ b/lib/Transforms/Scalar/GVNHoist.cpp
+@@ -202,7 +202,12 @@ public:
+   GVNHoist(DominatorTree *DT, AliasAnalysis *AA, MemoryDependenceResults *MD,
+            MemorySSA *MSSA, bool OptForMinSize)
+       : DT(DT), AA(AA), MD(MD), MSSA(MSSA), OptForMinSize(OptForMinSize),
+-        HoistingGeps(OptForMinSize), HoistedCtr(0) {}
++        HoistingGeps(OptForMinSize), HoistedCtr(0) {
++      // Hoist as far as possible when optimizing for code-size.
++      if (OptForMinSize)
++        MaxNumberOfBBSInPath = -1;
++  }
++
+   bool run(Function &F) {
+     VN.setDomTree(DT);
+     VN.setAliasAnalysis(AA);
+@@ -500,10 +505,13 @@ private:
+   bool safeToHoistScalar(const BasicBlock *HoistBB,
+                          SmallPtrSetImpl<const BasicBlock *> &WL,
+                          int &NBBsOnAllPaths) {
+-    // Check that the hoisted expression is needed on all paths.  Enable scalar
+-    // hoisting at -Oz as it is safe to hoist scalars to a place where they are
+-    // partially needed.
+-    if (!OptForMinSize && !hoistingFromAllPaths(HoistBB, WL))
++    // Enable scalar hoisting at -Oz as it is safe to hoist scalars to a place
++    // where they are partially needed.
++    if (OptForMinSize)
++      return true;
++
++    // Check that the hoisted expression is needed on all paths.
++    if (!hoistingFromAllPaths(HoistBB, WL))
+       return false;
+ 
+     for (const BasicBlock *BB : WL)
+-- 
+2.5.0
+

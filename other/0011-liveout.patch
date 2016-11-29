@@ -1,0 +1,52 @@
+From 70b2de0cd3c99fa41a6a60a72681615a1045161f Mon Sep 17 00:00:00 2001
+From: hiraditya <hiraditya@gmail.com>
+Date: Sun, 27 Nov 2016 10:59:54 -0600
+Subject: [PATCH 11/12] liveout
+
+---
+ lib/Transforms/Scalar/GVNHoist.cpp | 22 ++++++++++++++++++++++
+ 1 file changed, 22 insertions(+)
+
+diff --git a/lib/Transforms/Scalar/GVNHoist.cpp b/lib/Transforms/Scalar/GVNHoist.cpp
+index 73db1e0..1efdff4 100644
+--- a/lib/Transforms/Scalar/GVNHoist.cpp
++++ b/lib/Transforms/Scalar/GVNHoist.cpp
+@@ -342,6 +342,25 @@ public:
+     return Repeat;
+   }
+ 
++  bool isLiveOutUsingMergeSet(const MergeSetT &MergeSet, BasicBlock *BB, Use& Op) {
++    Value *Val = Op.get();
++    // Case when Op is defined in BB.
++    if (Instruction *I = dyn_cast<Instruction>(Val)) {
++      if (I->getParent() == BB)
++        for (auto &U : Val->users()) {
++          if (cast<Instruction>(U)->getParent() != BB)
++            return true;
++        }
++    }
++
++    SmallSetBB Ms = MergeSet[BB];
++    Ms.insert(BB);
++    for (BasicBlock *Succ : BB->getTerminator()->successors()) {
++      Ms.insert(MergeSet[Succ].begin(), MergeSet[Succ].end());
++    }
++    return false;
++  }
++
+   bool run(Function &F) {
+     DT->updateDFSNumbers();
+     MergeSetT MergeSet;
+@@ -665,6 +684,9 @@ private:
+     // one operand can be a use without kill.
+     for (Instruction *I : { I1, I2 }) {
+       unsigned NonConst = 0;
++      // If Op is a kill then it will not be live-out from its basic block
++      // but the reverse is not true. We will conservatively hoist
++      // when it is not a live-out.
+       for (const Use &Op : I->operands()) {
+         //if (const auto *Inst = dyn_cast<Instruction>(&Op))
+         // TODO: See if any operand is a kill.
+-- 
+2.5.0
+

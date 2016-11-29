@@ -1,0 +1,99 @@
+From a1423857ca94ac311d913b897679a2453383184a Mon Sep 17 00:00:00 2001
+From: hiraditya <hiraditya@gmail.com>
+Date: Sat, 26 Nov 2016 11:46:46 -0600
+Subject: [PATCH 09/12] refactor and debug stmt
+
+---
+ lib/Transforms/Scalar/GVNHoist.cpp | 50 +++++++++++++++++++++++++++++---------
+ 1 file changed, 38 insertions(+), 12 deletions(-)
+
+diff --git a/lib/Transforms/Scalar/GVNHoist.cpp b/lib/Transforms/Scalar/GVNHoist.cpp
+index 4261e47..1cacd36 100644
+--- a/lib/Transforms/Scalar/GVNHoist.cpp
++++ b/lib/Transforms/Scalar/GVNHoist.cpp
+@@ -275,20 +275,37 @@ public:
+     return true;
+   }
+ 
+-  bool constructMergeSet(MergeSetT &MergeSet) {
++  /* DomLevelsT DomLevels;
++  BasicBlock *Entry = DT->getRoot();
++  Function *F = Entry->getParent();
++  std::set<BasicBlock *> Visited;
++  std::vector<BasicBlock *> BFS;
++  BFS.push_back(Entry);
++  Visited.insert(Entry);
++  DomLevels[Entry] = 0;
++  unsigned Pos = 0;
++  while (BFS.size() != F->size()) {
++    BasicBlock *CurrBB = BFS[Pos];
++    //BFS.pop_front();
++    for (BasicBlock *Succ : CurrBB->getTerminator()->successors())
++      if (!Visited.count(Succ)) {
++        Visited.insert(Succ);
++        BFS.push_back(Succ);
++        DomLevels[Succ] = DomLevels[CurrBB] + 1;
++        dbgs() << "\nDomlevel of " << Succ->getName() << " is " << DomLevels[Succ];
++      }
++    ++Pos;
++  }*/
++
++  bool constructMergeSet(MergeSetT &MergeSet, DomLevelsT &DomLevels,
++                         DenseSet<EdgeT> &JEdges, BBLevelT &BBLevels) {
+     bool Repeat = false;
+-    DomLevelsT DomLevels;
+-    BBLevelT BBLevels;
+-    DenseSet<EdgeT> JEdges;
+     DenseSet<EdgeT> VJEdges;
+-    constructDJGraph(DomLevels, JEdges, BBLevels);
+-    printBBLevels(BBLevels);
+-    printJEdges(JEdges);
+     for (std::pair<unsigned ,BBLevelKeyT> &P: BBLevels) {
+-      for (BasicBlock* BB: P.second) {
+-        for (auto PB = pred_begin(BB), PE = pred_end(BB);
++      for (BasicBlock* CurrBB: P.second) {
++        for (auto PB = pred_begin(CurrBB), PE = pred_end(CurrBB);
+              PB != PE; ++PB) {
+-          EdgeT Edge(*PB, BB);
++          EdgeT Edge(*PB, CurrBB);
+           if (JEdges.count(Edge) && !VJEdges.count(Edge)) {
+             VJEdges.insert(Edge); // Visit
+             BasicBlock *SNode = Edge.first;
+@@ -296,7 +313,10 @@ public:
+             BasicBlock *Tmp = SNode;
+             BasicBlock *INode = nullptr;
+             MergeSet[TNode].insert(TNode); // The target of JEdge.
++            dbgs() << "\nDomlevel of " << Tmp->getName() << " is " << DomLevels[Tmp];
++            dbgs() << "\nDomlevel of " << TNode->getName() << " is " << DomLevels[TNode];
+             while (DomLevels[Tmp] >= DomLevels[TNode]) {
++              dbgs() << "\nDomlevel of " << Tmp->getName() << " is " << DomLevels[Tmp];
+               MergeSet[Tmp].insert(MergeSet[TNode].begin(), MergeSet[TNode].end());
+               MergeSet[Tmp].insert(TNode);
+               INode = Tmp;
+@@ -309,7 +329,7 @@ public:
+                 assert (JEdges.count(Edge));
+                 BasicBlock *SNode = *PINode;
+                 // Check inconsistency.
+-                if (!subset(MergeSet[SNode], MergeSet[INode]))
++                if (!subset(MergeSet[INode], MergeSet[SNode]))
+                   Repeat = true;
+               }
+             }
+@@ -322,7 +342,13 @@ public:
+ 
+   bool run(Function &F) {
+     MergeSetT MergeSet;
+-    while(constructMergeSet(MergeSet));
++    DomLevelsT DomLevels;
++    DenseSet<EdgeT> JEdges;
++    BBLevelT BBLevels;
++    constructDJGraph(DomLevels, JEdges, BBLevels);
++    printBBLevels(BBLevels);
++    printJEdges(JEdges);
++    while(constructMergeSet(MergeSet, DomLevels, JEdges, BBLevels));
+     printMergeSet(MergeSet);
+     VN.setDomTree(DT);
+     VN.setAliasAnalysis(AA);
+-- 
+2.5.0
+

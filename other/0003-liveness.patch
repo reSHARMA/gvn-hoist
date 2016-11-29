@@ -1,0 +1,68 @@
+From e2cd9a995b965c5578056b9e0a0a8014ae505523 Mon Sep 17 00:00:00 2001
+From: hiraditya <hiraditya@gmail.com>
+Date: Thu, 24 Nov 2016 11:41:03 -0600
+Subject: [PATCH 03/12] liveness
+
+---
+ lib/Transforms/Scalar/GVNHoist.cpp | 24 +++++++++++++++++++++---
+ 1 file changed, 21 insertions(+), 3 deletions(-)
+
+diff --git a/lib/Transforms/Scalar/GVNHoist.cpp b/lib/Transforms/Scalar/GVNHoist.cpp
+index 230558b..ba45117b 100644
+--- a/lib/Transforms/Scalar/GVNHoist.cpp
++++ b/lib/Transforms/Scalar/GVNHoist.cpp
+@@ -17,6 +17,12 @@
+ // is disabled in the following cases.
+ // 1. Scalars across calls.
+ // 2. geps when corresponding load/store cannot be hoisted.
++// TODO:
++// Construct DJ Graphs
++// Compute MergeSets
++// Compute kill-sets
++// For -Oz scalars are always safe to hoist.
++// For -O2/-O3 hoist only when the live range improves or remains the same.
+ //===----------------------------------------------------------------------===//
+ 
+ #include "llvm/Transforms/Scalar/GVN.h"
+@@ -504,7 +510,7 @@ private:
+   // WL to HoistBB.
+   bool safeToHoistScalar(const BasicBlock *HoistBB,
+                          SmallPtrSetImpl<const BasicBlock *> &WL,
+-                         int &NBBsOnAllPaths) {
++                         int &NBBsOnAllPaths, Instruction *I1, Instruction *I2) {
+     // Enable scalar hoisting at -Oz as it is safe to hoist scalars to a place
+     // where they are partially needed.
+     if (OptForMinSize)
+@@ -517,7 +523,19 @@ private:
+     for (const BasicBlock *BB : WL)
+       if (hasEHOnPath(HoistBB, BB, NBBsOnAllPaths))
+         return false;
+-
++    // For -O3/-O2 hoist only when the liveness decreases i.e., no more than
++    // one operand can be a use without kill.
++    for (Instruction *I : { I1, I2 }) {
++      unsigned NonConst = 0;
++      for (const Use &Op : I->operands()) {
++        //if (const auto *Inst = dyn_cast<Instruction>(&Op))
++        // TODO: See if any operand is a kill.
++        if (!isa<Constant>(Op))
++          ++NonConst;
++      }
++      if (I->getNumOperands() - NonConst > 1)
++        return false;
++    }
+     return true;
+   }
+ 
+@@ -574,7 +592,7 @@ private:
+       WL.insert(BB);
+ 
+       if (K == InsKind::Scalar) {
+-        if (safeToHoistScalar(NewHoistBB, WL, NumBBsOnAllPaths)) {
++        if (safeToHoistScalar(NewHoistBB, WL, NumBBsOnAllPaths, HoistPt, Insn)) {
+           // Extend HoistPt to NewHoistPt.
+           HoistPt = NewHoistPt;
+           HoistBB = NewHoistBB;
+-- 
+2.5.0
+

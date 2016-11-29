@@ -1,0 +1,81 @@
+From 49cbbd846ce4a966d63797328db21ce70cb17ded Mon Sep 17 00:00:00 2001
+From: hiraditya <hiraditya@gmail.com>
+Date: Sat, 26 Nov 2016 12:35:26 -0600
+Subject: [PATCH 10/12] mergeset computation
+
+---
+ include/llvm/Support/GenericDomTreeConstruction.h |  2 +-
+ lib/Transforms/Scalar/GVNHoist.cpp                | 29 +++++++++++++----------
+ 2 files changed, 17 insertions(+), 14 deletions(-)
+
+diff --git a/include/llvm/Support/GenericDomTreeConstruction.h b/include/llvm/Support/GenericDomTreeConstruction.h
+index 54e55cc..41aeb75 100644
+--- a/include/llvm/Support/GenericDomTreeConstruction.h
++++ b/include/llvm/Support/GenericDomTreeConstruction.h
+@@ -275,7 +275,7 @@ void Calculate(DominatorTreeBaseByGraphTraits<GraphTraits<NodeT>> &DT,
+   }
+ 
+   // Free temporary memory used to construct idom's
+-  DT.IDoms.clear();
++  //DT.IDoms.clear();
+   DT.Info.clear();
+   DT.Vertex.clear();
+   DT.Vertex.shrink_to_fit();
+diff --git a/lib/Transforms/Scalar/GVNHoist.cpp b/lib/Transforms/Scalar/GVNHoist.cpp
+index 1cacd36..73db1e0 100644
+--- a/lib/Transforms/Scalar/GVNHoist.cpp
++++ b/lib/Transforms/Scalar/GVNHoist.cpp
+@@ -308,19 +308,21 @@ public:
+           EdgeT Edge(*PB, CurrBB);
+           if (JEdges.count(Edge) && !VJEdges.count(Edge)) {
+             VJEdges.insert(Edge); // Visit
+-            BasicBlock *SNode = Edge.first;
+-            BasicBlock *TNode = Edge.second;
+-            BasicBlock *Tmp = SNode;
++            BasicBlock *Src = Edge.first;
++            BasicBlock *Dst = Edge.second;
+             BasicBlock *INode = nullptr;
+-            MergeSet[TNode].insert(TNode); // The target of JEdge.
+-            dbgs() << "\nDomlevel of " << Tmp->getName() << " is " << DomLevels[Tmp];
+-            dbgs() << "\nDomlevel of " << TNode->getName() << " is " << DomLevels[TNode];
+-            while (DomLevels[Tmp] >= DomLevels[TNode]) {
+-              dbgs() << "\nDomlevel of " << Tmp->getName() << " is " << DomLevels[Tmp];
+-              MergeSet[Tmp].insert(MergeSet[TNode].begin(), MergeSet[TNode].end());
+-              MergeSet[Tmp].insert(TNode);
+-              INode = Tmp;
+-              Tmp = DT->getIDom(Tmp);
++            MergeSet[Dst].insert(Dst); // The target of JEdge.
++            while (DomLevels[Src] >= DomLevels[Dst]) {
++              dbgs() << "\nVisiting: " << Src->getName() << " -> " << Dst->getName();
++              // Merge (tmp) = Merge (tmp) U Merge (tnode) U { tnode }
++              for (BasicBlock *DstMerge : MergeSet[Dst])
++                MergeSet[Src].insert(DstMerge);
++              //MergeSet[Src].insert(MergeSet[Dst].begin(), MergeSet[Dst].end());
++              //MergeSet[Src].insert(Dst);
++              INode = Src;
++              dbgs() << "IDom of " << Src->getName() << " is ";
++              Src = DT->getIDom(Src);
++              dbgs() << Src->getName();
+             }
+             for (auto PINode = pred_begin(INode), PENode = pred_end(INode);
+                  PINode != PENode; ++PINode) { // INode is an ancestor of SNode.
+@@ -328,7 +330,7 @@ public:
+               if (VJEdges.count(Edge)) {
+                 assert (JEdges.count(Edge));
+                 BasicBlock *SNode = *PINode;
+-                // Check inconsistency.
++                // Check inconsistency, MergeSet[Dest] subset of MergeSet[Src]
+                 if (!subset(MergeSet[INode], MergeSet[SNode]))
+                   Repeat = true;
+               }
+@@ -341,6 +343,7 @@ public:
+   }
+ 
+   bool run(Function &F) {
++    DT->updateDFSNumbers();
+     MergeSetT MergeSet;
+     DomLevelsT DomLevels;
+     DenseSet<EdgeT> JEdges;
+-- 
+2.5.0
+
