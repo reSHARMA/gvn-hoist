@@ -10,6 +10,20 @@
 \frame{\titlepage}
 
 \frame{\frametitle{libcxx-performance analysis}
+
+Abstract: We will discuss the improvements and future work on libcxx. This
+includes the improvements on standard library algorithms like string::find and
+basic_streambuf::xsgetn. These algorithms were suboptimal and we got huge
+improvements after optimizing them. Similarly, we enabled the inlining of
+constructor and destructor of std::string. We will present a systematic analysis
+of function attributes in libc++ and the places where we added missing
+attributes. Finally, we will present a comparative analysis of clang-libc++
+vs. gcc-libstdc++ on representative benchmarks
+
+
+Keywords: libc++, libstdc++, C++, performance analysis, function attributes
+
+
   \begin{itemize}
   \item Improving standard library algorithms like string::find, basic_streambuf::xsgetn
   \item inlining the constructor and destructor of std::string
