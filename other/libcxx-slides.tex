@@ -2,8 +2,6 @@
 \usepackage{hyperref}
 \begin{document}
 
-\def \GVN {GVN}
-
 \title{libcxx}
 \author{Sebastian Pop and Aditya Kumar}
 \institute{SARC: Samsung Austin R\&D Center}
@@ -11,7 +9,16 @@
 
 \frame{\titlepage}
 
-\frame{\frametitle{libcxx-performance improvements}
+\frame{\frametitle{libcxx-performance analysis}
+  \begin{itemize}
+  \item Improving standard library algorithms like string::find, basic_streambuf::xsgetn
+  \item inlining the constructor and destructor of std::string
+  \item systematic analysis of attributes in the standard library
+  \item comparative analysis of clang-libc++ vs. gcc-libstdc++ on representative benchmarks.
+  \item clang+libc++ vs. gcc+libstdc++ performance update. Constructor of vector in libstdc++ contains memcpy
+    in the final assembly.
+  \end{itemize}
+
   \begin{itemize}
   \item PR21192 - Reading from stdin is 1-2 orders of magnitude slower than using libstdc++
     - implementation of sync\_with\_stdio doesn't disable synchronization \url{http://stackoverflow.com/q/33837349}
@@ -30,24 +37,16 @@
 
   \item PR16747 and PR21275 - Our unordered\_multimap insert is much slower than libstdc++'s
 
-  \item clang+libc++ vs. gcc+libstdc++ performance update. Constructor of vector in libstdc++ contains memcpy
-    in the final assembly.
 
-Benchmark	                        Time (ns)	CPU (ns)	Iterations	Time (ns)	CPU (ns)	Iterations	%(Time)
+
+
+Benchmark	                                Time (ns)	CPU (ns)	Iterations	Time (ns)	CPU (ns)	Iterations	%(Time)
 BM_ConstructIterIter/vector_char/1024	2125	2127	283762	67	67	10205902	3071.641791
 BM_ConstructIterIter/vector_size_t/1024	382	383	1830386	223	223	3138652	71.30044843
 BM_ConstructIterIter/vector_string/1024	557109	557641	1235	354504	354834	1980	57.15168235
 
-
-  \item Removing Heap usage
-
-  \item Missing features (and performance issues) in <regex> 
-
-  \item Non-conforming allocators in the test suite 
-
   \item Identifying missing attributes in functions 
 
-  \item Debug mode for the library
   \end{itemize}
 }
 
