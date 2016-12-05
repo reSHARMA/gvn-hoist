@@ -120,6 +120,8 @@ dominator. The goals of code hoisting are:
   interference. For example if all the use operands of an expression of the form
   a = b op c are last usages (a kill) then hoisting will reduce the interference
   by two but increase by one.
+\item for SIMD architectures which execute all branches, code hoisting will
+  reduce the total number of instructions to be executed.
 \item to improve passes that do not work well with branches:
   \begin{itemize}
   \item to improve loop vectorization by reducing a loop with control flow to a
