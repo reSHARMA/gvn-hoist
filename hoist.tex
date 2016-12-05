@@ -115,8 +115,11 @@ dominator. The goals of code hoisting are:
 \item to help out-of-order processors with speculative execution of branches: by
   hoisting expressions out of branches, code hoisting can effectively reduce the
   amount of code to be speculatively executed and can reduce the critical path;
-\item to reduce register pressure: by moving computations closer to the
-  definitions of their operands;
+\item to reduce interference/register pressure: by moving computations closer to
+  the definitions of their operands in cases where hoisting would reduce the
+  interference. For example if all the use operands of an expression of the form
+  a = b op c are last usages (a kill) then hoisting will reduce the interference
+  by two but increase by one.
 \item to improve passes that do not work well with branches:
   \begin{itemize}
   \item to improve loop vectorization by reducing a loop with control flow to a
