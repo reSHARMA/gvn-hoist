@@ -203,8 +203,6 @@ program that we shortly describe below:
 \begin{itemize}
 \item Control Flow Graph (\CFG{}) and the Dominance (DOM) and Post-Dominance (PDOM)
   relations \cite{dragonbook};
-\item Single Entry Single Exit (\SESE{}) \cite{sese} and Single Entry Multiple Exit
-  (SEME) regions;
 \item Static Single Assignment (\SSA{}) \cite{cytron};
 \item Global Value Numbering (\GVN{}) \cite{rosen1988global,click1995global}: to
   identify similar computations compilers use \GVN{}.  Each expression is given a
@@ -223,16 +221,16 @@ describe in the rest of this section:
 \item transform the code.
 \end{itemize}
 
-\subsection{Finding candidates to hoist}
+\subsection{Finding candidates to move}
 The first step is to find a set of instructions that perform identical
 computations: this is performed by a linear scan of all instructions of the
 program and classifying all instructions by their value given by \GVN{}.
 
-The current implementation of \GVN{} in \LLVM{} has some limitations when it comes to
-loads and stores so we compute the \GVN{} of loads and stores separately.  Our
-short-time solution to value number loads is to hash the address from where the
-value is to be loaded. For stores, we value number the address as well as the
-value to be stored at that address.
+The current implementation of \GVN{} in \LLVM{} has some limitations when it
+comes to loads and stores so we compute the \GVN{} of loads and stores
+separately.  Our solution to value number loads is to hash the address from
+where the value is to be loaded. For stores, we value number the address as well
+as the value to be stored at that address.
 
 Another limitation of the current \GVN{} implementation in \LLVM{} is that the
 instructions dependent on the loads will not get numbered correctly, and so
@@ -472,57 +470,26 @@ all candidates in a way to maximize the total number of hoistings.  By sorting
 the list of all the candidates in the increasing order of their depth first
 search discovery time stamp \cite{clrs} (DFSIn numbers), we make sure that
 candidates closer in the list have their common dominator nearby in cases when
-there are no fully redundant instructions. Essentially if,
+there are no fully redundant instructions. In Figure-\ref{fig:dfsin}, if B3 B4
+B5 and B6 have identical computations and for some reason they cannot be hoisted
+together at B0, then we partition the set of hoistable candidates in their DFSin
+order.
 
-\begin{verbatim}
-// B1 != B2 != B3
-BasicBlock B1, B2, B3
-DFSIn(B1) = depth first discovery time stamp
-DFSIn(B1,B2) = |DFSIn(B1) - DFSIn(B2)|
-DFSIn(B1,B3) = |DFSIn(B1) - DFSIn(B3)|
+\begin{figure}
+\centering
+%rankdir=LR;
+\digraph[scale=0.35]{abc}{
+  B0 -> B1
+  B0 -> B2
+  B1 -> B3
+  B1 -> B4
+  B2 -> B5
+  B2 -> B6
+}
+\caption{CFG to illustrate partitioning}
+\label{fig:dfsin}
+\end{figure}
 
-Depth(B1) = depth of tree from the root node.
-// When B1 dominates B2
-BBDist(B1, B2) = |Depth(B1) - Depth(B2)|
-
-NCD(B1, B2) = nearest common dominator of B1 and B2
-BBDist(B1,B2) = BBDist(B1, NCD(B1, B2))
-BBDist(B1,B3) = BBDist(B1, NCD(B1, B3))
-
-Then,
-DFSIn(B1,B2) < DFSIn(B1,B3) implies
- BBDist(B1,B2) <= BBDist(B1,B3)
-\end{verbatim}
-
-Same property would hold for instructions I1, I2, I3 provided they are not fully
-redundant, i.e., none of the basic blocks containing I1, I2 and I3 respectively
-dominate the other:
-
-\begin{verbatim}
-Instruction I1, I2, I3
-// I1, I2, I3 are not fully redundant
-// B1, B2, B3 contains I1, I2, I3 respectively
-DFSIn(I1) = DFSIn(B1)
-BBDist(I1, I2) = BBDist(B1, B2)
-DFSIn(I1) = DFSIn(B1)
-DFSIn(I1,I3) = DFSIn(B1, B3)
-NCD(I1, I2) = NCD(B1, B2)
-
-Then,
- DFSIn(I1,I2) < DFSIn(I1,I3) implies
-  BBDist(I1,I2) <= BBDist(I1,I3)
-\end{verbatim}
-
-It says that if I1 is closer to I2 than I3 in the list of candidates sorted by
-DFSIn numbers, then the nearest common dominator of I1 and I2 will be closer (in
-terms of basic block distance) to I1, than nearest common dominator of I1 and
-I3.
-
-In the presence of fully redundant computations in the list of hoistable
-candidates this equation may not hold. For example, if there is another
-instruction I4 which is dominated by I1, but I4 is present in a basic block
-which is farther than $DFSIn(I1, I2)$, i.e., $DFSIn(I1,I2) < DFSIn(I1,I4)$;
-however, $BBDist(I1,I4) = 0 < BBDist(I1,I2) >=1$.
 
 So by sorting candidates w.r.t. their DFSIn numbers:
 \begin{enumerate}
