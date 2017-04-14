@@ -106,7 +106,7 @@ and the number of run-time computations is not reduced. It is not a redundancy
 elimination pass, and thus it has different cost function and heuristics than
 \PRE{} or CSE. It is more similar to global code scheduling
 \cite{dragonbook,click1995global} in the sense that it will only move
-computations. The goals of code hoisting are:
+computations. The goals of this code motion are:
 
 \begin{itemize}
 \item to reduce the code size of the program;
@@ -117,15 +117,15 @@ computations. The goals of code hoisting are:
   computations to be executed earlier, instruction schedulers can move heavy
   computations earlier in order to avoid pipeline bubbles;
 \item to help out-of-order processors with speculative execution of branches: by
-  hoisting expressions out of branches, code hoisting can effectively reduce the
-  amount of code to be speculatively executed and can reduce the critical path;
-\item to reduce interference/register pressure: by moving computations closer to
-  the definitions of their operands in cases where hoisting would reduce the
-  interference. For example if all the use operands of an expression of the form
-  a = b op c are last usages (a kill) then hoisting will reduce the interference
-  by two but increase by one.
-\item for SIMD architectures which execute all branches, code hoisting will
-  reduce the total number of instructions to be executed.
+  hoisting/sinking expressions out of branches, code hoisting can effectively
+  reduce the amount of code to be speculatively executed and can reduce the
+  critical path;
+\item to reduce interference/register pressure: For example if all the use
+  operands of an instruction (I) of the form a = b op c are last usages (a kill)
+  then hoisting will reduce the interference by two but increase by one across
+  the path I gets hoisted.
+\item for SIMD architectures, which execute all branches, it will reduce the
+  total number of instructions to be executed.
 \item to improve passes that do not work well with branches:
   \begin{itemize}
   \item to improve loop vectorization by reducing a loop with control flow to a
@@ -140,12 +140,11 @@ computations. The goals of code hoisting are:
 
 The main contributions of this paper are:
 \begin{itemize}
-\item a new optimistic algorithm to hoist computations from branches,
+\item a new optimistic algorithm to move computations out of branches,
 \item cost models to reduce live-range and reduce spills,
 \item a technique to maximize hoisting in an optimistic approach by partitioning
   the list of potential candidates sorted by their DFS visit number,
-\item performance evaluation of the implementation in \LLVM{},
-\item comparison against other algorithms for code hoisting.
+\item performance evaluation of the implementation in \LLVM{}.
 \end{itemize}
 
 \section{Related Work}
