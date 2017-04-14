@@ -469,11 +469,12 @@ In order to hoist a subset of identical instructions, we partition the list of
 all candidates in a way to maximize the total number of hoistings.  By sorting
 the list of all the candidates in the increasing order of their depth first
 search discovery time stamp \cite{clrs} (DFSIn numbers), we make sure that
-candidates closer in the list have their common dominator nearby in cases when
-there are no fully redundant instructions. In Figure-\ref{fig:dfsin}, if B3 B4
-B5 and B6 have identical computations and for some reason they cannot be hoisted
-together at B0, then we partition the set of hoistable candidates in their DFSin
-order.
+candidates closer in the list have their common dominator nearby. In
+Figure-\ref{fig:dfsin}, if B3, B4, B5, and B6 have identical computations and for
+some reason they cannot be hoisted together at B0, then we partition the set of
+hoistable candidates in their DFSIn order. In this case the DFSIn ordering would
+be B3, B4, B5, B6 which will allow the instructions in B3, B4 to be hoisted at
+B1 and those in B5, B6 to be hoisted at B2.
 
 \begin{figure}
 \centering
@@ -490,22 +491,10 @@ order.
 \label{fig:dfsin}
 \end{figure}
 
-
-So by sorting candidates w.r.t. their DFSIn numbers:
-\begin{enumerate}
-\item would make fewer checks for legality and profitability.
-\item hoisting point will be closer, so the intersection of live-range of the
-  instruction with other instructions will be minimal.
-\end{enumerate}
-
 In our current implementation we keep as many candidates in one set as possible
 (greedy approach). We split the list at a point where the legality checks fail
 to hoist subset of candidates which are legal to hoist and then start finding
-new hoisting point for the remaining ones. So there are two limitations of the
-current implementation of the partition algorithm: first, sorting by DFSIn
-numbers does not give the desired order when there are fully redundant
-instructions; second, it lacks cost model for partitioning in order to
-preserve/improve performance, see Section~\ref{sec:future-work}.
+new hoisting point for the remaining ones.
 
 \subsection{Hoisting bottom up with pessimistic approach}
 \label{subsec:pessimistic}
