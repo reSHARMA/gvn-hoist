@@ -31,7 +31,7 @@
 \setlength{\pdfpageheight}{\paperheight}
 \setlength{\pdfpagewidth}{\paperwidth}
 
-\title{\GVN{}-Hoist: Hoisting Computations from Branches}
+\title{SSA based global code motion of identical computations}
 
 \toappear{
    \hrule \vspace{5pt}
@@ -57,24 +57,29 @@ Sebastian Pop\\
 
 \maketitle
 \begin{abstract}
-  Code-hoisting identifies identical computations across the program and hoists
-  them to a common dominator so as to save code size.  Not only code-hoisting
-  saves code size, it exposes redundancies in some cases, it exposes more
-  instruction level parallelism in the basic block a computation is hoisted, and
-  it enables other passes like LICM to remove more redundancies.
+We present a global code motion compiler optimization which schedules
+identical computations across the program so as to save code size.  Not only
+this code motion saves code size, it exposes redundancies in some cases, it
+exposes more instruction level parallelism in the basic block when the
+computations are hoisted, and it enables other passes like loop invariant
+motion to remove more redundancies. The cost model to drive the code motion is
+based on live range analysis on SSA representation such that the (virtual)
+register pressure does not increase.
 
-  We present a code hoisting pass that we implemented in \LLVM{}. It is based on
-  Global Value Numbering infrastructure available in \LLVM{}. The experimental
-  results show an average of 2.5\% savings in code size, although the code size
-  also increases in many cases because it enables more inlining. This is an
-  optimistic algorithm in the sense that it considers all identical computations
-  in a function as potential candidates to be hoisted. We make an extra effort
-  to hoist candidates by partitioning the potential candidates in a way to
-  enable partial hoisting in case common hoisting points for all the candidates
-  cannot be found. We also formalize cases when register pressure will reduce as
-  a result of hoisting and why sorting the list of potential candidates
-  w.r.t. their DFS numbers helps hoist more candidates with less compile time
-  overhead.
+We have implemented the pass in \LLVM{}. It is based on Global Value Numbering
+infrastructure available in \LLVM{}. The experimental results show an average
+of 2.5\% savings in code size in llvm testsuite, although the code size also
+increases in many cases because it enables more inlining. We have also seen
+imrpovements of approximately 5\% in a couple of SPEC 2006 benchmarks viz. gcc
+and mcf, moreover, register spills reduced for almost all the SPEC 2006
+bencmarks when compiled for X86\_64. This is an optimistic algorithm in the
+sense that it considers all identical computations in a function as potential
+candidates. We make an extra effort to hoist candidates by partitioning the
+potential candidates in a way to enable partial hoisting in case common
+hoisting points for all the candidates cannot be found. We also formalize how
+register pressure will reduce as a result of code-motion and why sorting the
+list of potential candidates w.r.t. their depth first numbers helps hoist more
+candidates with less compile time overhead.
 \end{abstract}
 
 \section{Introduction}
