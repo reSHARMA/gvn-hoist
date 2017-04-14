@@ -196,11 +196,34 @@ implementation is that it works in sync with the \GVN{}-\PRE{} such that when
 new hoisting opportunities are created by \GVN{}-\PRE{}, code-hoisting will
 hoist them.
 
+Barany \cite{barany2013} presented a global scheduler with ILP formulation with
+a goal to minimize register pressure. The results they got were not very
+promising. It may be because they only used the scheduler for smaller functions
+(<1000 instructions) also they compiled the benchmarks for ARM-Cortex which is
+more resilient to register pressure because it has more registers compared to
+say X86.
+
+Shobaki \cite{shobaki2013} also recently presented a combinatorial global
+scheduler with reasonable performance improvements. It is possible that both
+Barany and Shobaki's implmentation will have similar results when compiled for
+same target. Also, both suffer the same problem, although Shobaki not so much,
+of large compile times which is not feasible for industrial compilers like gcc
+and LLVM.
+
+We got reduction in register spills on all the SPEC2006 benchmarks and
+reasonable performance improvements with very low compile time overhead.
+
+% TODO: References
+% Sink instructions
+% Ranking of instructions from Zadeck
+% Liveness analysis from Ramakrishna
+
+
 \newpage
 
-\section{Code hoisting}
+\section{Code motion}
 
-The algorithm for code hoisting uses several common representations of the
+The algorithm for code motion uses several common representations of the
 program that we shortly describe below:
 \begin{itemize}
 \item Control Flow Graph (\CFG{}) and the Dominance (DOM) and Post-Dominance (PDOM)
