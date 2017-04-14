@@ -331,7 +331,7 @@ without further information, calls have to be classified as writing to memory,
 that is the most restrictive form.  Each category of call instructions will be
 handled as described for scalar, load, and store instructions.
 
-\subsection{Profitability check}
+\subsection{Profitability check (Cost models)}
 \label{subsec:profitability}
 After the legality checks have passed, we check for profitability of hoisting.
 That takes into account the impact code-hoisting would have on various
@@ -339,6 +339,84 @@ parameters that affect runtime performance e.g., impact on live-range, gain in
 the code size.  We have established a set of cost models described in
 Section~\ref{sec:cost-models} for each parameter and tuned them for performance
 against representative benchmarks.
+
+
+\section{Cost models}
+\label{sec:cost-models}
+Similar to any compiler optimization pass, there are several cost functions that
+are deployed to tune for optimal combination of performance and code-size.
+Since this is mostly a code-size optimization pass, the goal is to not regress
+in performance across popular benchmarks at the same time reduce code size as
+much as possible. Following are the cost models which are implemented:
+
+\subsection{Reduce register pressure}
+\label{hoist:reg-pressure}
+Hoisting upwards will decrease the live-range of its use, if it is a last use (a
+kill), but increase the live-range of its definition. Conversely, sinking will
+decrease the live-range of the defined register but increase the live-range for
+killed operands. If the live-range after code-motion is less than before it will
+be moved.
+
+Essentially, as long as there is one killed operand , code hoisting will either
+decrease or preserve the register pressure. Similarly, code-sinking will either
+decrease or preserve the register pressure as long as there is one operand
+killed at most.
+
+Following example explains how code motion of identical computations can reduce
+the register pressure.  Consider the following example where the labels prefixed
+with 'P' represent the position of instruction in a basic block (names prefixed
+with 'B').
+
+\begin{verbatim}
+    b = m
+    c = n
+B0: if c is true then goto B3 else goto B4
+
+B1: a0 = b<kill> + c<kill>
+
+B2: a1 = b<kill> + c<kill>
+
+After hoisting a0 and a1 are removed and a copy
+of a0 as a01 is placed in B0 just before the branch.
+\end{verbatim}
+
+In this case, since `b' and `c' are killed in `a0' and `a1', hoisting them will
+reduce the register pressure in B3 and B4 because two operands will be freed.
+
+Ideally, it should be okay to hoist all the instructions and a later a
+live-range-splitting \cite{cooper1998live} pass should make the right decision
+of rematerializing the instruction should it be beneficial to do so. But the
+current live-range splitting pass of \LLVM{} is not making the optimial decision
+and we have found regressions while hoisting aggressively.
+
+Moreover, LLVM has a `getelementptr' instruction which computes the address
+where a load or a store would happen. It is a scalar computation and gets
+hoisted frequently even if the loads/stores would not get hoisted.  In order to
+reduce register pressure while hoisting loads, we have restricted hoisting of
+address computations away from their corresponding loads and stores when the
+loads and stores cannot be moved.  This restriction is only to mitigate the
+limitations of LLVM's register allocator and may be lifted in the future, when
+the register allocation rematerialization pass has been improved to catch the
+regressions.
+
+\subsection{In the presence of calls}
+\label{cost:across-calls}
+Hoisting scalars across calls is tricky because it can increase the number of
+spills. During the frame lowering of calls, the argument registers, in general,
+the caller saved registers are saved because they might be modified by the
+callee and after the call they are restored. So before the
+call, the register pressure is high because the number of available registers
+are reduced by the number of caller saved registers. In that situation if a
+computation is hoisted across the call, that would increase the total number of
+registers required by one, thus contributing to the register pressure. However,
+in the special case discussed in Section~\ref{hoist:reg-pressure}, it will be
+okay to hoist because the register pressure would not decrease.
+
+Hoisting loads/stores across calls also require precise analysis of all the
+memory addresses accessed by the call. Our implementation being an
+intraprocedural pass, the analysis is very conservative. In the presence of pure
+calls, loads can be hoisted but stores can't. Also, if the call throws
+exceptions, or if it may not return, memory references cannot be hoisted.
 
 \subsubsection{Profitability of hoisting scalars}
 Since scalars are the majority of instructions which are hoisted, we pay special
@@ -517,17 +595,10 @@ In our current implementation we keep as many candidates in one set as possible
 to hoist subset of candidates which are legal to hoist and then start finding
 new hoisting point for the remaining ones.
 
-\subsection{Hoisting bottom up with pessimistic approach}
-\label{subsec:pessimistic}
-In the pessimistic approach, the basic blocks are traversed in the inverse
-depth-first order, computing the \GVN{} of instructions as they come by. The \GVN{} of
-sibling branches are compared for equality. Once such a candidate is found, it
-is hoisted in the common dominator. All the leaf nodes are visited before the
-non-leaf nodes (bottom-up) because instructions are hoisted upwards.
+\section{Implementation Details}
+\label{sec:implementation-details}
 
-The pessimistic algorithm is fast, results in fewer spills and also hoists fewer
-instructions. We have implemented optimistic approach because it is more general
-and can be tuned down to closely mimic pessimistic approach by changing a flag.
+
 
 \subsection{Time complexity of algorithm}
 The complexity of code hoisting is linear in number of instructions that could
@@ -539,102 +610,6 @@ program performance, and followed by a simple code generation that adds the
 identified instruction in the hoisting point and removes all the now redundant
 expressions.
 
-\section{Cost models}
-\label{sec:cost-models}
-Similar to any compiler optimization pass, there are several cost functions that
-are deployed to tune for optimal combination of performance and code-size.
-Since this is mostly a code-size optimization pass, the goal is to not regress
-in performance across popular benchmarks at the same time reduce code size as
-much as possible. Following are the cost models which are implemented:
-
-\subsection{Reduce register pressure}
-\label{hoist:reg-pressure}
-Hoisting upwards will decrease the live-range of its use, if it is a last use (a
-kill), but increase the live-range of its definition. Conversely, sinking will
-decrease the live-range of the defined register but increase the live-range for
-killed operands. If the live-range after code-motion is less than before it will
-be moved.
-
-Essentially, as long as there is one killed operand , code hoisting will either
-decrease or preserve the register pressure. Similarly, code-sinking will either
-decrease or preserve the register pressure as long as there is one operand
-killed at most.
-
-Following example explains how code motion of identical computations can reduce
-the register pressure.  Consider the following example where the labels prefixed
-with 'P' represent the position of instruction in a basic block (names prefixed
-with 'B').
-
-\begin{verbatim}
-B0: b = m
-    goto B1
-
-B1: c = n
-    goto B2
-
-B2: if c is true then goto B3 else goto B4
-
-B3: a0 = b<kill> + c<kill>
-
-B4: a1 = b<kill> + c<kill>
-
-After hoisting a0 and a1 are removed and a copy
-of a0 as a01 is placed in B2 just before the branch.
-\end{verbatim}
-
-In this case, since `b' and `c' are killed in `a0' and `a1', hoisting them will
-reduce the register pressure in B3 and B4 because two operands will be freed.
-
-\subsection{In the presence of calls}
-\label{cost:across-calls}
-Hoisting scalars across calls is tricky because it can increase the number of
-spills. During the frame lowering of calls, the argument registers, in general,
-the caller saved registers are saved because they might be modified by the
-callee and after the call they are restored. So before the
-call, the register pressure is high because the number of available registers
-are reduced by the number of caller saved registers. In that situation if a
-computation is hoisted across the call, that would increase the total number of
-registers required by one, thus contributing to the register pressure. However,
-in the special case discussed in Section~\ref{hoist:reg-pressure}, it will be
-okay to hoist because the register pressure would not decrease.
-
-Hoisting loads/stores across calls also require precise analysis of all the
-memory addresses accessed by the call. Our implementation being an
-intraprocedural pass, the analysis is very conservative. In the presence of pure
-calls, loads can be hoisted but stores can't. Also, if the call throws
-exceptions, or if it may not return, memory references cannot be hoisted.
-
-\subsection{Hoisting too far away}
-If there are several instructions in between the hoisting point and the
-instruction to be hoisted, the instruction to be hoisted crosses several
-instructions while hoisting, that means we are adding one register to all the
-live-ranges spanning the instructions. That could result in spills. In the
-current implementation we choose to hoist if the number of instructions crossed
-is below a threshold. Ideally, it should be okay to hoist all the instructions
-and a later a live-range-splitting \cite{cooper1998live} pass should make the
-right decision of rematerializing the instruction should it be beneficial to do
-so. But the current live-range splitting pass of \LLVM{} is not making the
-optimial decision and we have found spills if the threshold is exceeded. The
-threshold was computed as a result of tuning the \LLVMTestSuite{}, SPEC Cpu2000,
-and Cpu2006 benchmarks \cite{Henning2000}.
-
-Also, hoisting a load increases the register pressure by one across all the
-instructions which the load would cross. That could result in spills later in
-the register allocation.
-
-However, in the special case discussed in Section~\ref{hoist:reg-pressure}, it
-will be okay to hoist because the register pressure would not increase.
-
-In order to reduce register pressure, we have restricted hoisting of address
-computations away from their corresponding loads and stores when the loads and
-stores cannot be moved.  This restriction is lifted when aggressively optimizing
-for size (in -Oz).  We have seen several uplifts and degradations in performance
-of the generated code on several benchmarks, and to avoid the degradations we
-decided to only enable hoisting of getElementPtrs without their associated
-memory operations when optimizing for size.  This restriction may be lifted in
-the future, either when the register allocation rematerialization pass has been
-improved to catch the regressions, or by implementing more precise heuristics
-for code hoisting.
 
 \section{Experimental Evaluation}
 \label{sec:experimental-results}
