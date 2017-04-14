@@ -87,7 +87,7 @@ candidates with less compile time overhead.
 Compiler techniques to remove redundant computations are composed of an analysis
 phase that detects identical computations in the program and a transformation
 phase that reduces the number of run-time computations.  Classical scalar
-optimizations like CSE \cite{dragonbook} work very well on single basic blocks and
+optimizations like CSE \cite{dragonbook} work very well on single basic blocks but
 when it comes to detect redundancies across basic blocks these techniques fall
 short: more complex passes like GCSE and \PRE{} have been designed to handle these
 cases based on dataflow analysis \cite{morel1979global}.  At first these
@@ -97,17 +97,16 @@ time \cite{briggs1994effective,chow1997new,kennedy1999partial} and brought these
 techniques in the main stream: nowadays \SSA{} based \PRE{} is available in every
 industrial compiler.
 
-This paper describes code-hoisting, a technique that uses the information
-computed for \PRE{} to detect identical computations and has a transformation
-phase whose goal differs from \PRE{}: it removes identical computations from
-different branches of execution.  These identical computations in different
-branches of execution are not redundant computations at run-time and the number
-of run-time computations is not reduced. Code-hoisting is not a redundancy
+This paper describes code-motion of identical computations, a technique that
+uses the information computed for \PRE{} to detect identical computations but
+has a transformation phase whose goal differs from \PRE{}: it removes identical
+computations from different branches of execution.  These identical computations
+in different branches of execution are not redundant computations at run-time
+and the number of run-time computations is not reduced. It is not a redundancy
 elimination pass, and thus it has different cost function and heuristics than
-\PRE{} or CSE.  Code-hoisting is also different from global code scheduling
-\cite{dragonbook,click1995global} in the sense that it will only hoist
-computations when there are identical computations sharing a common
-dominator. The goals of code hoisting are:
+\PRE{} or CSE. It is more similar to global code scheduling
+\cite{dragonbook,click1995global} in the sense that it will only move
+computations. The goals of code hoisting are:
 
 \begin{itemize}
 \item to reduce the code size of the program;
@@ -131,7 +130,7 @@ dominator. The goals of code hoisting are:
   \begin{itemize}
   \item to improve loop vectorization by reducing a loop with control flow to a
     loop with a single BB, should all the instructions in a conditional get
-    hoisted and sinked;
+    hoisted or sinked;
   \item to enable more loop invariant code motion (LICM): as LICM does not
     reason about instructions in the context of loops with conditional branches,
     code-hoisting is needed to move instructions out of conditional expressions
