@@ -542,25 +542,70 @@ usually much greater than $C_{sub}$ \cite{x86,aarch64}.
 
 \newpage
 
-\section{Code hoisting policies}
+\section{SSA based global code motion of identical computations}
+\label{sec:implementation-details}
+% Ranking of instructions from Zadeck
+% Liveness analysis from Ramakrishna
+
 The amount of hoisting depends on whether we collect \GVN{} of instructions
 before finding candidates (optimistic) or, on-demand (pessimistic). It also
-depends on the generality of the \GVN{} algorithm, however, that analysis is beyond
-the scope of this paper.
+depends on the generality of the \GVN{} algorithm. We have implemented a
+optimistic global code motion of identical computation which uses the liveness
+analysis as illustrated in Das \cite{das2012} and ranking expressions explained
+in Rosen \cite{rosen1988global}.
 
-\subsection{Hoisting bottom up with optimistic approach}
+\subsection{Optimistic code motion algorithm}
 \label{subsec:optimistic}
-In this approach, the goal is to maximize the total number of hoistings in the
-entire function.  This algorithm is very useful when optimizing for code-size.
 We collect the \GVN{} of all the instructions in the function and iterate on the
-list of instructions having identical \GVN{}s. After that we find the common
-dominator dominating all such identical computations and perform legality
-checks, as described in Section~\ref{subsec:legality}. Often times it is not
-possible to hoist all the instructions to one common dominator, due to legality
-constraints, e.g., intersecting side-effects, or profitability constraints, e.g.,
-hoisting point too far. In those cases, this algorithmn would partition the list
-of identical instructions into subsets which can be partially hoisted to their
-respective common dominators. The partition algorithm is described as follows:
+list of instructions having identical \GVN{}s. The algorithm prefers hoisting to
+sinking. So first we find the common dominator dominating all such identical
+computations and perform legality checks, as described in
+Section~\ref{subsec:legality}. Often times it is not possible to hoist all the
+instructions to one common dominator, due to legality constraints, e.g.,
+intersecting side-effects, or profitability constraints, e.g., increasing
+register pressure. In those cases, this algorithmn would partition the list of
+identical instructions into subsets which can be partially hoisted to their
+respective common dominators. However, it should be noted that we only hoist
+very busy expressions to avoid checking for undefined behaviors resulting because
+of introducing extra computation in an execution path.
+
+Code hoisting opens new opportunities for other hoistable candidates which were
+of higher rank (depended on candidates which got hoisted). Ideally we could
+iterate on lower ranking expressions first and then proceed to higher ranking
+expressions in the same iteration but LLVM's GVN infrastucture does not compute
+equivalence classes in a effective way. We found it simpler to just recompute
+the value numbers and start finding hoistable candidates again.
+
+For sinking however, higher ranked expressions would be sunk first. And it would
+be illegal to sink higher ranked identical expressions if they are not
+anticipable in the common post-dominator. For example:
+
+\begin{verbatim}
+B0: i0 = load B
+B1: i1 = load A
+    c1 = i1 + 10
+    d1 = i0 + 20
+    goto B3
+B2: i2 = load A
+    c2 = i2 + 10
+    d2 = i0 + 20
+    goto B3
+
+B3: phi(c1, c2)
+    phi(d1, d2)
+\end{verbatim}
+
+In this example (c1, c2) or (d1, d2) could be sunk first. Since (c1, c2) depend
+on i1 and i2 respectively which are also in their original basic blocks, c1 and
+c2 are not anticipable in B3. So without knowing the sinkability of `i1' and
+`i2' it would be illegal to sink (c1, c2) to B3. On the other hand (d1, d2) can
+safely be sunk because their operands are readily available at the sink point
+i.e., B3. It should also be noted that, just because the expressions are
+identical and operands are available it still requires a unique post-dominator
+PHI to use the exact same values to be legally sinkable.
+
+The partition algorithm is described as follows:
+% TODO: Explain why all the identical computation cannot be hoisted.
 
 \subsubsection{Partition the list of hoisting candidates to maximize hoisting}
 \label{subsec:partition}
@@ -595,10 +640,6 @@ In our current implementation we keep as many candidates in one set as possible
 to hoist subset of candidates which are legal to hoist and then start finding
 new hoisting point for the remaining ones.
 
-\section{Implementation Details}
-\label{sec:implementation-details}
-
-
 
 \subsection{Time complexity of algorithm}
 The complexity of code hoisting is linear in number of instructions that could
@@ -613,6 +654,7 @@ expressions.
 
 \section{Experimental Evaluation}
 \label{sec:experimental-results}
+% Experimental results: Register spills, compile time, run time.
 We ran \LLVMTestSuite{} (trunk:d87471f8) with the patch (trunk:86940146). All
 the experiments were conducted on x86\_64 Ubuntu-Linux machine and at -Ofast
 optimization level.  The results for code-hoisting are listed in
