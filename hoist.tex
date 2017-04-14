@@ -182,19 +182,18 @@ part of \GVN{}-\PRE{}: it uses the set of ANTIC\_IN and AVAIL\_OUT value
 expressions computed for \PRE{}. ANTIC\_IN[B] contains very busy expressions at
 basic block B i.e., values computed on all paths from B to exit and
 AVAIL\_OUT[B] contains values which are already available. The algorithm hoists
-top down to a predecessor.  It uses to know what expressions will be computed on
-every path from B to exit, and can be computed in B: that is the safety
-condition.  It uses AVAIL\_OUT[B] to subtract out those values already being
-computed.  The cost function is: for each hoist candidate, if all successors of
-B are dominated by B, then we know insertion into B will eliminate all the
-remaining computations.  It then checks to see if at least one successor of B
-has the value available.  This avoids hoisting it way up the chain to ANTIC.  It
-also checks to ensure that B has multiple successors, since hoisting in a
-straight line is pointless.  The algorithm continues top down the dominator
-tree, iterating with \PRE{} until no more changes.  One advantage of \GCC{}
-implementation is that it works in sync with the \GVN{}-\PRE{} such that when
-new hoisting opportunities are created by \GVN{}-\PRE{}, code-hoisting will
-hoist them.
+top down to a predecessor.  It uses ANTIC\_IN[B] to know what expressions will
+be computed on every path from B to exit, and can be computed in B.  It uses
+AVAIL\_OUT[B] to subtract out those values already being computed.  The cost
+function is: for each hoist candidate, if all successors of B are dominated by
+B, then we know insertion into B will eliminate all the remaining computations.
+It then checks to see if at least one successor of B has the value available.
+This avoids hoisting it way up the chain to ANTIC.  It also checks to ensure
+that B has multiple successors, since hoisting in a straight line is pointless.
+The algorithm continues top down the dominator tree, iterating with \PRE{} until
+no more changes.  One advantage of \GCC{} implementation is that it works in
+sync with the \GVN{}-\PRE{} such that when new hoisting opportunities are
+created by \GVN{}-\PRE{}, code-hoisting will hoist them.
 
 Barany \cite{barany2013} presented a global scheduler with ILP formulation with
 a goal to minimize register pressure. The results they got were not very
@@ -266,15 +265,15 @@ This limitation should be addressed in a new implementation of the \GVN{} based 
 \MemorySSA{}, that would better account for equivalent loads and their dependent
 instructions.
 
-The process of computing \GVN{} can be on-demand (as we come across an instruction)
-or, precomputed (computing \GVN{} of all the instructions beforehand). Which
-process to choose is determined by the scope of code-hoisting we want to
-perform. In a pessimistic approach, as described in
-Section~\ref{subsec:pessimistic}, we want to hoist a limited set of instructions
-from the sibling branches as we iterate the DFS tree bottom-up, it is sufficient
-to compute \GVN{} values on-demand. Whereas, in the optimistic approach, as
-described in Section~\ref{subsec:optimistic}, we want to hoist as many
-instructions as possible, and it would require \GVN{} values to be precomputed.
+The process of computing \GVN{} can be on-demand (as we come across an
+instruction) or, precomputed (computing \GVN{} of all the instructions
+beforehand). Which process to choose is determined by the scope of code-hoisting
+we want to perform. In a pessimistic approach, we want to hoist a limited set of
+instructions from the sibling branches as we iterate the DFS tree bottom-up, it
+is sufficient to compute \GVN{} values on-demand. Whereas, in the optimistic
+approach, as described in Section~\ref{subsec:optimistic}, we want to move as
+many instructions as possible, and it would require \GVN{} values to be
+precomputed.
 
 Once the instructions have been classified in equivalence classes, we compute
 for each group of equivalent instructions a point in the program that is both
@@ -283,30 +282,27 @@ legal and profitable for the instructions to be moved to.
 \subsection{Legality check}
 \label{subsec:legality}
 Since the equality of candidates is purely based on the value they compute, we
-need to establish if hoisting them to a common dominator would be feasible. Once
-a common dominator is found, we check whether all the use-operands of the set of
-instructions are available at that position. In some cases when the operands are not
-available, it is possible to reinstantiate (remateralize) the use-operands, thus
-passing the legality check.
+need to establish if hoisting them to a common dominator or sinking them to a
+common post-dominator would be feasible. Once a common dominator
+(post-dominator) is found, we check whether all the use-operands of the set of
+instructions are available at that position. In some cases when the operands are
+not available, it is possible to reinstantiate (remateralize) the use-operands,
+thus passing the legality check.
 
 Subsequently, it is checked that the side-effects of the computations does not
-intersect with any side-effects between the instructions to be hoisted and their
-hoisting point. For memory operations like loads, stores, calls etc., it is also
-required to check that all the paths from the hoisting point to the end of the
-function should execute the exact instruction, in order to guarantee
-correctness.
+intersect with any side-effects between the instructions to be hoisted/sunk and
+their hoisting/sinking point.
 
-Moreover, hoisting of memory operations is tricky on paths which have indirect
+Moreover, moving memory operations is tricky on paths which have indirect
 branch targets e.g., landing pad, case statements, goto labels etc., because it
-becomes difficult to prove that all the paths from hoisting point to the end of
-the function would execute the instruction. In our current implementation we
-discard hoisting through such paths.
+becomes difficult to prove safety checks. In our current implementation we
+discard candidates on those paths.
 
-In the optimistic approach, described in Section~\ref{subsec:optimistic}, it is
-possible that a common hoisting point of all the instructions is either too far
-away, or not legally possible. In these cases, it is still possible to
-`partially' hoist a subset of instructions by splitting the set of candidates
-and finding a closer hoisting point for each subset. For more details see
+In the approach, described in Section~\ref{subsec:optimistic}, it is possible
+that a common hoisting point of all the instructions is either too far away, or
+not legally possible. In these cases, it is still possible to `partially' hoist
+a subset of instructions by splitting the set of candidates and finding a closer
+hoisting point for each subset. For more details see
 Section~\ref{subsec:partition}.
 
 \subsubsection{Legality of hoisting scalars}
