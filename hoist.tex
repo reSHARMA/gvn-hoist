@@ -118,7 +118,7 @@ computations. The goals of this code motion are:
   computations earlier in order to avoid pipeline bubbles;
 \item to help out-of-order processors with speculative execution of branches: by
   hoisting/sinking expressions out of branches, code hoisting can effectively
-  reduce the amount of code to be speculatively executed and can reduce the
+  reduce the amount of code to be speculatively executed and hence reduce the
   critical path;
 \item to reduce interference/register pressure: For example if all the use
   operands of an instruction (I) of the form a = b op c are last usages (a kill)
@@ -178,21 +178,23 @@ model will be required.  Also the description of VBE is based on the classic
 dataflow model and an adaptation to a sparse \SSA{} representation is required.
 
 \GCC{} recently got code-hoisting \cite{GCCCodeHoisting} which is implemented as
-part of \GVN{}-\PRE{}: it uses the set of ANTIC and AVAIL value expressions computed
-for \PRE{}.  The algorithm hoists top down in a predecessor where the value is in
-ANTIC.  It uses ANTIC[B] to know what expressions will be computed on every
-path from B to exit, and can be computed in B: that is the safety condition.  It
-uses AVAIL[B] to subtract out those values already being computed (because they
-are already available): this is a redundancy condition.  The cost function is:
-for each hoist candidate, if all successors of B are dominated by B, then we
-know insertion into B will eliminate all the remaining computations.  It then
-checks to see if at least one successor of B has the value available.  This
-avoids hoisting it way up the chain to ANTIC.  It also checks to ensure that B
-has multiple successors, since hoisting in a straight line is pointless.  The
-algorithm continues on down the dominator tree, iterating with \PRE{} until no more
-changes.  One advantage of \GCC{} implementation is that it works in sync with the
-\GVN{}-\PRE{} such that when new hoisting opportunities are created by \GVN{}-\PRE{},
-code-hoisting will hoist them.
+part of \GVN{}-\PRE{}: it uses the set of ANTIC\_IN and AVAIL\_OUT value
+expressions computed for \PRE{}. ANTIC\_IN[B] contains very busy expressions at
+basic block B i.e., values computed on all paths from B to exit and
+AVAIL\_OUT[B] contains values which are already available. The algorithm hoists
+top down to a predecessor.  It uses to know what expressions will be computed on
+every path from B to exit, and can be computed in B: that is the safety
+condition.  It uses AVAIL\_OUT[B] to subtract out those values already being
+computed.  The cost function is: for each hoist candidate, if all successors of
+B are dominated by B, then we know insertion into B will eliminate all the
+remaining computations.  It then checks to see if at least one successor of B
+has the value available.  This avoids hoisting it way up the chain to ANTIC.  It
+also checks to ensure that B has multiple successors, since hoisting in a
+straight line is pointless.  The algorithm continues top down the dominator
+tree, iterating with \PRE{} until no more changes.  One advantage of \GCC{}
+implementation is that it works in sync with the \GVN{}-\PRE{} such that when
+new hoisting opportunities are created by \GVN{}-\PRE{}, code-hoisting will
+hoist them.
 
 \newpage
 
@@ -331,11 +333,6 @@ Section~\ref{sec:cost-models}. Another way to mitigate this problem is be to
 reinstantiate (rematerialize) the computation after a call (may be as a
 different optimization pass).
 
-When aggressively for code-size (at optimization level -Oz), we allow hoisting
-of scalars even when the expression is not very busy. This creates unnecessary
-computation on paths where the expression is not needed so the program may run slow
-but reduces the code size. TODO: Experimental results.
-
 \subsubsection{Profitability of hoisting loads}
 A load instruction introduces a register where the value loaded will be kept,
 the register pressure increases by one (unless the operand to load becomes dead
@@ -351,6 +348,9 @@ it ends the liveness of registers, we hoist all the stores.
 
 \subsubsection{Profitability of hoisting calls}
 Currently we hoist all the calls that are suitable candidates for hoisting.
+
+Since stores and calls are hoisted the least \ref{table:experimental-results}
+the performance does not change much whether they are hoisted or not.
 
 \subsection{Code generation}
 Once all the legality and profitability checks are satisfied for a set of
