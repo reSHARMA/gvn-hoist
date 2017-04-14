@@ -214,13 +214,14 @@ program that we shortly describe below:
   is able to prove in dependence are linked through use-def chains.
 \end{itemize}
 
-The code-hoisting pass can be divided into the following steps that we will
+The code-motion pass can be broadly divided into the following steps that we will
 describe in the rest of this section:
 \begin{itemize}
-\item find candidates: instructions computing same values,
+\item find candidates suitable for code-motion
 \item compute a point in the program where it is both legal and profitable to
   move the code,
-\item transform the code.
+\item transform the code and update data structures to continue iterative code
+  motion.
 \end{itemize}
 
 \subsection{Finding candidates to move}
@@ -358,7 +359,8 @@ identical instructions, they are suitable candidates for hoisting. A copy of the
 computation is inserted at the hoisting point along with any instructions which
 needed to be rematerialized. Thereafter, all the computations made redundant by
 the new copy are removed, and the \SSA{} form is restored by updating the
-intermediate representation (IR) to reflect the changes.
+intermediate representation (IR) to reflect the changes. At the same time
+MemorySSA is also updated to get up-to-date information about memory references.
 
 After one iteration of algorithm runs through the entire function, it creates
 more oppportunities for \emph{higher ranked} computations
@@ -369,9 +371,9 @@ approach and can be improved by ranking the computations \cite{rosen1988global},
 or by improving the \GVN{} analysis to correctly number loads and dependent
 instructions.
 
-Finally after the transform is done, we verify a set of post-conditions to
-establish that program invariants are maintained: e.g., consistency of
-use-defs, and \SSA{} semantics.
+Finally after the transformation is done, we verify a set of post-conditions to
+establish that program invariants are maintained: e.g., consistency of use-defs,
+and \SSA{} semantics.
 
 \newpage
 
