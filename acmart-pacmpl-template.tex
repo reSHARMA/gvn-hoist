@@ -276,10 +276,13 @@ computations. The goals of this code motion are:
 The main contributions of this paper are:
 \begin{itemize}
 \item a new optimistic algorithm to move computations out of branches,
-\item cost models to reduce live-range and reduce spills,
+\item a cost model to reduce interference and reduce spills,
 \item a technique to maximize hoisting in an optimistic approach by partitioning
   the list of potential candidates sorted by their DFS visit number,
-\item performance evaluation of the implementation in \LLVM{}.
+\item experimental evaluation of our implementation in \LLVM{} which combines
+  SSA based liveness analysis, and ranking of expressions to move very busy
+  expressions in order to reduce code-size (and improve performance in some
+  cases).
 \end{itemize}
 
 \section{Related Work}
@@ -298,10 +301,6 @@ equivalence of instructions currently uses $$I1->isIdenticalToWhenDefined(I2)$$
 would need to be rewritten to be more general, leading to using a mechanism
 similar to the idea described in this paper based on \GVN{}.
 
-Rosen \cite{rosen1988global} explain moving computations from successors. Their
-algorithm iterates on computations of same rank and move the code with identical
-computations from the sibling branch to a common dominator.
-
 Dhamdhere \cite{dhamdhere1988fast}, Muchnick \cite{steven1997advanced} mention
 code hoisting in a data flow framework. A list of Very Busy Expressions (VBE)
 are computed which are hoisted in a basic block where the expression is
@@ -309,6 +308,11 @@ anticipable (all the operands are available). This algorithm would hoist as far
 as possible without regarding the impact on register pressure and as such a cost
 model will be required.  Also the description of VBE is based on the classic
 dataflow model and an adaptation to a sparse \SSA{} representation is required.
+
+Rosen \cite{rosen1988global} also introduced moving computations from successors
+using value numbering. Their algorithm iterates on computations of same rank and
+move the code with identical computations from the sibling branch to a common
+dominator if they are very busy \cite{steven1997advanced}.
 
 \GCC{} recently got code-hoisting \cite{GCCCodeHoisting} which is implemented as
 part of \GVN{}-\PRE{}: it uses the set of ANTIC\_IN and AVAIL\_OUT value
