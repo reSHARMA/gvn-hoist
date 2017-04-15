@@ -22,4 +22,4 @@ push:
 	git push origin master
 
 dependences:
-	apt-get install texlive-latex-extra texlive-fonts-recommended texlive-latex-base 
+	apt-get install texlive-latex-extra texlive-fonts-recommended texlive-latex-base texlive-science

@@ -26,7 +26,7 @@
 \usepackage{etoolbox}
 \usepackage{flushend}
 \usepackage{needspace}
-
+\usepackage{algpseudocode}
 
 \makeatletter\if@ACM@journal\makeatother
 
@@ -478,13 +478,50 @@ we insert a PHI). The DJ-graph contains both these edges which allows for
 computation of merge sets for each basic block i.e., a set of all basic blocks
 where the values can flow from a particular basic block.
 
-We compute merge sets of the control flow graph which remains
-same through the code-motion transformation. For code-motion we only want to
-know if a use operand is a kill (to compute changes in register pressure). For
-that we only need to know whether the use is also required later in the
-execution path. A variable is live out of a basic block B if it is used in the
-merge set of B. We compute the live-out relation on-demand when profitability of
-hoistable/sinkable candidates is to be evaluated.
+We compute merge sets of the control flow graph which remains same through the
+code-motion transformation. For code-motion we only want to know if a use
+operand is a kill (to compute changes in register pressure). For that we only
+need to know whether the use is also required later in the execution path. A
+variable is live out of a basic block B if it is used in the merge set of B. We
+compute the live-out relation on-demand when profitability of hoistable/sinkable
+candidates is to be evaluated. A simplified version of isLiveOutUsingMergeSet is
+presented here:
+
+\begin{verbatim}
+  Compute if variable a is liveout from basic block n
+  Input: Node N, Variable a
+
+  if a is defined in N then
+    if a is used outside any basic block other than N then
+      return true;
+    else return false;
+  endif
+
+  Ms(n) = null;
+  // Mergeset of N is the union of merge sets of its successors
+  for w in successors(n) do
+    Ms(n) = Ms(n) U Mr(w);
+  endfor
+
+  // Iterate over all the uses of a and see if any intersect with the
+  // merge set of N.
+  for t in users(a) do
+    b = basic_block(t)
+    while (b != null) and (b != def_bb(a)) do
+      if b ∩ Ms(n) then
+        return true;
+      endif
+      b = dom-parent(b);
+    endwhile
+  endfor
+  return false;
+\end{verbatim}
+
+The original algorithm presented in \cite{das2012} has mismatched types in terms
+of uses and nodes because each node can have many uses. Also, while iterating on
+the dominator of each user of a variable we may reach to the beginning of a
+function, in that case the inner while loop needs to terminate. These two cases
+were missing from the algorithm and we came across them during implementation.
 
 \subsection{Finding candidates to move}
 The first step is to find a set of instructions that perform identical
