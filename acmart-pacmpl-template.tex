@@ -340,7 +340,16 @@ In fact there are several advantages of code-motion of this kind:
   \end{itemize}
 \end{itemize}
 
-The main contributions of this paper are:
+There have been a lot of work both in industry and academia to hoist and sink
+code out of branches, and in general global scheduling
+\cite{click1995global}. Some relate code-hoisting to code-size optimization
+\cite{rosen1988global} and many \cite{barany2013, shobaki2013} use global
+scheduling to improve performance. Most of the recent work on global scheduling
+are done using ILP which results in prohibitively high compile time. To the best
+of our knowledge we have not found any reference which explored code-motion of
+identical computation in as much detail as we have done. We have also open
+sourced the implementation for easy verification. The main contributions of this
+paper are:
 \begin{itemize}
 \item a new optimistic algorithm to move computations out of branches,
 \item a cost model to reduce interference and reduce spills,
@@ -398,6 +407,11 @@ no more changes.  One advantage of \GCC{} implementation is that it works in
 sync with the \GVN{}-\PRE{} such that when new hoisting opportunities are
 created by \GVN{}-\PRE{}, code-hoisting will hoist them.
 
+Click \cite{click1995global} describe aggressive global code motion to first
+schedule all the instructions as early as possible. This results in very long
+live ranges which is mitigated by again scheduling all the instructions as late
+as possible. They report sppeedup of as high as $23\%$.
+
 Barany \cite{barany2013} presented a global scheduler with ILP formulation with
 a goal to minimize register pressure. The results they got were not very
 promising. It may be because they only used the scheduler for smaller functions
@@ -453,8 +467,11 @@ describe in the rest of this section:
 \end{itemize}
 
 \subsection{Liveness using DJ Graph}
-The DJ Graph is very useful for computing liveness because the values will only
-flow either through dominator edges or the join edges (where we insert a PHI).
+DJ-Graph \cite{Sreedhar1996} is a data structure that augments the dominator
+tree with join-edges to keep track of data-flow in a program. We use DJ-Graph to
+compute liveness of variables as illustrated in \cite{das2012}.  It is very
+efficient for computing liveness because the values will only flow either
+through dominator edges or the join edges (where we insert a PHI).
 
 \subsection{Finding candidates to move}
 The first step is to find a set of instructions that perform identical
