@@ -476,7 +476,63 @@ simplicity of liveness computation is due to SSA form, where the the values only
 flow (from def to use) either through dominator edges or the join edges (where
 we insert a PHI). The DJ-graph contains both these edges which allows for
 computation of merge sets for each basic block i.e., a set of all basic blocks
-where the values can flow from a particular basic block.
+where the values can flow from a particular basic block. We have implemented
+merge-set computation from DJ-graph as illustrated in \cite{das2005}. A simplified
+version of merge set that we implemented is presented here:
+
+\begin{verbatim}
+// Return true if the merge set of source node of
+// a visited J-edge (incoming edge of lnode) is not
+// the subset of the merge set of lnode.
+bool still_inconsistent(Node lnode, JEdges JE, Visited V, MergeSet M)
+   for (all incoming edges to lnode) do
+     Let e = Incoming edge
+     if (e is in JE && e in V) then
+       Let snode = Source Node of e
+       if (M(snode)!(Subset) M(lnode)) then
+         return true
+       end if
+     end if
+   end for
+return false
+\end{verbatim}
+
+\begin{verbatim}
+// Compute merge set top-down in breadth first order.
+bool constructMergeSet_1(BFSList B, JEdges JE, DomLevel DL)
+repeat = False
+// List of visited edges
+Visited V
+for n in B do
+  for e in (all incoming edges to n) do
+    if (e is in JE && e not in V) then
+      V(e) = true
+      Let snode = Source Node of e
+      Let tnode = Target Node of e
+      Let tmp = snode
+      Let lnode = NULL
+      while (DL(tmp) ≥ DL(tnode)) do
+        Merge(tmp) = Merge(tmp) U Merge(tnode) U {tnode}
+        lnode = tmp
+        tmp = dom-parent(tmp)
+      end while
+      repeat = still_inconsistent(lnode, JE, Merge)
+    end if
+  end for
+end while
+return repeat
+
+// Construct Merge set of each node in control-flow-graph G of a function.
+void  constructMergeSet(CFG G) {
+  B = Breadth First Order of G
+  JE = JEdges of G
+  DL = List of Path length (from root) of each node in G.
+
+  do // Call until a fixed point is reached.
+    Repeat = constructMergeSet_1(B, JE, DL);
+  while (Repeat);
+}
+\end{verbatim}
 
 We compute merge sets of the control flow graph which remains same through the
 code-motion transformation. For code-motion we only want to know if a use
@@ -488,7 +544,8 @@ candidates is to be evaluated. A simplified version of isLiveOutUsingMergeSet is
 presented here:
 
 \begin{verbatim}
-  Compute if variable a is liveout from basic block n
+bool isLiveOutUsingMergeSet()
+  // Compute if variable a is liveout from basic block n
   Input: Node N, Variable a
 
   if a is defined in N then
@@ -518,10 +575,11 @@ presented here:
 \end{verbatim}
 
 The original algorithm presented in \cite{das2012} has mismatched types in terms
-of uses and nodes because each node can have many uses. Also, while iterating on
-the dominator of each user of a variable we may reach to the beginning of a
-function, in that case the inner while loop needs to terminate. These two cases
-were missing from the algorithm and we came across them during implementation.
+of uses and nodes because each node can have many instructions and hence many
+uses. Also, while iterating on the dominator of each user of a variable we may
+reach to the beginning of a function, in that case the inner while loop needs to
+terminate. These two cases were missing from the algorithm and we came across
+them during implementation.
 
 \subsection{Finding candidates to move}
 The first step is to find a set of instructions that perform identical
