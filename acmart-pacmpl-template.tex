@@ -255,10 +255,7 @@ computations. The goals of this code motion are:
   hoisting/sinking expressions out of branches, code hoisting can effectively
   reduce the amount of code to be speculatively executed and hence reduce the
   critical path;
-\item to reduce interference/register pressure: For example if all the use
-  operands of an instruction (I) of the form a = b op c are last usages (a kill)
-  then hoisting will reduce the interference by two but increase by one across
-  the path I gets hoisted.
+\item to reduce interference/register pressure;
 \item for SIMD architectures, which execute all branches, it will reduce the
   total number of instructions to be executed.
 \item to improve passes that do not work well with branches:
@@ -335,7 +332,7 @@ created by \GVN{}-\PRE{}, code-hoisting will hoist them.
 Barany \cite{barany2013} presented a global scheduler with ILP formulation with
 a goal to minimize register pressure. The results they got were not very
 promising. It may be because they only used the scheduler for smaller functions
-(<1000 instructions) also they compiled the benchmarks for ARM-Cortex which is
+($<1000$ instructions) also they compiled the benchmarks for ARM-Cortex which is
 more resilient to register pressure because it has more registers compared to
 say X86.
 
@@ -475,23 +472,15 @@ without further information, calls have to be classified as writing to memory,
 that is the most restrictive form.  Each category of call instructions will be
 handled as described for scalar, load, and store instructions.
 
-\subsection{Profitability check (Cost models)}
-\label{subsec:profitability}
+\section{Profitability check (Cost models)}
+\label{sec:cost-models}
 After the legality checks have passed, we check for profitability of hoisting.
 That takes into account the impact code-hoisting would have on various
 parameters that affect runtime performance e.g., impact on live-range, gain in
-the code size.  We have established a set of cost models described in
-Section~\ref{sec:cost-models} for each parameter and tuned them for performance
-against representative benchmarks.
-
-
-\section{Cost models}
-\label{sec:cost-models}
-Similar to any compiler optimization pass, there are several cost functions that
-are deployed to tune for optimal combination of performance and code-size.
-Since this is mostly a code-size optimization pass, the goal is to not regress
-in performance across popular benchmarks at the same time reduce code size as
-much as possible. Following are the cost models which are implemented:
+the code size. Since this is mostly a code-size optimization pass, the goal is
+to not regress in performance across popular benchmarks at the same time reduce
+code size as much as possible. Following are the cost models which are
+implemented:
 
 \subsection{Reduce register pressure}
 \label{hoist:reg-pressure}
