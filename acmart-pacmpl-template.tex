@@ -468,10 +468,23 @@ describe in the rest of this section:
 
 \subsection{Liveness using DJ Graph}
 DJ-Graph \cite{Sreedhar1996} is a data structure that augments the dominator
-tree with join-edges to keep track of data-flow in a program. We use DJ-Graph to
-compute liveness of variables as illustrated in \cite{das2012}.  It is very
-efficient for computing liveness because the values will only flow either
-through dominator edges or the join edges (where we insert a PHI).
+tree with join-edges to keep track of data-flow in a program. We use DJ-Graph
+and Merge Sets to compute liveness of variables as illustrated in
+\cite{das2012}.  It is very efficient for computing liveness and does not
+require any bitvectors to be maintained for each basic block. The underlying
+simplicity of liveness computation is due to SSA form, where the the values only
+flow (from def to use) either through dominator edges or the join edges (where
+we insert a PHI). The DJ-graph contains both these edges which allows for
+computation of merge sets for each basic block i.e., a set of all basic blocks
+where the values can flow from a particular basic block.
+
+We compute merge sets of the control flow graph which remains
+same through the code-motion transformation. For code-motion we only want to
+know if a use operand is a kill (to compute changes in register pressure). For
+that we only need to know whether the use is also required later in the
+execution path. A variable is live out of a basic block B if it is used in the
+merge set of B. We compute the live-out relation on-demand when profitability of
+hoistable/sinkable candidates is to be evaluated.
 
 \subsection{Finding candidates to move}
 The first step is to find a set of instructions that perform identical
