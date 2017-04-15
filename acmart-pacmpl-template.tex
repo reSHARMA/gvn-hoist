@@ -298,11 +298,9 @@ equivalence of instructions currently uses $$I1->isIdenticalToWhenDefined(I2)$$
 would need to be rewritten to be more general, leading to using a mechanism
 similar to the idea described in this paper based on \GVN{}.
 
-Rosen et al. explain moving computations successors to remove redundancies
-\cite{rosen1988global}. Their algorithm iterates on computations of same rank
-and move the code with identical computations from the sibling branch. Also
-there is no notion of partially hoisting the computations so their approach may
-result in missing many hoisting opportunities.
+Rosen \cite{rosen1988global} explain moving computations from successors. Their
+algorithm iterates on computations of same rank and move the code with identical
+computations from the sibling branch to a common dominator.
 
 Dhamdhere \cite{dhamdhere1988fast}, Muchnick \cite{steven1997advanced} mention
 code hoisting in a data flow framework. A list of Very Busy Expressions (VBE)
@@ -340,12 +338,12 @@ say X86.
 Shobaki \cite{shobaki2013} also recently presented a combinatorial global
 scheduler with reasonable performance improvements. It is possible that both
 Barany and Shobaki's implmentation will have similar results when compiled for
-same target. Also, both suffer the same problem, although Shobaki not so much,
-of large compile times which is not feasible for industrial compilers like gcc
-and LLVM.
+same target. Also, both suffer from the same problem, although Shobaki not so
+much, of large compile times which is not feasible for industrial compilers like
+gcc and LLVM.
 
-We got reduction in register spills on all the SPEC2006 benchmarks and
-reasonable performance improvements with very low compile time overhead.
+We got reduction in register spills on some SPEC2006 benchmarks, reduction in
+code-size and some performance improvements with very low compile time overhead.
 
 % TODO: References
 % Sink instructions
@@ -362,6 +360,9 @@ program that we shortly describe below:
 \begin{itemize}
 \item Control Flow Graph (\CFG{}) and the Dominance (DOM) and Post-Dominance (PDOM)
   relations \cite{dragonbook};
+\item DJ-Graph \cite{Sreedhar1996} is a data structure that augments the
+  dominator tree with join-edges to keep track of data-flow in a program. We use
+  DJ-Graph to compute liveness of variables as illustrated in \cite{das2012}.
 \item Static Single Assignment (\SSA{}) \cite{cytron};
 \item Global Value Numbering (\GVN{}) \cite{rosen1988global,click1995global}: to
   identify similar computations compilers use \GVN{}.  Each expression is given a
@@ -380,6 +381,10 @@ describe in the rest of this section:
 \item transform the code and update data structures to continue iterative code
   motion.
 \end{itemize}
+
+\subsection{Liveness using DJ Graph}
+The DJ Graph is very useful for computing liveness because the values will only
+flow either through dominator edges or the join edges (where we insert a PHI).
 
 \subsection{Finding candidates to move}
 The first step is to find a set of instructions that perform identical
