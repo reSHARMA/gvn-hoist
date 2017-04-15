@@ -1,4 +1,4 @@
-paper = hoist
+paper = acmart-pacmpl-template
 slides = slides
 $(paper).pdf: $(paper).tex Bibliography.bib
 	pdflatex -shell-escape $(paper)
