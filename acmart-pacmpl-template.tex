@@ -241,24 +241,94 @@ and the number of run-time computations is not reduced. It is not a redundancy
 elimination pass, and thus it has different cost function and heuristics than
 \PRE{} or CSE. It is more similar to global code scheduling
 \cite{dragonbook,click1995global} in the sense that it will only move
-computations. The goals of this code motion are:
+computations. We will now consider an example that explains how code hoisting can
+also improve performance.
 
+\subsection{Illustrative Example}
+\label{subsec:example}
+Code hoisting can reduce the critical path length of execution in out of
+order machines. As more instructios are available at the hoisting point, the
+hardware has more instructions to reorder. Following example illustrates how
+hoisting can improve performance by exposing more ILP.
+
+\begin{verbatim}
+float fun(float d, float min, float max, float a) {
+  float tmin, tmax, inv;
+
+  inv = 1.0f / d;
+  if (inv >= 0) {
+    tmin = (min - a) * inv;
+    tmax = (max - a) * inv;
+  } else {
+    tmin = (max - a) * inv;
+    tmax = (min - a) * inv;
+  }
+  return tmax + tmin;
+}
+\end{verbatim}
+
+In this program the computations of tmax and tmin are identical to the
+computations of tmin and tmax of sibling branch respectively. Both tmax and tmin
+depends on inv which depends on a division operation which is generally more
+expensive than the addition, subtraction and multiplication operations. The
+total latency of computation across each branch is:
+$C_{div} + 2(C_{sub} + C_{mul})$
+Or, for out of order processors with two add units and two multiply units:
+$C_{div} + C_{sub} + C_{mul}$
+
+Now if the computation of tmax and tmin are hoisted outside the
+conditionals, the C code version would look like this:
+\begin{verbatim}
+float fun(float d, float min, float max, float a) {
+  float tmin, tmax, tmin1, tmax1, inv;
+
+  tmin1 = (min - a);
+  tmax1 = (max - a);
+
+  inv = 1.0f / d;
+  tmin1 = tmin1 * inv;
+  tmax1 = tmax1 * inv;
+
+  if (inv >= 0) {
+    tmin = tmin1;
+    tmax = tmax1;
+  } else {
+    tmin = tmax1;
+    tmax = tmin1;
+  }
+
+  return tmax + tmin;
+}
+
+\end{verbatim}
+
+In this code the two subtractions and the division operations can be executed in
+parallel because there are no dependencies among them. So the total number of
+cycles will be $max(C_{div}, C_{sub}) + C_{mul} = C_{div} + C_{mul}$; since $C_{div}$ is
+usually much greater than $C_{sub}$ \cite{x86,aarch64}.
+
+%GCC: 23286 has interesting test cases.
+
+In fact there are several advantages of code-motion of this kind:
 \begin{itemize}
-\item to reduce the code size of the program;
-\item to improve function inlining heuristics: functions become cheaper to
+\item It reduces the code size of the program;
+\item It improves function inlining heuristics: functions become cheaper to
   inline when their code size decreases because inliner heuristics in \LLVM{}
   depends on instruction count.
-\item to expose more instruction level parallelism: by hoisting identical
-  computations to be executed earlier, instruction schedulers can move heavy
-  computations earlier in order to avoid pipeline bubbles;
-\item to help out-of-order processors with speculative execution of branches: by
-  hoisting/sinking expressions out of branches, code hoisting can effectively
-  reduce the amount of code to be speculatively executed and hence reduce the
-  critical path;
-\item to reduce interference/register pressure;
-\item for SIMD architectures, which execute all branches, it will reduce the
+\item It expose more instruction level parallelism to the later compiler
+  passes. By hoisting identical computations to be executed earlier, instruction
+  schedulers can move heavy computations earlier in order to avoid pipeline
+  bubbles;
+\item It reduces branch misprediction penalty on out-of-order processors with
+  speculative execution of branches: by hoisting/sinking expressions out of
+  branches, it can effectively reduce the amount of code to be speculatively
+  executed and hence reduce the critical path;
+\item It reduces interference/register pressure when appropriate cost-model is
+  applied. We have used a cost model in our implementation which hoists/sinks only
+  when register pressure would potentially reduce.
+\item For SIMD architectures, which execute all branches, it will reduce the
   total number of instructions to be executed.
-\item to improve passes that do not work well with branches:
+\item It improves passes that do not work well with branches:
   \begin{itemize}
   \item to improve loop vectorization by reducing a loop with control flow to a
     loop with a single BB, should all the instructions in a conditional get
@@ -285,31 +355,30 @@ The main contributions of this paper are:
 \section{Related Work}
 
 There are a lot of bug reports in \GCC{} and \LLVM{} bugzillas
-\cite{GCCCodeHoistingBugs,LLVMCodeHoistingBugs}, showing the interest in having
-a more powerful code hoist transform.  The current \LLVM{} implementation of code
-hoisting in SimplifyCFG.cpp $HoistThenElseCodeToIf()$ is very limited to
-hoisting from identical basic blocks: the instructions of two sibling basic
-blocks are read in the same time, and all the instructions of the blocks are
-hoisted to the common parent block as long as the compiler is able to prove that
-the instructions are equivalent.  This implementation does not allow for an easy
-extension: first in terms of compilation time overhead the implementation would
-become quadratic in number of instructions to bisimulate, and second the
-equivalence of instructions currently uses $$I1->isIdenticalToWhenDefined(I2)$$
-would need to be rewritten to be more general, leading to using a mechanism
-similar to the idea described in this paper based on \GVN{}.
+\cite{GCCCodeHoistingBugs, LLVMCodeHoistingBugs}, showing the interest in having
+a more powerful code hoist transform.  The current \LLVM{} implementation of
+code hoisting in SimplifyCFG.cpp is very limited to hoisting from identical
+basic blocks: the instructions of two sibling basic blocks are read in the same
+time, and all the instructions of the blocks are hoisted to the common parent
+block as long as the compiler is able to prove that the instructions are
+equivalent.  This implementation does not allow for an easy extension: first in
+terms of compilation time overhead the implementation is quadratic in number of
+instructions to bisimulate and second, the equivalence of instructions is
+computed by comparing the operands which is neither general nor scalabale.
 
 Dhamdhere \cite{dhamdhere1988fast}, Muchnick \cite{steven1997advanced} mention
 code hoisting in a data flow framework. A list of Very Busy Expressions (VBE)
-are computed which are hoisted in a basic block where the expression is
+computed which are hoisted in a basic block where the expression is
 anticipable (all the operands are available). This algorithm would hoist as far
 as possible without regarding the impact on register pressure and as such a cost
 model will be required.  Also the description of VBE is based on the classic
 dataflow model and an adaptation to a sparse \SSA{} representation is required.
 
 Rosen \cite{rosen1988global} also introduced moving computations from successors
-using value numbering. Their algorithm iterates on computations of same rank and
-move the code with identical computations from the sibling branch to a common
-dominator if they are very busy \cite{steven1997advanced}.
+but using value numbering. Their algorithm iterates on computations of same rank
+and move the code with identical computations from the sibling branch to a
+common dominator if they are very busy \cite{steven1997advanced}. We also
+incorporate ranking of expressions in our implementation.
 
 \GCC{} recently got code-hoisting \cite{GCCCodeHoisting} which is implemented as
 part of \GVN{}-\PRE{}: it uses the set of ANTIC\_IN and AVAIL\_OUT value
@@ -366,11 +435,11 @@ program that we shortly describe below:
   DJ-Graph to compute liveness of variables as illustrated in \cite{das2012}.
 \item Static Single Assignment (\SSA{}) \cite{cytron};
 \item Global Value Numbering (\GVN{}) \cite{rosen1988global,click1995global}: to
-  identify similar computations compilers use \GVN{}.  Each expression is given a
-  unique number and the expressions that the compiler can prove identical are
-  given the same number;
-\item Memory \SSA{} \cite{novillo2007memory}: memory operations that the compiler
-  is able to prove in dependence are linked through use-def chains.
+  identify similar computations compilers use \GVN{}.  Each expression is given
+  a unique number and the expressions that the compiler can prove to be
+  identical are given the same number;
+\item Memory \SSA{} \cite{novillo2007memory}: it is a factored use-def chain of
+  memory operations that the compiler is able to prove are dependent.
 \end{itemize}
 
 The code-motion pass can be broadly divided into the following steps that we will
@@ -607,71 +676,6 @@ and \SSA{} semantics.
 
 \newpage
 
-\subsection{Illustrative Example} \label{subsec:example}
-Code hoisting can reduce the critical path length of execution in out of
-order machines. As more instructios are available at the hoisting point, the
-hardware has more instructions to reorder. Following example illustrates how
-hoisting can improve performance by exposing more ILP.
-
-\begin{verbatim}
-float fun(float d, float min, float max, float a)
-{
-  float tmin, tmax, inv;
-
-  inv = 1.0f / d;
-  if (inv >= 0) {
-    tmin = (min - a) * inv;
-    tmax = (max - a) * inv;
-  } else {
-    tmin = (max - a) * inv;
-    tmax = (min - a) * inv;
-  }
-  return tmax + tmin;
-}
-\end{verbatim}
-
-In this program the computations of tmax and tmin are identical to the
-computations of tmin and tmax of sibling branch respectively. Both tmax and tmin
-depends on inv which depends on a division operation which is generally more
-expensive than the addition, subtraction and multiplication operations. The
-total latency of computation across each branch is:
-$C_{div} + 2(C_{sub} + C_{mul})$
-Or, for out of order processors with two add units and two multiply units:
-$C_{div} + C_{sub} + C_{mul}$
-
-Now if the computation of tmax and tmin are hoisted outside the
-conditionals, the C code version would look like this:
-\begin{verbatim}
-float fun(float d, float min, float max, float a)
-{
-  float tmin, tmax, tmin1, tmax1, inv;
-
-  tmin1 = (min - a);
-  tmax1 = (max - a);
-
-  inv = 1.0f / d;
-  tmin1 = tmin1 * inv;
-  tmax1 = tmax1 * inv;
-
-  if (inv >= 0) {
-    tmin = tmin1;
-    tmax = tmax1;
-  } else {
-    tmin = tmax1;
-    tmax = tmin1;
-  }
-
-  return tmax + tmin;
-}
-
-\end{verbatim}
-
-In this code the two subtractions and the division operations can be executed in
-parallel because there are no dependencies among them. So the total number of
-cycles will be $max(C_{div}, C_{sub}) + C_{mul} = C_{div} + C_{mul}$; since $C_{div}$ is
-usually much greater than $C_{sub}$ \cite{x86,aarch64}.
-
-%GCC: 23286 has interesting test cases.
 
 \newpage
 
