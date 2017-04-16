@@ -436,8 +436,6 @@ code-size and some performance improvements with very low compile time overhead.
 % Liveness analysis from Ramakrishna
 % Experimental results: Register spills, compile time, run time.
 
-\newpage
-
 \section{Code motion}
 
 The algorithm for code motion uses several common representations of the
@@ -755,8 +753,7 @@ to hoist subset of candidates which are legal to hoist and then start finding
 new hoisting point for the remaining ones.
 
 
-
-\section{Profitability check (Cost models)}
+\subsection{Profitability check (Cost models)}
 \label{sec:cost-models}
 After the legality checks have passed, we check if a code-motion is profitable.
 That takes into account the impact code-motion would have on various parameters
@@ -766,7 +763,7 @@ not regress in performance across popular benchmarks at the same time reduce
 code size as much as possible. Following are the cost models which are
 implemented:
 
-\subsection{Reduce register pressure}
+\subsubsection{Reduce register pressure}
 \label{hoist:reg-pressure}
 Hoisting upwards will decrease the live-range of its use, if it is a last use (a
 kill), but increase the live-range of its definition. Conversely, sinking will
@@ -798,7 +795,7 @@ of a0 as a01 is placed in B0 just before the branch.
 \end{verbatim}
 
 In this case, since `b' and `c' are killed in `a0' and `a1', hoisting them will
-reduce the register pressure in B3 and B4 because two operands will be freed.
+reduce the register pressure in B3 and B4 because two registers will be freed.
 
 Ideally, it should be okay to hoist all the instructions and a later a
 live-range-splitting \cite{cooper1998live} pass should make the right decision
@@ -816,24 +813,21 @@ limitations of LLVM's register allocator and may be lifted in the future, when
 the register allocation rematerialization pass has been improved to catch the
 regressions.
 
-\subsection{In the presence of calls}
+\subsubsection{Hoisting expression across call}
 \label{cost:across-calls}
-Hoisting scalars across calls is tricky because it can increase the number of
-spills. During the frame lowering of calls, the argument registers, in general,
-the caller saved registers are saved because they might be modified by the
-callee and after the call they are restored. So before the
-call, the register pressure is high because the number of available registers
-are reduced by the number of caller saved registers. In that situation if a
-computation is hoisted across the call, that would increase the total number of
-registers required by one, thus contributing to the register pressure. However,
-in the special case discussed in Section~\ref{hoist:reg-pressure}, it will be
-okay to hoist because the register pressure would not decrease.
+Even hoisting scalars across calls is tricky because it can increase the number
+of spills. During the frame lowering of calls, the argument registers, in
+general, the caller saved registers are saved because they might be modified by
+the callee and after the call they are restored. So before the call, the
+register pressure is high because the number of available registers are reduced
+by the number of caller saved registers. In that situation if a computation
+that increases register pressure is not profitable to hoist.
 
 Hoisting loads/stores across calls also require precise analysis of all the
-memory addresses accessed by the call. Our implementation being an
-intraprocedural pass, the analysis is very conservative. In the presence of pure
-calls, loads can be hoisted but stores can't. Also, if the call throws
-exceptions, or if it may not return, memory references cannot be hoisted.
+memory addresses accessed by the call. The current implementation being an
+intraprocedural pass, cannot hoist aggressively across calls. In the presence of
+pure calls, loads can be hoisted but stores can't. Also, if the call throws
+exceptions, or if it may not return, nothing can be hoisted.
 
 \subsubsection{Profitability of hoisting scalars}
 Since scalars are the majority of instructions which are hoisted, we pay special
@@ -888,11 +882,6 @@ instructions.
 Finally after the transformation is done, we verify a set of post-conditions to
 establish that program invariants are maintained: e.g., consistency of use-defs,
 and \SSA{} semantics.
-
-\newpage
-
-
-\newpage
 
 \section{SSA based global code motion of identical computations}
 \label{sec:implementation-details}
@@ -1105,13 +1094,6 @@ inlining decisions in Table~\ref{tab:code-size}, before and after
 code-hoisting was enabled.  Since inliner has several magic numbers tuned for
 the previous pass layout, it would need some improvement.
 
-\section{Acknowledgments}
-We would like to thank Daniel Berlin for his code reviews and for his feedback
-on earlier versions of this paper and Brian Grayson for motivating examples that
-started this work.
-
-
-
 %% Acknowledgments
 \begin{acks}                            %% acks environment is optional
                                         %% contents suppressed with 'anonymous'
@@ -1119,14 +1101,9 @@ started this work.
   %% \grantnum[<url>]{<sponsorID>}{<number>} should be used to
   %% acknowledge financial support and will be used by metadata
   %% extraction tools.
-  This material is based upon work supported by the
-  \grantsponsor{GS100000001}{National Science
-    Foundation}{http://dx.doi.org/10.13039/100000001} under Grant
-  No.~\grantnum{GS100000001}{nnnnnnn} and Grant
-  No.~\grantnum{GS100000001}{mmmmmmm}.  Any opinions, findings, and
-  conclusions or recommendations expressed in this material are those
-  of the author and do not necessarily reflect the views of the
-  National Science Foundation.
+We would like to thank Daniel Berlin for his code reviews and for his feedback
+on earlier versions of this paper and Brian Grayson for motivating examples that
+started this work.
 \end{acks}
 
 
@@ -1134,9 +1111,8 @@ started this work.
 \bibliography{Bibliography}
 
 %% Appendix
-\appendix
-\section{Appendix}
-
-Text of appendix \ldots
+%\appendix
+%\section{Appendix}
+%Text of appendix \ldots
 
 \end{document}
