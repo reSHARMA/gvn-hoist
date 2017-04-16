@@ -911,6 +911,59 @@ it should be noted that we only hoist very busy expressions to avoid checking
 for undefined behaviors resulting because of introducing extra computation in an
 execution path.
 
+% Explain the overall algorithm, explain how anticipability is computed on demand
+% explain the pinned-instructions/barriers.
+\begin{verbatim}
+Analyses available: Dominator Tree, DFS Numbering, Memory SSA,
+
+Compute GVN of each expression in the function
+Compute DJ Graph of function and compute mergeset based on that
+
+For each value number VN with 2 or more instructions:
+  sort the instructions according to DFSIn numbers
+  if first two I1, I2 are hoistable:
+    if they are anticipable at hoist-point:
+      if they are profitable to be hoisted at hoist-point:
+        proceed to check hoistability of subsequent instruction with same VN
+      else
+        proceed to check if I2 and I3 (if available) is hoistable
+
+For each hoistable VN:
+  move the first one I1 to the hoist-point
+  update the use of all other candidates to refer to I1
+  remove all others.
+  if I1 has memory references (a load, store etc.)
+    update MemorySSA of I1 and others to point to the MemorySSA reference of I1
+    remove MemorySSA reference of all others which were deleted
+  update statistics
+
+If any of candidates were hoisted then repeat hoisting
+Once no more candidates are hoistable proceed to sinking
+\end{verbatim}
+
+
+\begin{verbatim}
+Analyses available: Dominator Tree, DFS Numbering, Memory SSA, Mergeset
+Compute GVN of each expression in the function
+
+For each value number VN with 2 or more instructions:
+  if there are two instructions with same immediate successor as post-dominator
+    if both are only used in the same PHI-node of the successor
+      if both have dependencies that are available or can be made available at the sink point
+         mark VN as sinkable
+
+For each pair I1, I2 of sinkable instructions:
+  Move the first one I1 to the sink point which is just after all the PHI-nodes
+  in the post-dominator
+  update the use of PHI with I1
+  Remove I2 and PHI
+  if I1 is a memory reference:
+    update MemorySSA of I1 and others to point to the MemorySSA reference of I1
+    remove MemorySSA reference of all others which were deleted
+  update statistics
+
+\end{verbatim}
+
 Code hoisting opens new opportunities for other hoistable candidates which were
 of higher rank (depended on candidates which got hoisted). Ideally we could
 iterate on lower ranking expressions first and then proceed to higher ranking
