@@ -387,8 +387,7 @@ dataflow model and an adaptation to a sparse \SSA{} representation is required.
 Rosen \cite{rosen1988global} also introduced moving computations from successors
 but using value numbering. Their algorithm iterates on computations of same rank
 and move the code with identical computations from the sibling branch to a
-common dominator if they are very busy \cite{steven1997advanced}. We also
-incorporate ranking of expressions in our implementation.
+common dominator if they are very busy \cite{steven1997advanced}.
 
 \GCC{} recently got code-hoisting \cite{GCCCodeHoisting} which is implemented as
 part of \GVN{}-\PRE{}: it uses the set of ANTIC\_IN and AVAIL\_OUT value
@@ -888,6 +887,15 @@ which can be partially hoisted to their respective common dominators. However,
 it should be noted that we only hoist very busy expressions to avoid checking
 for undefined behaviors resulting because of introducing extra computation in an
 execution path.
+
+Barriers are based on the concept of pinned instructions \cite{click1995global}
+but extended to adapt to LLVM IR. Since a basic block in LLVM IR is actually an
+extended basic block because there might be calls in the middle of a basic block
+which might not return. So barriers can be present in the middle of a basic
+block. Essentially, any instruction that cannot not guarantee progress is marked
+as a barrier. In the absense of context (as in our current implementation), some
+instructions which might be safe are still classified a barrier e.g., volatile
+loads/stores, calls with missing attributes.
 
 \begin{verbatim}
 computing barriers:
