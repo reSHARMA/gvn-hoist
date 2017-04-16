@@ -611,9 +611,10 @@ approach, as described in Section~\ref{subsec:optimistic}, we want to move as
 many instructions as possible, and it would require \GVN{} values to be
 precomputed.
 
-Once the instructions have been classified into equivalence classes, we compute
-for each group of equivalent instructions, a point in the program that is both
-legal and profitable for the instructions to be moved to.
+Once the instructions have been classified into congruence classes
+\cite{briggs1997} i.e., a set of instructions which compute the same value, we
+compute for each group of congruent instructions, a point in the program that is
+both legal and profitable for the instructions to be moved to.
 
 \subsection{Legality check}
 \label{subsec:legality}
@@ -851,8 +852,7 @@ more oppportunities for \emph{higher ranked} computations
 pass, and so we rerun the code-hoisting algorithm until there are no more
 instructions left to be hoisted.  Obviously, this is not the most optimal
 approach and can be improved by ranking the computations \cite{rosen1988global},
-or by improving the \GVN{} analysis to correctly number loads and dependent
-instructions.
+or by improving the \GVN{} analysis to correctly populate congruence classes.
 
 Finally after the transformation is done, we verify a set of post-conditions to
 establish that program invariants are maintained: e.g., consistency of use-defs,
