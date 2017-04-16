@@ -581,6 +581,7 @@ terminate. These two cases were missing from the algorithm and we came across
 them during implementation.
 
 \subsection{Finding candidates to move}
+\label{subsec:finding-candidates}
 The first step is to find a set of instructions that perform identical
 computations: this is performed by a linear scan of all instructions of the
 program and classifying all instructions by their value given by \GVN{}. We
@@ -633,16 +634,6 @@ there are indirect branch targets e.g., landing pad, case statements, goto
 labels etc., along the path because it becomes difficult to prove safety checks
 in those cases. In our current implementation we discard candidates on those
 paths.
-
-Code-motion basically consists of two parts i.e., hoisting and sinking. The
-unique part about this algorithm is that it only moves identical
-computations. An immediate guarantee of this approach is gain in code size (the
-final executable may be of larger size because of more inlining). The algorithm
-prefers hoisting to sinking. If the dependency of a hoistable candidate is in
-the same basic block as the candidate, then the dependency must also be
-hoistable otherwise hoisting will be illegal or would require a complicated code
-generation to make it legal. The current algorithm discards cases if the
-dependency is neither hoistable nor rematerializable.
 
 \subsubsection{Legality of hoisting scalars}
 Scalars are the easiest to hoist because we do not have to analyze them for
@@ -863,13 +854,24 @@ and \SSA{} semantics.
 % Move this before legality and profitability??
 % Ranking of instructions from Zadeck
 % Liveness analysis from Ramakrishna
+In this section we will present an overview of the algorithm we implemented in
+\LLVM{}.  The amount of hoisting depends on whether we collect \GVN{} of
+instructions before finding candidates (optimistic) or, on-demand
+(pessimistic). It also depends on the generality of the \GVN{} algorithm as
+mentioned earlier in Section~\ref{subsec:finding-candidates}. We have
+implemented a optimistic global code motion of congruent instructions which uses
+the liveness analysis as illustrated in Das \cite{das2012} and ranking
+expressions explained in Rosen \cite{rosen1988global}.
 
-The amount of hoisting depends on whether we collect \GVN{} of instructions
-before finding candidates (optimistic) or, on-demand (pessimistic). It also
-depends on the generality of the \GVN{} algorithm. We have implemented a
-optimistic global code motion of identical computation which uses the liveness
-analysis as illustrated in Das \cite{das2012} and ranking expressions explained
-in Rosen \cite{rosen1988global}.
+Code-motion basically consists of two parts i.e., hoisting and sinking. This
+implementation only moves congruent instructions. An immediate guarantee of this
+approach is gain in code size (the final executable may be of larger size
+because of more inlining). The algorithm prefers hoisting to sinking. If the
+dependency of a hoistable candidate is in the same basic block as the candidate,
+then the dependency must also be hoistable otherwise hoisting will be illegal or
+would require a complicated code generation to make it legal. The current
+algorithm discards cases if the dependency is neither hoistable nor
+rematerializable.
 
 \subsection{Optimistic code motion algorithm}
 \label{subsec:optimistic}
@@ -880,15 +882,32 @@ computations and perform legality checks, as described in
 Section~\ref{subsec:legality}. Often times it is not possible to hoist all the
 instructions to one common dominator, due to legality constraints, e.g.,
 intersecting side-effects, or profitability constraints, e.g., increasing
-register pressure. In those cases, this algorithmn would partition
+register pressure; in those cases, this algorithmn would partition
 (Section~\ref{subsec:partition}) the list of identical instructions into subsets
 which can be partially hoisted to their respective common dominators. However,
 it should be noted that we only hoist very busy expressions to avoid checking
 for undefined behaviors resulting because of introducing extra computation in an
 execution path.
 
-
+\begin{verbatim}
 computing barriers:
+for each basic block B in a function:
+  barrier_found = false
+  for each instruction I in B:
+    if I does not guarantee progress:
+      mark I as a barrier instruction
+      barrier_found = true
+      break;
+
+  // Find the last barrier below which instructions can be sunk.
+  // If there was no barrier in B, any instruction satisfying
+  // other legality checks can be sunk.
+  if barrier_found:
+    for each instruction I in B in reverse order:
+      if I does not guarantee progress:
+        mark I as a sink barrier
+        break
+\end{verbatim}
 
 \begin{verbatim}
 computing downward-safety of hoistable instructions at hoist-point
