@@ -717,11 +717,13 @@ all candidates in a way to maximize the total number of hoistings.  By sorting
 the list of all the candidates in the increasing order of their depth first
 search discovery time stamp \cite{clrs} (DFSIn numbers), we make sure that
 candidates closer in the list have their common dominator nearby. In
-Figure-\ref{fig:dfsin}, if B3, B4, B5, and B6 have identical computations and for
-some reason they cannot be hoisted together at B0, then we partition the set of
-hoistable candidates in their DFSIn order. In this case the DFSIn ordering would
-be B3, B4, B5, B6 which will allow the instructions in B3, B4 to be hoisted at
-B1 and those in B5, B6 to be hoisted at B2.
+Figure-\ref{fig:dfsin}, if B3, B4, B5, and B6 have identical computations and
+for some reason they cannot be hoisted together at B0, then we partition the set
+of hoistable candidates in their DFSIn order. In this case the DFSIn ordering
+would be B3, B4, B5, B6 which will allow the instructions in B3, B4 to be
+hoisted at B1 and those in B5, B6 to be hoisted at B2. Even if (B3, B4) could
+not be hoisted, for some reason, to B1, (B5, B6) can still be hoisted -- if
+legal and profitable -- to B2.
 
 \begin{figure}
 \centering
@@ -994,14 +996,23 @@ equivalence classes in a effective way. We found it simpler to just recompute
 the value numbers and start finding hoistable candidates again.
 
 \subsection{Time complexity of algorithm}
-The complexity of code hoisting is linear in number of instructions that could
-be hoisted in the program, matching the complexity of \PRE{} on \SSA{} form.  The
-analysis phase is based on the Global Value Numbering (\GVN{}), the same analysis
-used for \PRE{}, followed by the computation of a partition of identical
-expressions to be hoisted in a same location to guarantee safety properties and
-program performance, and followed by a simple code generation that adds the
-identified instruction in the hoisting point and removes all the now redundant
-expressions.
+The complexity of code hoisting is linear in number of instructions that are
+candidates for code-motion, matching the complexity of \PRE{} on \SSA{} form.
+The analyses computed for this pass are Global Value Numbering, Computation of
+DJ Graph and MergeSets, Marking Barriers, all are linear in number of
+instructions in a function. Liveness analysis expensive but only performed
+on-demand for hoistable candidates so it does not affect the overall compile
+time by much. Other analyses like Alias Analysis, Memory SSA and Dominator Tree
+are already available in the LLVM pass pipeline. Although we recompute GVN, and
+Barriers for each iteration of the code-motion, we have not seen signinficant
+increase in the compilation times. We have also provided appropriate compiler
+flags to expedite code-motion by bailing out with fewer iterations, or skip the
+liveness based profitability analysis to aggressively move the code as long as
+they are legal (Section~\ref{sec:experimental-results}).
+
+The analysis is followed by a simple code generation that adds the identified
+instruction in the destination point and removes all instructions rendered
+redundant as a result of code-motion.
 
 
 \section{Experimental Evaluation}
