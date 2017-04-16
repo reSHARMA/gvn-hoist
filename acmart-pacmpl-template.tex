@@ -829,37 +829,12 @@ intraprocedural pass, cannot hoist aggressively across calls. In the presence of
 pure calls, loads can be hoisted but stores can't. Also, if the call throws
 exceptions, or if it may not return, nothing can be hoisted.
 
-\subsubsection{Profitability of hoisting scalars}
-Since scalars are the majority of instructions which are hoisted, we pay special
-attention in case of hoisting scalars too far, as that may increase register
-pressure and result in spills. For example hoisting a scalar past a call, as
-described in Section~\ref{cost:across-calls}.  In our current implementation we
-hoist scalars past a call only when optimizing for code-side (-Os). Ideally, a
-later stage of live-range splitting pass should split the live-ranges for
-optimal performance, however, that is not the case with \LLVM{} as we have found
-regressions when scalars are hoisted too far, as in
-Section~\ref{sec:cost-models}. Another way to mitigate this problem is be to
-reinstantiate (rematerialize) the computation after a call (may be as a
-different optimization pass).
-
-\subsubsection{Profitability of hoisting loads}
-A load instruction introduces a register where the value loaded will be kept,
-the register pressure increases by one (unless the operand to load becomes dead
-at the load). On the other hand, loading a value early will reduce the stall
-during execution should the value is not in the cache. We generally prefer to
-hoist load except when the hoisting point is too far (this distance is computed by
-looking at the experimental results of representative benchmarks, see
-Section~\ref{sec:experimental-results}).
-
-\subsubsection{Profitability of hoisting stores}
-Since stores do not increase the live-range of any registers, and in some cases
-it ends the liveness of registers, we hoist all the stores.
-
-\subsubsection{Profitability of hoisting calls}
-Currently we hoist all the calls that are suitable candidates for hoisting.
-
-Since stores and calls are hoisted the least \ref{table:experimental-results}
-the performance does not change much whether they are hoisted or not.
+There is a special case for hoisting load instructions when the hoist-point is
+the predecessor basic block for all the loads. Even if the register pressure
+would increase, we prefer to hoist loads in this case. The reason being, that
+would make the loaded value available by the time it is used. Also, because
+stores and calls are hoisted the least \ref{table:experimental-results}, the
+performance does not change much whether they are hoisted or not.
 
 \subsection{Code generation}
 Once all the legality and profitability checks are satisfied for a set of
