@@ -347,9 +347,10 @@ code out of branches, and in general global scheduling
 scheduling to improve performance. Most of the recent work on global scheduling
 are done using ILP which results in prohibitively high compile time. To the best
 of our knowledge we have not found any reference which explored code-motion of
-identical computation in as much detail as we have done. We have also open
-sourced the implementation for easy verification. The main contributions of this
-paper are:
+identical computation in as much detail as we have done. A part of our
+implementation (aggressive code hoisting) is already merged in LLVM trunk,
+however, a general implementation of code-motion of identical expressions is
+still missing from GCC and LLVM trunk. The main contributions of this paper are:
 \begin{itemize}
 \item a new optimistic algorithm to move computations out of branches,
 \item a cost model to reduce interference and reduce spills,
@@ -584,21 +585,23 @@ them during implementation.
 \subsection{Finding candidates to move}
 The first step is to find a set of instructions that perform identical
 computations: this is performed by a linear scan of all instructions of the
-program and classifying all instructions by their value given by \GVN{}.
+program and classifying all instructions by their value given by \GVN{}. We
+could computed available and anticipable sets as computed by GCC's code-hoisting
+but that would be a lot of data structures to maintain at each basic block
+level. For GCC it makes sense because their code-hoisting is integrated with
+GVN-PRE which already has those data structures available.
 
 The current implementation of \GVN{} in \LLVM{} has some limitations when it
 comes to loads and stores so we compute the \GVN{} of loads and stores
 separately.  Our solution to value number loads is to hash the address from
 where the value is to be loaded. For stores, we value number the address as well
-as the value to be stored at that address.
-
-Another limitation of the current \GVN{} implementation in \LLVM{} is that the
-instructions dependent on the loads will not get numbered correctly, and so
-after hoisting all candidates we need to rerun the \GVN{} analysis in order to
-discover new candidates now available after having hoisted load instructions.
-This limitation should be addressed in a new implementation of the \GVN{} based on
-\MemorySSA{}, that would better account for equivalent loads and their dependent
-instructions.
+as the value to be stored at that address. Another limitation of the current
+\GVN{} implementation in \LLVM{} is that the instructions dependent on the loads
+will not get numbered correctly, and so after hoisting all candidates we need to
+rerun the \GVN{} analysis in order to discover new candidates now available
+after having hoisted load instructions.  This limitation should be addressed in
+a new implementation of the \GVN{} based on \MemorySSA{}, that would better
+account for equivalent loads and their dependent instructions.
 
 The process of computing \GVN{} can be on-demand (as we come across an
 instruction) or, precomputed (computing \GVN{} of all the instructions
@@ -610,40 +613,42 @@ approach, as described in Section~\ref{subsec:optimistic}, we want to move as
 many instructions as possible, and it would require \GVN{} values to be
 precomputed.
 
-Once the instructions have been classified in equivalence classes, we compute
-for each group of equivalent instructions a point in the program that is both
+Once the instructions have been classified into equivalence classes, we compute
+for each group of equivalent instructions, a point in the program that is both
 legal and profitable for the instructions to be moved to.
 
 \subsection{Legality check}
 \label{subsec:legality}
-Since the equality of candidates is purely based on the value they compute, we
+Since the equality of candidates is purely based on the value numbers, we also
 need to establish if hoisting them to a common dominator or sinking them to a
-common post-dominator would be feasible. Once a common dominator
-(post-dominator) is found, we check whether all the use-operands of the set of
-instructions are available at that position. In some cases when the operands are
-not available, it is possible to reinstantiate (remateralize) the use-operands,
-thus passing the legality check.
+common post-dominator would be legal. Once a common dominator (post-dominator)
+is found, we check whether all the use-operands of the set of instructions are
+available at that position. It is possible reinstantiate (remateralize) the
+use-operands in some cases when the operands are not available and make it legal
+to move the instruction.
 
-Subsequently, it is checked that the side-effects of the computations does not
-intersect with any side-effects between the instructions to be hoisted/sunk and
-their hoisting/sinking point.
+Subsequently, it is checked that the side-effects of the computations (if any)
+do not intersect with any side-effects between the instructions to be
+hoisted/sunk and their hoisting/sinking point. It is also necessary to check if
+there are indirect branch targets e.g., landing pad, case statements, goto
+labels etc., along the path because it becomes difficult to prove safety checks
+in those cases. In our current implementation we discard candidates on those
+paths.
 
-Moreover, moving memory operations is tricky on paths which have indirect
-branch targets e.g., landing pad, case statements, goto labels etc., because it
-becomes difficult to prove safety checks. In our current implementation we
-discard candidates on those paths.
-
-In the approach, described in Section~\ref{subsec:optimistic}, it is possible
-that a common hoisting point of all the instructions is either too far away, or
-not legally possible. In these cases, it is still possible to `partially' hoist
-a subset of instructions by splitting the set of candidates and finding a closer
-hoisting point for each subset. For more details see
-Section~\ref{subsec:partition}.
+Code-motion basically consists of two parts i.e., hoisting and sinking. The
+unique part about this algorithm is that it only moves identical
+computations. An immediate guarantee of this approach is gain in code size (the
+final executable may be of larger size because of more inlining). The algorithm
+prefers hoisting to sinking. If the dependency of a hoistable candidate is in
+the same basic block as the candidate, then the dependency must also be
+hoistable otherwise hoisting will be illegal or would require a complicated code
+generation to make it legal. The current algorithm discards cases if the
+dependency is neither hoistable nor rematerializable.
 
 \subsubsection{Legality of hoisting scalars}
 Scalars are the easiest to hoist because we do not have to analyze them for
 aliasing memory references. As long as all the operands are available (or can be
-made available by rematerialization), the scalar computation can be hoisted.
+made available by rematerialization), the scalar computations can be hoisted.
 
 \subsubsection{Legality of hoisting loads}
 The availability of operand to the load (an address) is checked at the hoisting
@@ -651,28 +656,113 @@ point. If that is not available we try to rematerialize the addresss if
 possible.  Along the path, from current position of the load instruction
 backwards on the control flow to the hoisting point, we check whether there are
 writes to memory that may alias with the load, in which case we discard the
-candidate.
+candidate. We use the MemorySSA infrastructure of \LLVM{} to iterate on the
+use-def chains available for memory references.
 
 \subsubsection{Legality of hoisting stores}
 For stores, we check the dependency requirements similar to the hoisting of
-loads. We check that the operands of the store instruction are available at the
-hoisting point, that there are no aliasing loads or store along the path from
-the current position to the hoisting point.
+loads using the MemorySSA of \LLVM{}. We check that the operands of the store
+instruction are available at the hoisting point, that there are no aliasing
+loads or store along the path from the current position to the hoisting point.
 
 \subsubsection{Legality of hoisting calls}
 Call instructions can be divided into three categories: those calls equivalent
 to purely scalar computations, calls reading from memory, and most of the time,
 without further information, calls have to be classified as writing to memory,
-that is the most restrictive form.  Each category of call instructions will be
+that is the most restrictive form.  Each category of call instructions is
 handled as described for scalar, load, and store instructions.
+
+\subsubsection{Legality of sinking expressions}
+One might wonder that if a set of expressions compute the same value then why
+not just hoist them. The problem is, sometimes, hoisting is not upward-safe
+\ref{click1995global} e.g., if the expressions are in a landing pad
+etc. Sometimes sinking may reduce the register pressure e.g., when the use
+operands are not kills.
+
+%TODO: Explain why all the identical computation cannot be hoisted.
+For sinking, higher ranked expressions would be sunk first. And it would be
+illegal to sink higher ranked identical expressions if they are not anticipable
+in the common post-dominator. For example:
+
+\begin{verbatim}
+B0: i0 = load B
+B1: i1 = load A
+    c1 = i1 + 10
+    d1 = i0 + 20
+    goto B3
+B2: i2 = load A
+    c2 = i2 + 10
+    d2 = i0 + 20
+    goto B3
+
+B3: phi(c1, c2)
+    phi(d1, d2)
+\end{verbatim}
+
+In this example (c1, c2) or (d1, d2) could be sunk first. Since (c1, c2) depend
+on i1 and i2 respectively which are also in their original basic blocks, c1 and
+c2 are not anticipable in B3. So without knowing the sinkability of `i1' and
+`i2' it would be illegal to sink (c1, c2) to B3. On the other hand (d1, d2) can
+safely be sunk because their operands are readily available at the sink point
+i.e., B3. It should also be noted that, just because the expressions are
+identical and operands are available, it still requires a unique post-dominating
+PHI to use the exact same values to be legally sinkable.
+
+A general global scheduling algorithm also requires checks for undefinedness
+when introducing a new computation along a path. Since only very busy
+expressions are moved in the current implementation, there is no need to check
+for undefinedness resulting due to movement of instruction. This simplifies the
+implementation.
+
+\subsubsection{Partitioning the list of hoistable candidates to maximize hoisting}
+\label{subsec:partition}
+%The partition algorithm is described as follows:
+In the approach, described in Section~\ref{subsec:optimistic}, it is possible
+that a common hoisting point of all the instructions is either too far away, or
+not legally possible. In these cases, it is still possible to `partially' hoist
+a subset of instructions by splitting the set of candidates and finding a closer
+hoisting point for each subset.
+
+In order to hoist a subset of identical instructions, we partition the list of
+all candidates in a way to maximize the total number of hoistings.  By sorting
+the list of all the candidates in the increasing order of their depth first
+search discovery time stamp \cite{clrs} (DFSIn numbers), we make sure that
+candidates closer in the list have their common dominator nearby. In
+Figure-\ref{fig:dfsin}, if B3, B4, B5, and B6 have identical computations and for
+some reason they cannot be hoisted together at B0, then we partition the set of
+hoistable candidates in their DFSIn order. In this case the DFSIn ordering would
+be B3, B4, B5, B6 which will allow the instructions in B3, B4 to be hoisted at
+B1 and those in B5, B6 to be hoisted at B2.
+
+\begin{figure}
+\centering
+%rankdir=LR;
+\digraph[scale=0.35]{abc}{
+  B0 -> B1
+  B0 -> B2
+  B1 -> B3
+  B1 -> B4
+  B2 -> B5
+  B2 -> B6
+}
+\caption{CFG to illustrate partitioning}
+\label{fig:dfsin}
+\end{figure}
+
+In our current implementation we keep as many candidates in one set as possible
+(greedy approach). We split the list at a point where the legality checks fail
+to hoist subset of candidates which are legal to hoist and then start finding
+new hoisting point for the remaining ones.
+
+
 
 \section{Profitability check (Cost models)}
 \label{sec:cost-models}
-After the legality checks have passed, we check for profitability of hoisting.
-That takes into account the impact code-hoisting would have on various
-parameters that affect runtime performance e.g., impact on live-range, gain in
-the code size. Since this is mostly a code-size optimization pass, the goal is
-to not regress in performance across popular benchmarks at the same time reduce
+After the legality checks have passed, we check if a code-motion is profitable.
+That takes into account the impact code-motion would have on various parameters
+that might affect runtime performance e.g., impact on live-range, gain in the
+code size. Since this is mostly a code-size optimization pass, the goal is to
+not regress in performance across popular benchmarks at the same time reduce
 code size as much as possible. Following are the cost models which are
 implemented:
 
@@ -825,11 +915,12 @@ computations and perform legality checks, as described in
 Section~\ref{subsec:legality}. Often times it is not possible to hoist all the
 instructions to one common dominator, due to legality constraints, e.g.,
 intersecting side-effects, or profitability constraints, e.g., increasing
-register pressure. In those cases, this algorithmn would partition the list of
-identical instructions into subsets which can be partially hoisted to their
-respective common dominators. However, it should be noted that we only hoist
-very busy expressions to avoid checking for undefined behaviors resulting because
-of introducing extra computation in an execution path.
+register pressure. In those cases, this algorithmn would partition
+(Section~\ref{subsec:partition}) the list of identical instructions into subsets
+which can be partially hoisted to their respective common dominators. However,
+it should be noted that we only hoist very busy expressions to avoid checking
+for undefined behaviors resulting because of introducing extra computation in an
+execution path.
 
 Code hoisting opens new opportunities for other hoistable candidates which were
 of higher rank (depended on candidates which got hoisted). Ideally we could
@@ -837,71 +928,6 @@ iterate on lower ranking expressions first and then proceed to higher ranking
 expressions in the same iteration but LLVM's GVN infrastucture does not compute
 equivalence classes in a effective way. We found it simpler to just recompute
 the value numbers and start finding hoistable candidates again.
-
-For sinking however, higher ranked expressions would be sunk first. And it would
-be illegal to sink higher ranked identical expressions if they are not
-anticipable in the common post-dominator. For example:
-
-\begin{verbatim}
-B0: i0 = load B
-B1: i1 = load A
-    c1 = i1 + 10
-    d1 = i0 + 20
-    goto B3
-B2: i2 = load A
-    c2 = i2 + 10
-    d2 = i0 + 20
-    goto B3
-
-B3: phi(c1, c2)
-    phi(d1, d2)
-\end{verbatim}
-
-In this example (c1, c2) or (d1, d2) could be sunk first. Since (c1, c2) depend
-on i1 and i2 respectively which are also in their original basic blocks, c1 and
-c2 are not anticipable in B3. So without knowing the sinkability of `i1' and
-`i2' it would be illegal to sink (c1, c2) to B3. On the other hand (d1, d2) can
-safely be sunk because their operands are readily available at the sink point
-i.e., B3. It should also be noted that, just because the expressions are
-identical and operands are available it still requires a unique post-dominator
-PHI to use the exact same values to be legally sinkable.
-
-The partition algorithm is described as follows:
-% TODO: Explain why all the identical computation cannot be hoisted.
-
-\subsubsection{Partition the list of hoisting candidates to maximize hoisting}
-\label{subsec:partition}
-In order to hoist a subset of identical instructions, we partition the list of
-all candidates in a way to maximize the total number of hoistings.  By sorting
-the list of all the candidates in the increasing order of their depth first
-search discovery time stamp \cite{clrs} (DFSIn numbers), we make sure that
-candidates closer in the list have their common dominator nearby. In
-Figure-\ref{fig:dfsin}, if B3, B4, B5, and B6 have identical computations and for
-some reason they cannot be hoisted together at B0, then we partition the set of
-hoistable candidates in their DFSIn order. In this case the DFSIn ordering would
-be B3, B4, B5, B6 which will allow the instructions in B3, B4 to be hoisted at
-B1 and those in B5, B6 to be hoisted at B2.
-
-\begin{figure}
-\centering
-%rankdir=LR;
-\digraph[scale=0.35]{abc}{
-  B0 -> B1
-  B0 -> B2
-  B1 -> B3
-  B1 -> B4
-  B2 -> B5
-  B2 -> B6
-}
-\caption{CFG to illustrate partitioning}
-\label{fig:dfsin}
-\end{figure}
-
-In our current implementation we keep as many candidates in one set as possible
-(greedy approach). We split the list at a point where the legality checks fail
-to hoist subset of candidates which are legal to hoist and then start finding
-new hoisting point for the remaining ones.
-
 
 \subsection{Time complexity of algorithm}
 The complexity of code hoisting is linear in number of instructions that could
@@ -1061,12 +1087,16 @@ models described in Section~\ref{sec:cost-models}. Since those cost models
 depend on a set of thresholds, it requires tuning, as such, we used
 representative benchmarks to tune them.
 
-Currently, we rerun the algorithm until there are no more instructions left to
-be hoisted. This is not the most optimal approach and results in expensive
-analyses to be recomputed. This can be improved by ranking the computations
-\cite{rosen1988global}. Also \GVN{}-hoist runs very early in the pass pipeline, it
-will be good to evaluate the codesize/performance impact when it is run in sync
-with \GVN{}-\PRE{} just like \GCC{} does.
+In general it is a good idea to start with lower ranked expression first such
+that maximum hoisting can happen in one iteration, however, current
+implementation does not rank the expressions and iteratively finds a fixed point
+when no more candidates are available. Even this implementation converges
+quickly and no significant compile time regression have been observed because of
+code hoisting pass. This is not the most optimal approach and results in
+multiple data structures to be recomputed. This can be improved by ranking the
+computations \cite{rosen1988global}. Also \GVN{}-hoist runs very early in the
+pass pipeline, it will be good to evaluate the codesize/performance impact when
+it is run in sync with \GVN{}-\PRE{} just like \GCC{} does.
 
 With the implementation of code-hoisting in \LLVM{}, the passes which rely on the
 code-size/instruction-count to make optimization decisions needs to be
