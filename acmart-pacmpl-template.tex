@@ -805,13 +805,13 @@ and we have found regressions while hoisting aggressively.
 
 Moreover, LLVM has a `getelementptr' instruction which computes the address
 where a load or a store would happen. It is a scalar computation and gets
-hoisted frequently even if the loads/stores would not get hoisted.  In order to
-reduce register pressure while hoisting loads, we have restricted hoisting of
-address computations away from their corresponding loads and stores when the
-loads and stores cannot be moved.  This restriction is only to mitigate the
-limitations of LLVM's register allocator and may be lifted in the future, when
-the register allocation rematerialization pass has been improved to catch the
-regressions.
+hoisted frequently even if the corresponding loads/stores would not get hoisted.
+In order to reduce register pressure while hoisting loads, we have restricted
+hoisting of address computations away from their corresponding loads and stores
+when the loads and stores cannot be moved.  This restriction is only to mitigate
+the limitations of LLVM's register allocator and may be lifted in the future,
+when the register allocation rematerialization pass has been improved to catch
+these regressions.
 
 \subsubsection{Hoisting expression across call}
 \label{cost:across-calls}
@@ -860,6 +860,7 @@ and \SSA{} semantics.
 
 \section{SSA based global code motion of identical computations}
 \label{sec:implementation-details}
+% Move this before legality and profitability??
 % Ranking of instructions from Zadeck
 % Liveness analysis from Ramakrishna
 
