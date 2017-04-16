@@ -584,7 +584,7 @@ them during implementation.
 The first step is to find a set of instructions that perform identical
 computations: this is performed by a linear scan of all instructions of the
 program and classifying all instructions by their value given by \GVN{}. We
-could computed available and anticipable sets as computed by GCC's code-hoisting
+could compute available and anticipable sets as computed by GCC's code-hoisting
 but that would be a lot of data structures to maintain at each basic block
 level. For GCC it makes sense because their code-hoisting is integrated with
 GVN-PRE which already has those data structures available.
@@ -911,6 +911,25 @@ it should be noted that we only hoist very busy expressions to avoid checking
 for undefined behaviors resulting because of introducing extra computation in an
 execution path.
 
+
+computing barriers:
+
+\begin{verbatim}
+computing downward-safety of hoistable instructions at hoist-point
+Worklist = list of all basic blocks of hoistable instructions
+for each basic block B in the dominator tree starting at hoist-point:
+  if Worklist is empty
+    return false // Path exists! not downward safe
+  if B is in Worklist:
+    remove B from worklist
+    remove subtree with root at B // Available at B => downward safe from B
+  if B is a leaf basic block:
+    return false  // Path exists! not downward safe
+  if B dominates hoist-point:
+    return false  // Back edge
+
+\end{verbatim}
+
 % Explain the overall algorithm, explain how anticipability is computed on demand
 % explain the pinned-instructions/barriers.
 \begin{verbatim}
@@ -922,7 +941,7 @@ Compute DJ Graph of function and compute mergeset based on that
 For each value number VN with 2 or more instructions:
   sort the instructions according to DFSIn numbers
   if first two I1, I2 are hoistable:
-    if they are anticipable at hoist-point:
+    if they are downward-safe at hoist-point:
       if they are profitable to be hoisted at hoist-point:
         proceed to check hoistability of subsequent instruction with same VN
       else
