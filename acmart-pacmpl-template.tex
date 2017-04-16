@@ -219,6 +219,7 @@ candidates with less compile time overhead.
 
 
 \section{Introduction}
+\label{sec:intro}
 Compiler techniques to remove redundant computations are composed of an analysis
 phase that detects identical computations in the program and a transformation
 phase that reduces the number of run-time computations.  Classical scalar
@@ -232,23 +233,18 @@ time \cite{briggs1994effective,chow1997new,kennedy1999partial} and brought these
 techniques in the main stream: nowadays \SSA{} based \PRE{} is available in every
 industrial compiler.
 
-This paper describes code-motion of identical computations, a technique that
-uses the information computed for \PRE{} to detect identical computations but
-has a transformation phase whose goal differs from \PRE{}: it removes identical
-computations from different branches of execution.  These identical computations
-in different branches of execution are not redundant computations at run-time
-and the number of run-time computations is not reduced. It is not a redundancy
-elimination pass, and thus it has different cost function and heuristics than
-\PRE{} or CSE. It is more similar to global code scheduling
-\cite{dragonbook,click1995global} in the sense that it will only move
-computations. We will now consider an example that explains how code hoisting can
-also improve performance.
-
-\subsection{Illustrative Example}
-\label{subsec:example}
-Code hoisting can reduce the critical path length of execution in out of
-order machines. As more instructios are available at the hoisting point, the
-hardware has more instructions to reorder. Following example illustrates how
+This paper describes code-motion of congruent instructions \cite{briggs1997}, a
+technique that uses the information computed for \PRE{} to detect identical
+computations but has a transformation phase whose goal differs from \PRE{}: it
+removes identical computations from different branches of execution.  These
+identical computations in different branches of execution are not redundant
+computations at run-time and the number of run-time computations is not
+reduced. It is not a redundancy elimination pass, and thus it has different cost
+function and heuristics than \PRE{} or CSE. It is more similar to global code
+scheduling \cite{dragonbook,click1995global} in the sense that it will only move
+computations. Code hoisting can reduce the critical path length of execution in
+out of order machines. As more instructios are available at the hoisting point,
+the hardware has more instructions to reorder. Following example illustrates how
 hoisting can improve performance by exposing more ILP.
 
 \begin{verbatim}
@@ -302,19 +298,20 @@ float fun(float d, float min, float max, float a) {
 
 \end{verbatim}
 
-In this code the two subtractions and the division operations can be executed in
-parallel because there are no dependencies among them. So the total number of
-cycles will be $max(C_{div}, C_{sub}) + C_{mul} = C_{div} + C_{mul}$; since $C_{div}$ is
-usually much greater than $C_{sub}$ \cite{x86,aarch64}.
+In this code the division operation can be executed in parallel with the two
+subtractions because there are no dependencies among them. So the total number
+of cycles will be $max(C_{div}, C_{sub}) + C_{mul} = C_{div} + C_{mul}$; since
+$C_{div}$ is usually much greater than $C_{sub}$ \cite{x86,aarch64}.
 
 %GCC: 23286 has interesting test cases.
 
 In fact there are several advantages of code-motion of this kind:
 \begin{itemize}
-\item It reduces the code size of the program;
-\item It improves function inlining heuristics: functions become cheaper to
-  inline when their code size decreases because inliner heuristics in \LLVM{}
-  depends on instruction count.
+\item It helps reduce the code size of the program by replacing multiple
+  instructions with one although the final code size may be higher because of
+  improved inlining heuristics; functions become cheaper to inline when their
+  code size decreases because inliner heuristics in \LLVM{} depends on
+  instruction count.
 \item It expose more instruction level parallelism to the later compiler
   passes. By hoisting identical computations to be executed earlier, instruction
   schedulers can move heavy computations earlier in order to avoid pipeline
@@ -328,16 +325,13 @@ In fact there are several advantages of code-motion of this kind:
   when register pressure would potentially reduce.
 \item For SIMD architectures, which execute all branches, it will reduce the
   total number of instructions to be executed.
-\item It improves passes that do not work well with branches:
-  \begin{itemize}
-  \item to improve loop vectorization by reducing a loop with control flow to a
-    loop with a single BB, should all the instructions in a conditional get
-    hoisted or sinked;
-  \item to enable more loop invariant code motion (LICM): as LICM does not
-    reason about instructions in the context of loops with conditional branches,
-    code-hoisting is needed to move instructions out of conditional expressions
-    and expose them to LICM.
-  \end{itemize}
+\item It may improve loop vectorization by reducing a loop with control flow to
+  a loop with a single BB, should all the instructions in a conditional get
+  hoisted or sinked;
+\item It enables more loop invariant code motion (LICM): as LICM passes, in
+  general, cannot effectively reason about instructions within conditional
+  branches the context of loops, code-hoisting is needed to move instructions
+  out of conditional expressions and expose them to LICM.
 \end{itemize}
 
 There have been a lot of work both in industry and academia to hoist and sink
@@ -349,11 +343,12 @@ are done using ILP which results in prohibitively high compile time. To the best
 of our knowledge we have not found any reference which explored code-motion of
 identical computation in as much detail as we have done. A part of our
 implementation (aggressive code hoisting) is already merged in LLVM trunk,
-however, a general implementation of code-motion of identical expressions is
-still missing from GCC and LLVM trunk. The main contributions of this paper are:
+however, a general implementation of code-motion of congruent (but not
+redundant) expressions is still missing from GCC and LLVM trunk. The main
+contributions of this paper are:
 \begin{itemize}
-\item a new optimistic algorithm to move computations out of branches,
-\item a cost model to reduce interference and reduce spills,
+\item a new optimistic algorithm to move congruent instructiosn out of branches,
+\item a cost model to reduce interference and hence, reduce spills,
 \item a technique to maximize hoisting in an optimistic approach by partitioning
   the list of potential candidates sorted by their DFS visit number,
 \item experimental evaluation of our implementation in \LLVM{} which combines
@@ -368,7 +363,7 @@ There are a lot of bug reports in \GCC{} and \LLVM{} bugzillas
 \cite{GCCCodeHoistingBugs, LLVMCodeHoistingBugs}, showing the interest in having
 a more powerful code hoist transform.  The current \LLVM{} implementation of
 code hoisting in SimplifyCFG.cpp is very limited to hoisting from identical
-basic blocks: the instructions of two sibling basic blocks are read in the same
+basic blocks: the instructions of two sibling basic blocks are read at the same
 time, and all the instructions of the blocks are hoisted to the common parent
 block as long as the compiler is able to prove that the instructions are
 equivalent.  This implementation does not allow for an easy extension: first in
@@ -384,10 +379,12 @@ as possible without regarding the impact on register pressure and as such a cost
 model will be required.  Also the description of VBE is based on the classic
 dataflow model and an adaptation to a sparse \SSA{} representation is required.
 
-Rosen \cite{rosen1988global} also introduced moving computations from successors
-but using value numbering. Their algorithm iterates on computations of same rank
-and move the code with identical computations from the sibling branch to a
-common dominator if they are very busy \cite{steven1997advanced}.
+Rosen \cite{rosen1988global} also briefly discuss hoisting computations with
+identical value numbers from immediate successors. Their algorithm iterates on
+computations of same rank and move the code with identical computations from the
+sibling branch to a common dominator if they are very busy
+\cite{steven1997advanced}. The cost-model to mitigate register pressure is
+missing, also there is no mention of sinking congruent instructions.
 
 \GCC{} recently got code-hoisting \cite{GCCCodeHoisting} which is implemented as
 part of \GVN{}-\PRE{}: it uses the set of ANTIC\_IN and AVAIL\_OUT value
@@ -412,19 +409,19 @@ schedule all the instructions as early as possible. This results in very long
 live ranges which is mitigated by again scheduling all the instructions as late
 as possible. They report sppeedup of as high as $23\%$.
 
-Barany \cite{barany2013} presented a global scheduler with ILP formulation with
-a goal to minimize register pressure. The results they got were not very
-promising. It may be because they only used the scheduler for smaller functions
-($<1000$ instructions) also they compiled the benchmarks for ARM-Cortex which is
-more resilient to register pressure because it has more registers compared to
-say X86.
+Barany \cite{barany2013} presented a global scheduler with integer linear
+programming (ILP) formulation with a goal to minimize register pressure. The
+results they got were not very promising. It may be because they only used the
+scheduler for smaller functions ($<1000$ instructions) also they compiled the
+benchmarks for ARM-Cortex which is more resilient to register pressure because
+it has more registers compared to say X86.
 
 Shobaki \cite{shobaki2013} also recently presented a combinatorial global
 scheduler with reasonable performance improvements. It is possible that both
 Barany and Shobaki's implmentation will have similar results when compiled for
-same target. Also, both suffer from the same problem, although Shobaki not so
-much, of large compile times which is not feasible for industrial compilers like
-gcc and LLVM.
+same target architecture. Also, both suffer from the same problem, although
+Shobaki not so much, of large compile times which is not feasible for industrial
+compilers like gcc and LLVM.
 
 We got reduction in register spills on some SPEC2006 benchmarks, reduction in
 code-size and some performance improvements with very low compile time overhead.
@@ -440,8 +437,8 @@ code-size and some performance improvements with very low compile time overhead.
 The algorithm for code motion uses several common representations of the
 program that we shortly describe below:
 \begin{itemize}
-\item Control Flow Graph (\CFG{}) and the Dominance (DOM) and Post-Dominance (PDOM)
-  relations \cite{dragonbook};
+\item Dominance (DOM) and Post-Dominance (PDOM) relations \cite{dragonbook} on a
+  Control Flow Graph (\CFG{}).
 \item DJ-Graph \cite{Sreedhar1996} is a data structure that augments the
   dominator tree with join-edges to keep track of data-flow in a program. We use
   DJ-Graph to compute liveness of variables as illustrated in \cite{das2012}.
@@ -457,11 +454,11 @@ program that we shortly describe below:
 The code-motion pass can be broadly divided into the following steps that we will
 describe in the rest of this section:
 \begin{itemize}
-\item find candidates suitable for code-motion
+\item find candidates (congruent instructions) suitable for code-motion,
 \item compute a point in the program where it is both legal and profitable to
   move the code,
-\item transform the code and update data structures to continue iterative code
-  motion.
+\item move the code to hoist point or sink point, and
+\item update data structures to continue iterative code motion.
 \end{itemize}
 
 \subsection{Liveness using DJ Graph}
@@ -477,23 +474,6 @@ computation of merge sets for each basic block i.e., a set of all basic blocks
 where the values can flow from a particular basic block. We have implemented
 merge-set computation from DJ-graph as illustrated in \cite{das2005}. A simplified
 version of merge set that we implemented is presented here:
-
-\begin{verbatim}
-// Return true if the merge set of source node of
-// a visited J-edge (incoming edge of lnode) is not
-// the subset of the merge set of lnode.
-bool still_inconsistent(Node lnode, JEdges JE, Visited V, MergeSet M)
-   for (all incoming edges to lnode) do
-     Let e = Incoming edge
-     if (e is in JE && e in V) then
-       Let snode = Source Node of e
-       if (M(snode)!(Subset) M(lnode)) then
-         return true
-       end if
-     end if
-   end for
-return false
-\end{verbatim}
 
 \begin{verbatim}
 // Compute merge set top-down in breadth first order.
@@ -531,6 +511,24 @@ void  constructMergeSet(CFG G) {
   while (Repeat);
 }
 \end{verbatim}
+
+\begin{verbatim}
+// Return true if the merge set of source node of
+// a visited J-edge (incoming edge of lnode) is not
+// the subset of the merge set of lnode.
+bool still_inconsistent(Node lnode, JEdges JE, Visited V, MergeSet M)
+   for (all incoming edges to lnode) do
+     Let e = Incoming edge
+     if (e is in JE && e in V) then
+       Let snode = Source Node of e
+       if (M(snode)!(Subset) M(lnode)) then
+         return true
+       end if
+     end if
+   end for
+return false
+\end{verbatim}
+
 
 We compute merge sets of the control flow graph which remains same through the
 code-motion transformation. For code-motion we only want to know if a use
@@ -1146,9 +1144,9 @@ calls got hoisted/sunk as (compared to 0), one loop got unswitched (compared to
 30) machine instructions got hoisted out of loop, 70 (compared to 39) machine
 instructions were sunk.
 
-The code shown in Section~\ref{subsec:example} is a reduced example that appears
-in a hot loop of a proprietary benchmark.  When the expressions are hoisted from
-the conditional clauses, the overall performance of that benchmark improves by
+The code shown in Section~\ref{sec:intro} is a reduced example that appears in a
+hot loop of a proprietary benchmark.  When the expressions are hoisted from the
+conditional clauses, the overall performance of that benchmark improves by
 $15\%$ on an out-of-order processor due to increased instruction level
 parallelism, and better scheduling of the instructions, accommodating for the
 long latency of the division operation.
