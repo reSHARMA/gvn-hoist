@@ -89,13 +89,11 @@
 
 \def \GCC {GCC}
 \def \LLVM {LLVM}
-\def \SESE {SESE}
 \def \CFG {CFG}
 \def \SSA {SSA}
 \def \MemorySSA {MemorySSA}
 \def \PRE {PRE}
 \def \GVN {GVN}
-\def \LLVMTestSuite {\LLVM{} test-suite}
 \def \SPEC {SPEC Cpu2006}
 
 %% Author information
@@ -163,15 +161,15 @@ this code motion saves code size, it exposes redundancies in some cases, it
 exposes more instruction level parallelism in the basic block when the
 computations are hoisted, and it enables other passes like loop invariant
 motion to remove more redundancies. The cost model to drive the code motion is
-based on live range analysis on SSA representation such that the (virtual)
+based on live range analysis on \SSA{} representation such that the (virtual)
 register pressure does not increase.
 
 We have implemented the pass in \LLVM{}. It is based on Global Value Numbering
 infrastructure available in \LLVM{}. The experimental results show an average
-of 2.5\% savings in code size in llvm testsuite, although the code size also
+of 2.5\% savings in code size on \SPEC{}, although the code size also
 increases in many cases because it enables more inlining. We have also seen
-imrpovements of approximately 5\% in a couple of SPEC 2006 benchmarks viz. gcc
-and mcf, moreover, register spills reduced for almost all the SPEC 2006
+execution time improvements of approximately 5\% in a couple of \SPEC{} benchmarks viz. \GCC{}
+and mcf, moreover, register spills reduced for almost all the \SPEC{}
 bencmarks when compiled for X86\_64. This is an optimistic algorithm in the
 sense that it considers all identical computations in a function as potential
 candidates. We make an extra effort to hoist candidates by partitioning the
@@ -181,7 +179,6 @@ register pressure will reduce as a result of code-motion and why sorting the
 list of potential candidates w.r.t. their depth first numbers helps hoist more
 candidates with less compile time overhead.
 \end{abstract}
-
 
 %% 2012 ACM Computing Classification System (CSS) concepts
 %% Generate at 'http://dl.acm.org/ccs/ccs.cfm'.
@@ -210,7 +207,7 @@ candidates with less compile time overhead.
 
 %% Keywords
 %% comma separated list
-\keywords{Optimizng Compilers, GCC, LLVM, Code Generation, Global Scheduling}  %% \keywords is optional
+\keywords{Optimizng Compilers, \GCC{}, \LLVM{}, Code Generation, Global Scheduling}  %% \keywords is optional
 
 %% \maketitle
 %% Note: \maketitle command must come after title commands, author
@@ -343,9 +340,9 @@ scheduling to improve performance. Most of the recent work on global scheduling
 are done using ILP which results in prohibitively high compile time. To the best
 of our knowledge we have not found any reference which explored code-motion of
 identical computation in as much detail as we have done. A part of our
-implementation (aggressive code hoisting) is already merged in LLVM trunk,
+implementation (aggressive code hoisting) is already merged in \LLVM{} trunk,
 however, a general implementation of code-motion of congruent (but not
-redundant) expressions is still missing from GCC and LLVM trunk. The main
+redundant) expressions is still missing from \GCC{} and \LLVM{} trunk. The main
 contributions of this paper are:
 \begin{itemize}
 \item a new optimistic algorithm to move congruent instructiosn out of branches,
@@ -353,7 +350,7 @@ contributions of this paper are:
 \item a technique to maximize hoisting in an optimistic approach by partitioning
   the list of potential candidates sorted by their DFS visit number,
 \item experimental evaluation of our implementation in \LLVM{} which combines
-  SSA based liveness analysis, and ranking of expressions to move very busy
+  \SSA{} based liveness analysis, and ranking of expressions to move very busy
   expressions in order to reduce code-size (and improve performance in some
   cases).
 \end{itemize}
@@ -423,7 +420,7 @@ scheduler with reasonable performance improvements. It is possible that both
 Barany and Shobaki's implmentation will have similar results when compiled for
 same target architecture. Also, both suffer from the same problem, although
 Shobaki not so much, of large compile times which is not feasible for industrial
-compilers like gcc and LLVM.
+compilers like \GCC{} and \LLVM{}.
 
 We got reduction in register spills on some SPEC2006 benchmarks, reduction in
 code-size and some performance improvements with very low compile time overhead.
@@ -469,7 +466,7 @@ tree with join-edges to keep track of data-flow in a program. We use DJ-Graph
 and Merge Sets to compute liveness of variables as illustrated in
 \cite{das2012}.  It is very efficient for computing liveness and does not
 require any bitvectors to be maintained for each basic block. The underlying
-simplicity of liveness computation is due to SSA form, where the the values only
+simplicity of liveness computation is due to \SSA{} form, where the the values only
 flow (from def to use) either through dominator edges or the join edges (where
 we insert a PHI). The DJ-graph contains both these edges which allows for
 computation of merge sets for each basic block i.e., a set of all basic blocks
@@ -599,9 +596,9 @@ block checking for uses should isLiveOutUsingMergeSet return false.
 The first step is to find a set of congruent instructions
 \cite{briggs1997}. This is performed by a linear scan of all instructions of the
 program and classifying them by their value numbers. We could compute available
-and anticipable sets as computed by GCC's code-hoisting but that would be a lot
-of data structures to maintain at each basic block level. For GCC it makes sense
-because their code-hoisting is integrated with GVN-PRE which already has those
+and anticipable sets as computed by \GCC{'}s code-hoisting but that would be a lot
+of data structures to maintain at each basic block level. For \GCC{} it makes sense
+because their code-hoisting is integrated with \GVN{}-\PRE{} which already has those
 data structures available.
 
 The current implementation of \GVN{} in \LLVM{} has some limitations when it
@@ -664,7 +661,7 @@ infrastructure of \LLVM{} is used.
 
 \subsubsection{Legality of hoisting stores}
 For stores, we check the dependency requirements similar to the hoisting of
-loads using the MemorySSA of \LLVM{}. We check that the operands of the store
+loads using the \MemorySSA{} of \LLVM{}. We check that the operands of the store
 instruction are available at the hoisting point, and that there are no aliasing
 loads or store along the path from the current position to the hoisting point.
 
@@ -766,13 +763,13 @@ of rematerializing the instruction should it be beneficial to do so. But the
 current live-range splitting pass of \LLVM{} is not making the optimial decision
 and we have found regressions while hoisting aggressively.
 
-Moreover, LLVM has a `getelementptr' instruction which computes the address
+Moreover, \LLVM{} has a `getelementptr' instruction which computes the address
 where a load or a store would happen. It is a scalar computation and gets
 hoisted frequently even if the corresponding loads/stores would not get hoisted.
 In order to reduce register pressure while hoisting loads, we have restricted
 hoisting of address computations away from their corresponding loads and stores
 when the loads and stores cannot be moved.  This restriction is only to mitigate
-the limitations of LLVM's register allocator and may be lifted in the future,
+the limitations of \LLVM{'}s register allocator and may be lifted in the future,
 when the register allocation rematerialization pass has been improved to catch
 these regressions.
 
@@ -819,7 +816,7 @@ profitable -- to B2.
   B2 -> B5
   B2 -> B6
 }
-\caption{CFG to illustrate partitioning}
+\caption{\CFG{} to illustrate partitioning}
 \label{fig:dfsin}
 \end{figure}
 
@@ -844,7 +841,7 @@ computation is inserted at the hoisting point along with any instructions which
 needed to be rematerialized. Thereafter, all the computations made redundant by
 the new copy are removed, and the \SSA{} form is restored by updating the
 intermediate representation (IR) to reflect the changes. At the same time
-MemorySSA is also updated to get up-to-date information about memory references.
+\MemorySSA{} is also updated to get up-to-date information about memory references.
 
 After one iteration of algorithm runs through the entire function, it creates
 more oppportunities for \emph{higher ranked} computations
@@ -858,7 +855,7 @@ Finally after the transformation is done, we verify a set of post-conditions to
 establish that program invariants are maintained: e.g., consistency of use-defs,
 and \SSA{} semantics.
 
-\section{SSA based global code motion of identical computations}
+\section{\SSA{} based global code motion of identical computations}
 \label{sec:implementation-details}
 % Move this before legality and profitability??
 % Ranking of instructions from Zadeck
@@ -899,7 +896,7 @@ for undefined behaviors resulting because of introducing extra computation in an
 execution path.
 
 Barriers are based on the concept of pinned instructions \cite{click1995global}
-but extended to adapt to LLVM IR. Since a basic block in LLVM IR is actually an
+but extended to adapt to \LLVM{} IR. Since a basic block in \LLVM{} IR is actually an
 extended basic block because there might be calls in the middle of a basic block
 which might not return. So barriers can be present in the middle of a basic
 block. Essentially, any instruction that cannot not guarantee progress is marked
@@ -999,7 +996,7 @@ For each pair I1, I2 of sinkable instructions:
 Code hoisting opens new opportunities for other hoistable candidates which were
 of higher rank (depended on candidates which got hoisted). Ideally we could
 iterate on lower ranking expressions first and then proceed to higher ranking
-expressions in the same iteration but LLVM's GVN infrastucture does not compute
+expressions in the same iteration but \LLVM{'}s \GVN{} infrastucture does not compute
 equivalence classes in a effective way. We found it simpler to just recompute
 the value numbers and start finding hoistable candidates again.
 
@@ -1010,8 +1007,8 @@ The analyses computed for this pass are Global Value Numbering, Computation of
 DJ Graph and MergeSets, Marking Barriers, all are linear in number of
 instructions in a function. Liveness analysis expensive but only performed
 on-demand for hoistable candidates so it does not affect the overall compile
-time by much. Other analyses like Alias Analysis, Memory SSA and Dominator Tree
-are already available in the LLVM pass pipeline. Although we recompute GVN, and
+time by much. Other analyses like Alias Analysis, \MemorySSA{} and Dominator Tree
+are already available in the \LLVM{} pass pipeline. Although we recompute \GVN{}, and
 Barriers for each iteration of the code-motion, we have not seen signinficant
 increase in the compilation times. We have also provided appropriate compiler
 flags to expedite code-motion by bailing out with fewer iterations, or skip the
@@ -1176,7 +1173,7 @@ Code size         &\% age	increase in codesize \\\hline
 \end{table}
 
 
-While benchmarking \LLVMTestSuite{} we see both increase as well as decrease in
+While benchmarking \SPEC{} we see both increase as well as decrease in
 the codesizes of the final binaries. Since the pass runs early, it affects many
 optimizations which rely on the number of instructions, lenth of the use-def
 chain, and other metrics. For instance, the inliner is impacted by a decrease in
