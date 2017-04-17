@@ -738,17 +738,13 @@ Hoisting upwards will decrease the live-range of its use, if it is a last use (a
 kill), but increase the live-range of its definition. Conversely, sinking will
 decrease the live-range of the defined register but increase the live-range for
 killed operands. If the live-range after code-motion is less than before it will
-be moved.
-
-Essentially, as long as there is one killed operand , code hoisting will either
-decrease or preserve the register pressure. Similarly, code-sinking will either
-decrease or preserve the register pressure as long as there is one operand
-killed at most.
-
-Following example explains how code motion of identical computations can reduce
-the register pressure.  Consider the following example where the labels prefixed
-with 'P' represent the position of instruction in a basic block (names prefixed
-with 'B').
+be moved. Essentially, as long as there is one killed operand , code hoisting
+will either decrease or preserve the register pressure.  Similarly, code-sinking
+will either decrease or preserve the register pressure as long as there is one
+operand killed at most.  Following example explains how code motion of identical
+computations can reduce the register pressure.  Consider the following example
+where the labels prefixed with 'P' represent the position of instruction in a
+basic block (names prefixed with 'B').
 
 \begin{verbatim}
     b = m
@@ -782,15 +778,15 @@ the limitations of LLVM's register allocator and may be lifted in the future,
 when the register allocation rematerialization pass has been improved to catch
 these regressions.
 
-\subsubsection{Hoisting expression across call}
+\subsubsection{Hoisting an expression across a call}
 \label{cost:across-calls}
 Even hoisting scalars across calls is tricky because it can increase the number
-of spills. During the frame lowering of calls, the argument registers, in
-general, the caller saved registers are saved because they might be modified by
-the callee and after the call they are restored. So before the call, the
-register pressure is high because the number of available registers are reduced
-by the number of caller saved registers. In that situation if a computation
-that increases register pressure is not profitable to hoist.
+of spills. During the frame lowering of calls, the argument registers also known
+as the caller saved registers are saved because they might be modified by the
+callee and after the call they are restored. So before the call, the register
+pressure is high because the number of available registers are reduced by the
+number of caller saved registers. In that situation a computation that increases
+register pressure is not profitable to hoist.
 
 \subsubsection{Partitioning the list of hoistable candidates to maximize hoisting}
 \label{subsec:partition}
@@ -829,6 +825,7 @@ profitable -- to B2.
 \label{fig:dfsin}
 \end{figure}
 
+% TODO: Rewrite the following.
 In our current implementation we keep as many candidates in one set as possible
 (greedy approach). We split the list at a point where the legality checks fail
 to hoist subset of candidates which are legal to hoist and then start finding
@@ -844,7 +841,7 @@ performance does not change much whether they are hoisted or not.
 
 \subsection{Code generation}
 Once all the legality and profitability checks are satisfied for a set of
-identical instructions, they are suitable candidates for hoisting. A copy of the
+congruent instructions, they are suitable candidates for hoisting. A copy of the
 computation is inserted at the hoisting point along with any instructions which
 needed to be rematerialized. Thereafter, all the computations made redundant by
 the new copy are removed, and the \SSA{} form is restored by updating the
