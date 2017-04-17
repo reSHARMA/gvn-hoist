@@ -1137,8 +1137,9 @@ Grand Total	  & 43349	& 42497	& 0.98
     \begin{tabular}{|l|c|c|c|}
       \hline
 
+      TODO: Check if putting code-size or spills number is okay or only % is required.
 Code size         & base(ofast)	& ofast+gvnhoist&	increase in codesize \\\hline
-400.perlbench	  &  2469594	& 2478714	& 1.00\\\hline
+400.perlbench	  &  2469594	& 2478714	& 1.00 \\\hline
 401.bzip2	  &  865902	& 867502	& 1.00 \\\hline
 403.gcc	          &  4379291	& 4437467	& 1.01 \\\hline
 429.mcf	          &  794909	& 794749	& 1.00 \\\hline
@@ -1157,6 +1158,69 @@ Code size         & base(ofast)	& ofast+gvnhoist&	increase in codesize \\\hline
 473.astar	  &  44296	& 45224		& 1.02 \\\hline
 482.sphinx3	  &  1337445	& 1334437	& 1.00 \\\hline
 483.xalancbmk	  &  4293600	& 4247108	& 0.99 \\\hline
+    \end{tabular}
+  \end{center}
+  \caption{Number of spills on SPEC2006 at -Ofast}
+  \label{tab:code-size}
+\end{table}
+
+\begin{table}[h!]
+  \begin{center}
+    \begin{tabular}{|l|c|c|c|}
+      \hline
+ hoist licm	sunk licm		functions inlined		f deleted	
+ base	& gvn	& base	& gvn	& base	& gvn	& base	& gvn
+ 400.perlbench	  & 2428	& 2480	& 36	& 35	& 1562	& 1565	& 232	& 234
+ 401.bzip2	  & 721	& 825	& 3	& 3	& 172	& 180	& 32	& 33
+ 403.gcc	          & 8867	& 10079	& 143	& 182	& 5034	& 5080	& 1303	& 1304
+ 429.mcf	          & 55	& 51	& 1	& 1	& 4	& 4	& 	& 
+ 433.milc	  & 2537	& 2795	& 3	& 3	& 75	& 81	& 	& 
+ 444.namd	  & 2204	& 2206	& 240	& 240	& 387	& 390	& 57	& 55
+ 445.gobmk	  & 3090	& 3107	& 18	& 19	& 735	& 775	& 230	& 234
+ 447.dealII	  & 59114	& 95884	& 60	& 8	& 100891	& 100692	& 30219	& 29966
+ 450.soplex	  & 4668	& 4848	& 18	& 17	& 9801	& 9784	& 3125	& 3112
+ 453.povray	  & 9533	& 9079	& 23	& 32	& 5522	& 5532	& 1202	& 1201
+ 456.hmmer	  & 3200	& 3232	& 3	& 8	& 562	& 562	& 103	& 101
+ 458.sjeng	  & 400	& 446	& 	& 	& 127	& 135	& 18	& 18
+ 462.libquantum	  & 362	& 386	& 	& 	& 87	& 87	& 21	& 21
+ 464.h264ref	  & 17075	& 17153	& 4	& 4	& 338	& 382	& 72	& 72
+ 470.lbm	          & 39	& 39	& 	& 	& 13	& 13	& 4	& 4
+ 471.omnetpp	  & 565	& 661	& 32	& 30	& 4790	& 4843	& 1321	& 1316
+ 473.astar	  & 691	& 754	& 	& 	& 359	& 363	& 113	& 113
+ 482.sphinx3	  & 1599	& 1693	& 11	& 9	& 198	& 194	& 53	& 53
+ 483.xalancbmk	  & 9997	& 11453	& 56	& 54	& 69534	& 68839	& 29875	& 29519
+
+    \end{tabular}
+  \end{center}
+  \caption{Number of spills on SPEC2006 at -Ofast}
+  \label{tab:code-size}
+\end{table}
+
+\begin{table}[h!]
+  \begin{center}
+    \begin{tabular}{|l|c|c|c|}
+      \hline
+ code-motion metric &  I hoisted	I removed	loads hoisted	loads removed	calls hoisted	I sunk	stores hoisted	stores removed
+ 400.perlbench	  &  2387	& 2456	& 1493	& 1560	& 1	& 4	& 38	& 38
+ 401.bzip2	  &  176	& 300	& 149	& 273	& 	& 	& 	& 
+ 403.gcc	          &  5670	& 5761	& 3109	& 3191	& 	& 1	& 3	& 3
+ 429.mcf	          &  42	& 43	& 37	& 38	& 	& 	& 	& 
+ 433.milc	  &  128	& 130	& 117	& 119	& 1	& 	& 	& 
+ 444.namd	  &  262	& 264	& 148	& 150	& 1	& 	& 	& 
+ 445.gobmk	  &  1021	& 1052	& 705	& 734	& 1	& 1	& 3	& 3
+ 447.dealII	  &  10455	& 12325	& 6394	& 8210	& 32	& 	& 20	& 20
+ 450.soplex	  &  2389	& 2731	& 1437	& 1702	& 11	& 	& 14	& 14
+ 453.povray	  &  1967	& 2269	& 1389	& 1661	& 14	& 	& 4	& 4
+ 456.hmmer	  &  408	& 427	& 319	& 338	& 6	& 	& 1	& 1
+ 458.sjeng	  &  372	& 399	& 234	& 251	& 9	& 1	& 1	& 1
+ 462.libquantum	  &  49	& 49	& 32	& 32	& 	& 	& 	& 
+ 464.h264ref	  &  2953	& 3438	& 2238	& 2656	& 1	& 1	& 2	& 2
+ 470.lbm	          &  23	& 23	& 19	& 19	& 	& 	& 	& 
+ 471.omnetpp	  &  391	& 408	& 297	& 314	& 2	& 	& 	& 
+ 473.astar	  &  202	& 222	& 140	& 158	& 	& 	& 	& 
+ 482.sphinx3	  &  168	& 172	& 136	& 140	& 	& 	& 	& 
+ 483.xalancbmk	  &  5894	& 6162	& 3301	& 3495	& 3	& 2	& 4	& 4
+        &         &         &         &         &         &         & 
     \end{tabular}
   \end{center}
   \caption{Number of spills on SPEC2006 at -Ofast}
