@@ -94,7 +94,7 @@
 \def \MemorySSA {MemorySSA}
 \def \PRE {PRE}
 \def \GVN {GVN}
-\def \SPEC {SPEC Cpu2006}
+\def \SPEC {SPEC Cpu 2006}
 
 %% Author information
 %% Contents and number of authors suppressed with 'anonymous'.
@@ -405,8 +405,9 @@ same target architecture. Also, both suffer from the same problem, although
 Shobaki not so much, of large compile times which is not feasible for industrial
 compilers like \GCC{} and \LLVM{}.
 
-We got reduction in register spills on some SPEC2006 benchmarks, reduction in
-code-size and some performance improvements with very low compile time overhead.
+With the algorithm described in the next section, we got a
+reduction in register spills, a reduction in code-size and some performance
+improvements with very low compilation time overhead, on \SPEC{} benchmarks.
 
 % TODO: References
 % Sink instructions
