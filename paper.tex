@@ -1084,7 +1084,7 @@ does not go down with our implementation (and cost-model) of code hoisting pass.
   \begin{center}
     \begin{tabular}{|l|r|r|r|}
       \hline
-Number of spills  &base(-Ofast) &code-motion(-Ofast) &\%change \\\hline
+Number of spills  &base(-Ofast) &GCM(-Ofast) &\%change \\\hline
 400.perlbench	  & 2539	& 2493	& 0.98 \\\hline
 401.bzip2	  & 718	        & 707	& 0.98 \\\hline
 403.gcc	          & 5782	& 5722	& 0.99 \\\hline
@@ -1107,7 +1107,7 @@ Number of spills  &base(-Ofast) &code-motion(-Ofast) &\%change \\\hline
 Grand Total	  & 43349	& 42497	& 0.98 \\\hline
     \end{tabular}
   \end{center}
-  \caption{Number of spills on before and after code-motion on SPEC2006 at -Ofast}
+  \caption{Number of spills before and after global-code-motion (GCM) on SPEC2006 at -Ofast}
   \label{tab:spills}
 \end{table}
 
@@ -1123,7 +1123,7 @@ decreases.
   \begin{center}
     \begin{tabular}{|l|c|c|c|}
       \hline
-  Benchmarks      &   Baseline	        &  GCM & \%Increase     \\\hline
+  Benchmarks      &   Baseline	        & GCM           & \%Increase \\\hline
   400.perlbench	  &   186,829,426	& 184,690,006	& 0.99 \\\hline
   401.bzip2	  &   76,337,033	& 75,942,641	& 0.99 \\\hline
   403.gcc         &   1,079,625,231	& 1,073,158,220	& 0.99 \\\hline
@@ -1145,7 +1145,7 @@ decreases.
   483.xalancbmk	  &   22,485,708,759	& 22,455,060,569& 1.00 \\\hline
     \end{tabular}
   \end{center}
-  \caption{Change in compilation time with and without code-motion on SPEC2006 at -Ofast}
+  \caption{Change in compilation time with and without global-code-motion (GCM) on SPEC2006 at -Ofast}
   \label{tab:compile-time}
 \end{table}
 
@@ -1182,7 +1182,7 @@ is the total instruction count as outputted from valgrind (--tool=cachegrind).
  483.xalancbmk	  & 9997	& 11453	& 14.6& 56	& 54	& -3.6 & 69534	& 68839	  & -1.0& 29875	& 29519	& -1.2 \\\hline
     \end{tabular}
   \end{center}
-  \caption{Static metrics before and after code-hoisting on SPEC2006 at -Ofast. The \% Column show percentage increase in metric w.r.t. Base. GCM improves LICM and inlining}
+  \caption{Static metrics before (Base) and after global-code-motion (GCM) on SPEC2006 at -Ofast. The \% Column show percentage increase in metric w.r.t. Base. GCM improves LICM and inlining}
   \label{tab:stats}
 \end{table}
 
