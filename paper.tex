@@ -1143,29 +1143,30 @@ Code size         &\% age	increase in codesize \\\hline
 
 \begin{table}[h!]
   \begin{center}
-    \begin{tabular}{|l|r|r|r|r|r|r|r|r|}
+    \begin{tabular}{|l|r|r|r|r|r|r|r|r|r|}
       \hline
- code-motion      & Instructions&Instructions   & Loads	        &Loads	        &Stores &Stores &Calls &Instructions \\\hline
- metric           &  hoisted    &removed	&hoisted        &removed        &hoisted&removed&hoisted & sunk     \\\hline
- 400.perlbench	  &  2387	& 2456		& 1493		& 1560		& 38	& 38	& 1	& 4	       \\\hline
- 401.bzip2	  &  176	& 300		& 149		& 273		& 0	& 0	& 0 	& 0		\\\hline
- 403.gcc	  &  5670	& 5761		& 3109		& 3191		& 3	& 3	& 0	& 1	       \\\hline
- 429.mcf	  &  42	        & 43		& 37		& 38		& 0	& 0	& 0 	& 0		\\\hline
- 433.milc	  &  128	& 130		& 117		& 119		& 0	& 0	& 1	& 0		\\\hline
- 444.namd	  &  262	& 264		& 148		& 150		& 0	& 0	& 1	& 0		\\\hline
- 445.gobmk	  &  1021	& 1052		& 705		& 734		& 3	& 3	& 1	& 1	       \\\hline
- 447.dealII	  &  10455	& 12325		& 6394		& 8210		& 20	& 20	& 32	& 0	       \\\hline
- 450.soplex	  &  2389	& 2731		& 1437		& 1702		& 14	& 14	& 11	& 0	       \\\hline
- 453.povray	  &  1967	& 2269		& 1389		& 1661		& 4	& 4	& 14	& 0	       \\\hline
- 456.hmmer	  &  408	& 427		& 319		& 338		& 1	& 1	& 6	& 0	       \\\hline
- 458.sjeng	  &  372	& 399		& 234		& 251		& 1	& 1	& 9	& 1	       \\\hline
- 462.libquantum	  &  49	        & 49		& 32		& 32		& 0	& 0	& 0	& 0		\\\hline
- 464.h264ref	  &  2953	& 3438		& 2238		& 2656		& 2	& 2	& 1	& 1	       \\\hline
- 470.lbm	  &  23	        & 23		& 19		& 19		& 0	& 0	& 0	& 0		\\\hline
- 471.omnetpp	  &  391	& 408		& 297		& 314		& 0	& 0	& 2	& 0		\\\hline
- 473.astar	  &  202	& 222		& 140		& 158		& 0	& 0	& 0	& 0		\\\hline
- 482.sphinx3	  &  168	& 172		& 136		& 140		& 0	& 0	& 0	& 0		\\\hline
- 483.xalancbmk	  &  5894	& 6162		& 3301		& 3495		& 4	& 4	& 3	& 2	       \\\hline
+ code-motion  &\multicolumn{2}{|c|}{Total Instructions} &\multicolumn{2}{|c|}{Scalars}  & \multicolumn{2}{|c|}{Loads} & \multicolumn{1}{|c|}{Stores} &Calls   &Instructions    \\\hline
+ metric           &  hoisted    &removed  &hoisted &removed&hoisted     &removed        &hoisted=removed&hoisted & sunk \\\hline
+ 400.perlbench	  &  2387	& 2456	  &  855  & 857	   & 1493	& 1560		& 38	& 1	& 4	        \\\hline
+ 401.bzip2	  &  176	& 300	  &  27	  & 27	   & 149	& 273		& 0	& 0 	& 0		\\\hline
+ 403.gcc	  &  5670	& 5761	  &  2558 & 2567   & 3109	& 3191		& 3	& 0	& 1	        \\\hline
+ 429.mcf	  &  42	        & 43	  &  5	  & 5	   & 37 	& 38		& 0	& 0 	& 0		\\\hline
+ 433.milc	  &  128	& 130	  &  10	  & 10	   & 117	& 119		& 0	& 1	& 0		\\\hline
+ 444.namd	  &  262	& 264	  &  113  & 113	   & 148	& 150		& 0	& 1	& 0		\\\hline
+ 445.gobmk	  &  1021	& 1052	  &  312  & 314	   & 705	& 734		& 3	& 1	& 1	        \\\hline
+ 447.dealII	  &  10455	& 12325	  &  4009 & 4063   & 6394	& 8210		& 20	& 32	& 0	        \\\hline
+ 450.soplex	  &  2389	& 2731	  &  927  & 1004   & 1437	& 1702		& 14	& 11	& 0	        \\\hline
+ 453.povray	  &  1967	& 2269	  &  560  & 590	   & 1389	& 1661		& 4	& 14	& 0	        \\\hline
+ 456.hmmer	  &  408	& 427	  &  82	  & 82	   & 319	& 338		& 1	& 6	& 0	        \\\hline
+ 458.sjeng	  &  372	& 399	  &  128  & 138	   & 234	& 251		& 1	& 9	& 1	        \\\hline
+ 462.libquantum	  &  49	        & 49	  &  17	  & 17	   & 32	      	& 32		& 0	& 0	& 0		\\\hline
+ 464.h264ref	  &  2953	& 3438	  &  712  & 779	   & 2238	& 2656		& 2	& 1	& 1	        \\\hline
+ 470.lbm	  &  23	        & 23	  &  4	  & 4	   & 19		& 19		& 0	& 0	& 0		\\\hline
+ 471.omnetpp	  &  391	& 408	  &  92	  & 92	   & 297	& 314		& 0	& 2	& 0		\\\hline
+ 473.astar	  &  202	& 222	  &  62	  & 64	   & 140	& 158		& 0	& 0	& 0		\\\hline
+ 482.sphinx3	  &  168	& 172	  &  32	  & 32	   & 136	& 140		& 0	& 0	& 0		\\\hline
+ 483.xalancbmk	  &  5894	& 6162	  &  2586 & 2660   & 3301	& 3495		& 4	& 3	& 2	        \\\hline
+ Grand total      &34957	&38631	  &13091  &13418   &21694	&25041	        &90	&82     &10             \\\hline
     \end{tabular}
   \end{center}
   \caption{Code motion stats on SPEC2006 at -Ofast}
