@@ -1084,6 +1084,12 @@ Grand Total	  & 43349	& 42497	& 0.98 \\\hline
   \label{tab:spills}
 \end{table}
 
+Spills are listed in Table~\cite{tab:spills}. Sinks were reduced by an average of 2\% on the
+\SPEC{} benchmark suite. This is a result of cost-model which limits the code-motion to those
+candidates which do not increase the register pressure (except for loads Section~\cite{sec:cost-models},
+overall spills still decreases.
+
+
 \begin{table}[h!]
   \begin{center}
     \begin{tabular}{|l|c|c|c|}
