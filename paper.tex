@@ -697,10 +697,8 @@ killed operands. If the live-range after code-motion is less than before it will
 be moved. Essentially, as long as there is one killed operand, code hoisting
 will either decrease or preserve the register pressure.  Similarly, code-sinking
 will either decrease or preserve the register pressure as long as there is one
-operand killed at most.  Following example explains how code motion of identical
-computations can reduce the register pressure.  Consider the following example
-where the labels prefixed with 'P' represent the position of instruction in a
-basic block (names prefixed with 'B').
+operand killed at most.  The following example explains how code motion of
+identical computations can reduce the register pressure.
 
 \begin{verbatim}
     b = m
@@ -712,17 +710,16 @@ B1: a0 = b<kill> + c<kill>
 B2: a1 = b<kill> + c<kill>
 \end{verbatim}
 
-After hoisting a0 and a1 are removed and a copy
-of a0 as a01 is placed in B0 just before the branch.
+After hoisting a0 and a1 are removed and a copy of a0 as a01 is placed in B0
+just before the branch. Since `b' and `c' are killed in `a0' and `a1', hoisting
+the expressions will reduce the register pressure because two registers will be
+freed.
 
-In this case, since `b' and `c' are killed in `a0' and `a1', hoisting them will
-reduce the register pressure in B3 and B4 because two registers will be freed.
-
-Ideally, it should be okay to hoist all the instructions and a later a
+Ideally, it should be okay to hoist all the instructions and a later
 live-range-splitting \cite{cooper1998live} pass should make the right decision
 of rematerializing the instruction should it be beneficial to do so. But the
 current live-range splitting pass of \LLVM{} is not making the optimial decision
-and we have found regressions while hoisting aggressively.
+and we have found performance regressions while hoisting aggressively.
 
 Moreover, \LLVM{} has a `getelementptr' instruction which computes the address
 where a load or a store would happen. It is a scalar computation and gets
