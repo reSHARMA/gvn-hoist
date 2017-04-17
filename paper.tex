@@ -155,29 +155,29 @@
 %% Note: \begin{abstract}...\end{abstract} environment must come
 %% before \maketitle command
 \begin{abstract}
-We present a global code motion compiler optimization which schedules congruent
-instructions across the program.  Not only this code motion saves code size, it
+We present a global code motion (GCM) compiler optimization which schedules
+congruent instructions across the program.  Not only this saves code size, it
 exposes redundancies in some cases, it exposes more instruction level
 parallelism in the basic block to which instructions are moved, and it enables
 other passes like loop invariant motion to remove more redundancies. The cost
 model to drive the code motion is based on live range analysis on \SSA{}
-representation such that the (virtual) register pressure does not increase.
+representation such that the (virtual) register pressure does not increase, which
+translates to 2\% fewer spills while compiling \SPEC{} benchmark suite.
 
 We have implemented the pass in \LLVM{}. It is based on Global Value Numbering
-infrastructure available in \LLVM{}. The experimental results show an average of
-2\% reduction in the number of spills, and saving of 1\% on overall compile time
-on \SPEC{}. This being a code-size optimization, enables more inlining in
-majority of the benchmarks. We have also seen execution
-time improvements of approximately 5\% in a couple of \SPEC{} benchmarks
-viz. \GCC{} and mcf, moreover, register spills reduced for almost all the
-\SPEC{} bencmarks when compiled for X86\_64. This is an optimistic algorithm in
-the sense that it considers all identical computations in a function as
-potential candidates. We make an extra effort to hoist candidates by
+infrastructure available in \LLVM{}. The experimental results show an average
+saving of 1\% on overall compile time on \SPEC{}. GCM enables more inlining and
+exposes more loop invariant code motion opportunities in majority of the
+benchmarks. We have also seen execution time improvements in a few of \SPEC{}
+benchmarks viz. mcf and sjeng, moreover, register spills reduced by 2\% on the
+\SPEC{} bencmarks suite when compiled for X86\_64. This is an optimistic
+algorithm in the sense that it considers all identical computations in a
+function as potential candidates. We make an extra effort to hoist candidates by
 partitioning the potential candidates in a way to enable partial hoisting in
 case common hoisting points for all the candidates cannot be found. We also
-formalize how register pressure will reduce as a result of code-motion and why
-sorting the list of potential candidates w.r.t. their depth first numbers helps
-hoist more candidates with less compile time overhead.
+formalize how register pressure will reduce as a result of code-motion, and how
+code-motion increases instruction level parallelism thereby enabling more out of
+order execution on modern architectures.
 \end{abstract}
 
 %% 2012 ACM Computing Classification System (CSS) concepts
@@ -756,9 +756,9 @@ operand killed at most.  The following example explains how code motion of
 identical computations can reduce the register pressure.
 
 \begin{verbatim}
-    b = m
+B0: b = m
     c = n
-B0: if c is true then goto B3 else goto B4
+    if c is true then goto B3 else goto B4
 
 B1: a0 = b<kill> + c<kill>
 
@@ -1169,7 +1169,7 @@ is the total instruction count as outputted from valgrind (--tool=cachegrind).
  483.xalancbmk	  & 9997	& 11453	& 56	& 54	& 69534	& 68839	& 29875	& 29519\\\hline
     \end{tabular}
   \end{center}
-  \caption{Static metrics before and after code-hoisting on SPEC2006 at -Ofast}
+  \caption{Static metrics before and after code-hoisting on SPEC2006 at -Ofast. GCM improves LICM and inlining}
   \label{tab:stats}
 \end{table}
 
