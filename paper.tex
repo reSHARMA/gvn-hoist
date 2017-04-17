@@ -1006,11 +1006,12 @@ Table~\ref{tab:compile-time} to see the impact of code-motion.
 
 \begin{table}[h!]
   \begin{center}
-    \begin{tabular}{|l|c|c|}
+    \begin{tabular}{|l|c|c|c|}
       \hline
 % TODO: Check if putting code-size or spills number is okay or only %age is required.
 % llvm trunk vs. llvm trunk with code-motion
-Benchmark       &\% performance uplift (\%) at -Ofast & \% codesize uplift (\%) at -Ofast & codesize uplift (\%) at -Os\\\hline
+                &\% performance uplift & \% codesize uplift & \% codesize uplift\\
+Benchmarks      & at -Ofast& at -Ofast & at -Os\\\hline
 400.perlbench	& 1.00  & 1.00 & 1.00\\\hline
 401.bzip2	& 1.00  & 1.00 & 1.00\\\hline
 403.gcc	        & 1.00  & 1.01 & 1.00\\\hline
@@ -1121,7 +1122,7 @@ overall spills still decreases.
   \begin{center}
     \begin{tabular}{|l|c|c|c|}
       \hline
-  Benchmark       &   Baseline	        &  GCM & \%Increase     \\\hline
+  Benchmarks      &   Baseline	        &  GCM & \%Increase     \\\hline
   400.perlbench	  &   186,829,426	& 184,690,006	& 0.99 \\\hline
   401.bzip2	  &   76,337,033	& 75,942,641	& 0.99 \\\hline
   403.gcc         &   1,079,625,231	& 1,073,158,220	& 0.99 \\\hline
@@ -1158,7 +1159,7 @@ is the total instruction count as outputted from valgrind (--tool=cachegrind).
     \begin{tabular}{|l|r|r|r|r|r|r|r|r|r|r|r|r|}
       \hline
   &  \multicolumn{3}{|c|}{Hoisted by LICM} &\multicolumn{3}{|c|}{Sunk by LICM} &\multicolumn{3}{|c|}{Functions Inlined} &  \multicolumn{3}{|c|}{Functions Deleted} \\\hline
- Benchmark        & Base        & GCM	& \%  &Base     & GCM   &\%    & Base	& GCM	  &\%   & Base	& GCM	& \% \\\hline
+ Benchmarks       & Base        & GCM	& \%  &Base     & GCM   &\%    & Base	& GCM	  &\%   & Base	& GCM	& \% \\\hline
  400.perlbench	  & 2428	& 2480	& 2.1 & 36	& 35	& -2.8 & 1562	& 1565	  & 0.2 & 232	& 234	& 0.9  \\\hline
  401.bzip2	  & 721	        & 825	& 14.4& 3	& 3	& 0.0  & 172	& 180	  & 4.7 & 32	& 33	& 3.1  \\\hline
  403.gcc	  & 8867	& 10079	& 13.7& 143	& 182	& 27.3 & 5034	& 5080	  & 0.9 & 1303	& 130	& 0.1  \\\hline
