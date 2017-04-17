@@ -370,7 +370,7 @@ missing, also there is no mention of sinking congruent instructions.
 \GCC{} recently got code-hoisting \cite{GCCCodeHoisting} which is implemented as
 part of \GVN{}-\PRE{}: it uses the set of ANTIC\_IN and AVAIL\_OUT value
 expressions computed for \PRE{}. ANTIC\_IN[B] contains very busy expressions at
-basic block B i.e., values computed on all paths from B to exit and
+basic block B, i.e., values computed on all paths from B to exit and
 AVAIL\_OUT[B] contains values which are already available. The algorithm hoists
 top down to a predecessor.  It uses ANTIC\_IN[B] to know what expressions will
 be computed on every path from B to exit, and can be computed in B.  It uses
@@ -668,7 +668,7 @@ In this example (c1, c2) or (d1, d2) are potential sinkable candidates. Since
 blocks, c1 and c2 are not anticipable in B3. So without knowing the sinkability
 of `i1' and `i2' it would be illegal to sink (c1, c2) to B3. On the other hand
 (d1, d2) can safely be sunk because their operands are readily available at the
-sink point i.e., B3. It should also be noted that, just because the expressions
+sink point, i.e., B3. It should also be noted that, just because the expressions
 are identical and operands are available, it still requires a unique
 post-dominating PHI to use the exact same values to be legally sinkable.
 
@@ -682,9 +682,9 @@ implementation.
 \label{sec:cost-models}
 After the legality checks have passed, we check if a code-motion is profitable.
 That takes into account the impact code-motion would have on various parameters
-that might affect runtime performance e.g., impact on live-range, gain in the
+that might affect runtime performance, e.g., impact on live-range, gain in the
 code size. Since this is mostly a code-size optimization pass, the goal is to
-not regress in performance across popular benchmarks at the same time reduce
+not regress in performance across popular benchmarks and at the same time to reduce
 code size as much as possible. Following are the cost models which are
 implemented:
 
@@ -694,7 +694,7 @@ Hoisting upwards will decrease the live-range of its use, if it is a last use (a
 kill), but increase the live-range of its definition. Conversely, sinking will
 decrease the live-range of the defined register but increase the live-range for
 killed operands. If the live-range after code-motion is less than before it will
-be moved. Essentially, as long as there is one killed operand , code hoisting
+be moved. Essentially, as long as there is one killed operand, code hoisting
 will either decrease or preserve the register pressure.  Similarly, code-sinking
 will either decrease or preserve the register pressure as long as there is one
 operand killed at most.  Following example explains how code motion of identical
@@ -710,10 +710,10 @@ B0: if c is true then goto B3 else goto B4
 B1: a0 = b<kill> + c<kill>
 
 B2: a1 = b<kill> + c<kill>
+\end{verbatim}
 
 After hoisting a0 and a1 are removed and a copy
 of a0 as a01 is placed in B0 just before the branch.
-\end{verbatim}
 
 In this case, since `b' and `c' are killed in `a0' and `a1', hoisting them will
 reduce the register pressure in B3 and B4 because two registers will be freed.
@@ -830,7 +830,7 @@ implemented a optimistic global code motion of congruent instructions which uses
 the liveness analysis as illustrated in Das \cite{das2012} and ranking
 expressions explained in Rosen \cite{rosen1988global}.
 
-Code-motion basically consists of two parts i.e., hoisting and sinking. This
+Code-motion basically consists of two parts, i.e., hoisting and sinking. This
 implementation only moves congruent instructions. An immediate guarantee of this
 approach is gain in code size (the final executable may be of larger size
 because of more inlining). The algorithm prefers hoisting to sinking. If the
@@ -862,7 +862,7 @@ extended basic block because there might be calls in the middle of a basic block
 which might not return. So barriers can be present in the middle of a basic
 block. Essentially, any instruction that cannot not guarantee progress is marked
 as a barrier. In the absense of context (as in our current implementation), some
-instructions which might be safe are still classified a barrier e.g., volatile
+instructions which might be safe are still classified a barrier, e.g., volatile
 loads/stores, calls with missing attributes.
 
 \begin{verbatim}
