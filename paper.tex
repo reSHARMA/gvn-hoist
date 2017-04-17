@@ -171,7 +171,7 @@ exposes more loop invariant code motion opportunities in majority of the
 benchmarks. We have also seen execution time improvements in a few of \SPEC{}
 benchmarks viz. mcf and sjeng, moreover, register spills reduced by 2\% on the
 \SPEC{} bencmarks suite when compiled for X86\_64. This is an optimistic
-algorithm in the sense that it considers all identical computations in a
+algorithm in the sense that it considers all congruent instructions in a
 function as potential candidates. We make an extra effort to hoist candidates by
 partitioning the potential candidates in a way to enable partial hoisting in
 case common hoisting points for all the candidates cannot be found. We also
@@ -950,15 +950,15 @@ GCM) has a (suboptimal) code-sinking which sinks several instructions already.
 void doCodeSinking()
   For each value number VN with 2 or more instructions:
     if there are two instructions with same immediate successor as post-dominator
-      if both are only used in the same PHI-node of the successor
+      if both are only used in the same PHI-node (PN) of the successor
         if both have dependencies that are available or can be made available at the sink point
            mark VN as sinkable
 
   For each pair I1, I2 of sinkable instructions:
     Move the first one I1 to the sink point which is just after all the PHI-nodes
     in the post-dominator
-    update the use of PHI with I1
-    Remove I2 and PHI
+    update all the uses of PHI (PN) with I1
+    Remove I2 and PN
     if I1 is a memory reference:
       update MemorySSA of I1 and others to point to the MemorySSA reference of I1
       remove MemorySSA reference of all others which were deleted
@@ -1230,15 +1230,7 @@ the codesizes of the final binaries. Since the pass runs early, it affects many
 optimizations which rely on the number of instructions, lenth of the use-def
 chain, and other metrics. For instance, the inliner is impacted by a decrease in
 the number of instructions in the caller and callee, as its heuristics estimate
-the size of functions to be inlined. Various code-size metrics are shown in
-Table~\ref{tab:code-size}. All but one benchmark varied between -5.32\% and
-5.43\%.  In one benchmark FreeBench/distray/distray.test, the codesize increased
-by 35.38\%. In this benchmark 3 more functions got inlined (15 as compared to
-12) and because of that 10 more vector instructions got generated (81 vs. 71), 3
-calls got hoisted/sunk as (compared to 0), one loop got unswitched (compared to
-0), 6 high latency machine instructions got hoisted out of loop, 59 (compared to
-30) machine instructions got hoisted out of loop, 70 (compared to 39) machine
-instructions were sunk.
+the size of functions to be inlined.
 
 The code shown in Section~\ref{sec:intro} is a reduced example that appears in a
 hot loop of a proprietary benchmark.  When the expressions are hoisted from the
@@ -1249,30 +1241,33 @@ long latency of the division operation.
 
 \section{Conclusion and Future Work}
 \label{sec:future-work}
-We have presented the \GVN{} based code hoisting algorithm. The primary goal is to
-reduce the code size but it benefits performance in some cases as well. To
-preserve performance and not hoist too much we have implemented several cost
-models described in Section~\ref{sec:cost-models}. Since those cost models
-depend on a set of thresholds, it requires tuning, as such, we used
-representative benchmarks to tune them.
+We have presented the global code motion of congruent computations in SSA
+form. We saw that it improves inlining and LICM opportunities, reduces register
+spills, it also improves performance in some cases. To preserve performance and
+not hoist too much we have register pressure aware cost models described in
+Section~\ref{sec:cost-models}. A part of this implementation is already merged
+in LLVM trunk as GVNHoist.cpp. We will post the GCM implementation for review.
 
-In general it is a good idea to start with lower ranked expression first such
-that maximum hoisting can happen in one iteration, however, current
-implementation does not rank the expressions and iteratively finds a fixed point
-when no more candidates are available. Even this implementation converges
-quickly and no significant compile time regression have been observed because of
-code hoisting pass. This is not the most optimal approach and results in
-multiple data structures to be recomputed. This can be improved by ranking the
-computations \cite{rosen1988global}. Also \GVN{}-hoist runs very early in the
-pass pipeline, it will be good to evaluate the codesize/performance impact when
-it is run in sync with \GVN{}-\PRE{} just like \GCC{} does.
+There are a few improvements that we would like to make. First would be to
+integrate this with \LLVM{'}s new GVN-PRE implementation such that more
+congruent instructions can be scheduled. This would also expose more
+redundancies to the GVN-PRE.  In general it is a good idea to start with lower
+ranked expression first such that maximum hoisting can happen in one iteration,
+however, current implementation does not rank the expressions and iteratively
+finds a fixed point when no more candidates are available. Even this
+implementation converges quickly and no compile time regression have been
+observed because of code hoisting pass. This is not the most optimal approach
+and results in multiple data structures to be recomputed. This can be improved
+by ranking the computations \cite{rosen1988global}. Also, since GCM runs very
+early in the pass pipeline, it will be good to evaluate the codesize/performance
+impact when it is run in sync with \GVN{}-\PRE{} just like \GCC{} does.
 
-With the implementation of code-hoisting in \LLVM{}, the passes which rely on the
+With the implementation of GCM in \LLVM{}, the passes which rely on the
 code-size/instruction-count to make optimization decisions needs to be
 revisited. The first candidate would be the inliner. We have seen different
-inlining decisions in Table~\ref{tab:code-size}, before and after
-code-hoisting was enabled.  Since inliner has several magic numbers tuned for
-the previous pass layout, it would need some improvement.
+inlining decisions in Table~\ref{tab:code-size}, before and after code-hoisting
+was enabled.  Since inliner has several magic numbers tuned for the previous
+pass layout, it would need some improvement.
 
 %% Acknowledgments
 \begin{acks}                            %% acks environment is optional
