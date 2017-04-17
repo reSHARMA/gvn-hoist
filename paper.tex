@@ -268,12 +268,11 @@ Now if the computation of tmax and tmin are hoisted outside the
 conditionals, the C code version would look like this:
 \begin{verbatim}
 float fun(float d, float min, float max, float a) {
-  float tmin, tmax;
   float inv = 1.0f / d;
   float x = (min - a) * inv;
   float y = (max - a) * inv;
-  if (inv >= 0) { tmin = x; tmax = y; }
-  else          { tmin = y; tmax = x; }
+  float tmin = x, tmax = y;
+  if (inv < 0) { tmin = y; tmax = x; }
   return tmax + tmin;
 }
 
@@ -288,30 +287,31 @@ $C_{div}$ is usually much greater than $C_{sub}$ \cite{x86,aarch64}.
 
 In fact there are several advantages of code-motion of this kind:
 \begin{itemize}
-\item It helps reduce the code size of the program by replacing multiple
+\item it helps reduce the code size of the program by replacing multiple
   instructions with one although the final code size may be higher because of
   improved inlining heuristics; functions become cheaper to inline when their
-  code size decreases because inliner heuristics in \LLVM{} depends on
-  instruction count.
-\item It expose more instruction level parallelism to the later compiler
+  code size decreases because the inliner heuristics depend on instruction
+  count;
+\item it exposes more instruction level parallelism to the later compiler
   passes. By hoisting identical computations to be executed earlier, instruction
   schedulers can move heavy computations earlier in order to avoid pipeline
   bubbles;
-\item It reduces branch misprediction penalty on out-of-order processors with
-  speculative execution of branches: by hoisting/sinking expressions out of
+\item it reduces branch misprediction penalty on out-of-order processors with
+  speculative execution of branches: by hoisting or sinking expressions out of
   branches, it can effectively reduce the amount of code to be speculatively
   executed and hence reduce the critical path;
-\item It reduces interference/register pressure when appropriate cost-model is
-  applied. We have used a cost model in our implementation which hoists/sinks only
-  when register pressure would potentially reduce.
-\item For SIMD architectures, which execute all branches, it will reduce the
-  total number of instructions to be executed.
-\item It may improve loop vectorization by reducing a loop with control flow to
+\item it reduces interference or register pressure with an appropriate
+  cost-model: we have used a cost model in our implementation which only hoists
+  or sinks when the register pressure is reduced;
+\item it reduces the total number of instructions to be executed for SIMD
+  architectures which execute all code in branches based on masking or
+  predication;
+\item it may improve loop vectorization by reducing a loop with control flow to
   a loop with a single BB, should all the instructions in a conditional get
   hoisted or sinked;
-\item It enables more loop invariant code motion (LICM): as LICM passes, in
+\item it enables more loop invariant code motion (LICM): as LICM passes, in
   general, cannot effectively reason about instructions within conditional
-  branches the context of loops, code-hoisting is needed to move instructions
+  branches in the context of loops, code-hoisting is needed to move instructions
   out of conditional expressions and expose them to LICM.
 \end{itemize}
 
@@ -324,18 +324,18 @@ are done using ILP which results in prohibitively high compile time. To the best
 of our knowledge we have not found any reference which explored code-motion of
 identical computation in as much detail as we have done. A part of our
 implementation (aggressive code hoisting) is already merged in \LLVM{} trunk,
-however, a general implementation of code-motion of congruent (but not
-redundant) expressions is still missing from \GCC{} and \LLVM{} trunk. The main
+however, a general implementation of code-motion of congruent (non redundant)
+expressions is still missing from \GCC{} and \LLVM{} trunk. The main
 contributions of this paper are:
 \begin{itemize}
-\item a new optimistic algorithm to move congruent instructiosn out of branches,
-\item a cost model to reduce interference and hence, reduce spills,
+\item a new optimistic algorithm to move congruent instructiosn out of branches;
+\item a cost model to reduce interference and hence, reduce spills;
 \item a technique to maximize hoisting in an optimistic approach by partitioning
-  the list of potential candidates sorted by their DFS visit number,
+  the list of potential candidates sorted by their DFS visit number;
 \item experimental evaluation of our implementation in \LLVM{} which combines
   \SSA{} based liveness analysis, and ranking of expressions to move very busy
-  expressions in order to reduce code-size (and improve performance in some
-  cases).
+  expressions in order to reduce code-size and improve performance in some
+  cases.
 \end{itemize}
 
 \section{Related Work}
@@ -367,7 +367,7 @@ sibling branch to a common dominator if they are very busy
 \cite{steven1997advanced}. The cost-model to mitigate register pressure is
 missing, also there is no mention of sinking congruent instructions.
 
-\GCC{}ecently got code-hoisting \cite{GCCCodeHoisting} which is implemented as
+\GCC{} recently got code-hoisting \cite{GCCCodeHoisting} which is implemented as
 part of \GVN{}-\PRE{}: it uses the set of ANTIC\_IN and AVAIL\_OUT value
 expressions computed for \PRE{}. ANTIC\_IN[B] contains very busy expressions at
 basic block B i.e., values computed on all paths from B to exit and
