@@ -240,10 +240,11 @@ computations at run-time and the number of run-time computations is not
 reduced. It is not a redundancy elimination pass, and thus it has different cost
 function and heuristics than \PRE{} or CSE. It is more similar to global code
 scheduling \cite{dragonbook,click1995global} in the sense that it will only move
-computations. Code hoisting can reduce the critical path length of execution in
-out-of-order machines. As more instructions are available at the hoisting point,
-the hardware has more independent instructions to reorder. The following example
-illustrates how hoisting can improve performance by exposing more ILP.
+computations. Code hoisting, for example, can reduce the critical path length of
+execution in out-of-order machines. As more instructions are available at the
+hoisting point, the hardware has more independent instructions to reorder. The
+following example illustrates how hoisting can improve performance by exposing
+more ILP.
 
 \begin{verbatim}
 float fun(float d, float min, float max, float a) {
@@ -285,7 +286,7 @@ $C_{div}$ is usually much greater than $C_{sub}$ \cite{x86,aarch64}.
 
 %GCC: 23286 has interesting test cases.
 
-In fact there are several advantages of code-motion of this kind:
+In fact, there are several advantages of GCM.
 \begin{itemize}
 \item it helps reduce the code size of the program by replacing multiple
   instructions with one although the final code size may be higher because of
@@ -320,13 +321,13 @@ code out of branches, and in general global scheduling
 \cite{click1995global}. Some relate code-hoisting to code-size optimization
 \cite{rosen1988global} and many \cite{barany2013, shobaki2013} use global
 scheduling to improve performance. Most of the recent work on global scheduling
-are done using ILP which results in prohibitively high compile time. To the best
-of our knowledge we have not found any reference which explored code-motion of
-identical computation in as much detail as we have done. A part of our
-implementation (aggressive code hoisting) is already merged in \LLVM{} trunk,
-however, a general implementation of code-motion of congruent (non redundant)
-expressions is still missing from \GCC{} and \LLVM{} trunk. The main
-contributions of this paper are:
+are done using integer linear programming (ILP), which results in prohibitively
+high compile time. To the best of our knowledge we have not found any reference
+which explored code-motion of congruent instructions in as much detail as we
+have done. A part of our implementation (aggressive code hoisting) is already
+merged in \LLVM{} trunk, however, a general implementation of code-motion of
+congruent (non redundant) expressions is still missing from \GCC{} and \LLVM{}
+trunk. The main contributions of this paper are:
 \begin{itemize}
 \item a new optimistic algorithm to move congruent instructiosn out of branches;
 \item a cost model to reduce interference and hence, reduce spills;
@@ -334,7 +335,7 @@ contributions of this paper are:
   the list of potential candidates sorted by their DFS visit number;
 \item experimental evaluation of our implementation in \LLVM{} which combines
   \SSA{} based liveness analysis, and ranking of expressions to move very busy
-  expressions in order to reduce code-size and improve performance in some
+  expressions in order to reduce register spills and improve performance in some
   cases.
 \end{itemize}
 
@@ -391,12 +392,12 @@ schedule all the instructions as early as possible. This results in very long
 live ranges which is mitigated by again scheduling all the instructions as late
 as possible. They report sppeedup of as high as $23\%$.
 
-Barany \cite{barany2013} presented a global scheduler with integer linear
-programming (ILP) formulation with a goal to minimize register pressure. The
-results they got were not very promising. It may be because they only used the
-scheduler for smaller functions ($<1000$ instructions); also, they compiled the
-benchmarks for ARM-Cortex which is more resilient to register pressure because
-it has more registers compared to X86, for example.
+Barany \cite{barany2013} presented a global scheduler with ILP formulation with
+a goal to minimize register pressure. The results they got were not very
+promising. It may be because they only used the scheduler for smaller functions
+($<1000$ instructions); also, they compiled the benchmarks for ARM-Cortex which
+is more resilient to register pressure because it has more registers compared to
+X86, for example.
 
 Shobaki \cite{shobaki2013} also recently presented a combinatorial global
 scheduler with reasonable performance improvements. It is possible that both
@@ -405,9 +406,9 @@ same target architecture. Also, both suffer from the same problem, although
 Shobaki not so much, of large compile times which is not feasible for industrial
 compilers like \GCC{} and \LLVM{}.
 
-With the algorithm described in the next section, we got a
-reduction in register spills, a reduction in code-size and some performance
-improvements with very low compilation time overhead, on \SPEC{} benchmarks.
+With the algorithm described in the next section, we got a reduction in register
+spills, improved inliner heuristics, improved compile time and some performance
+improvements on \SPEC{} benchmarks.
 
 % TODO: References
 % Sink instructions
@@ -436,7 +437,7 @@ program that we shortly describe below:
   information.
 \end{itemize}
 
-The code-motion pass can be broadly divided into the following steps that we will
+The GCM pass can be broadly divided into the following steps that we will
 describe in the rest of this section:
 \begin{itemize}
 \item find candidates (congruent instructions) suitable for code-motion,
@@ -507,8 +508,8 @@ operand is a kill (to compute changes in register pressure.) For that we only
 need to know whether the use is also required later in the execution path. A
 variable is live out of a basic block B if it is used in the merge set of B. We
 compute the live-out relation on-demand when profitability of hoistable/sinkable
-candidates is to be evaluated. A simplified version of isLiveOutUsingMergeSet is
-presented here:
+candidates is to be evaluated. A simplified version of
+\emph{isLiveOutUsingMergeSet} is presented here:
 
 \begin{verbatim}
 // Return true if variable A is liveout from basic block N
@@ -550,7 +551,9 @@ terminate. These two cases were missing from the algorithm and we came across
 them during implementation. If a variable is not live-out of a basic block, it
 still may be used later in the basic block: to establish whether a use of a
 variable is a kill we iterate on all the subsequent instructions in a basic
-block checking for uses.
+block checking for uses, the \emph{isKill} function uses
+\emph{isLiveOutUsingMergeSet} to find out if an operand is killed in an
+instruction.
 
 \subsection{Finding candidates to move}
 \label{subsec:finding-candidates}
@@ -813,10 +816,10 @@ candidates closer in the list have their common dominator nearby. In
 Figure-\ref{fig:dfsin}, if B3, B4, B5, and B6 have identical computations and if
 for some reason, they cannot be hoisted at B0, then we partition the set of
 hoistable candidates in their DFSIn order. In this case the DFSIn ordering would
-be B3, B4, B5, B6 which will allow the instructions in B3, B4 to be hoisted at
-B1 and those in B5, B6 to be hoisted at B2. Even if (B3, B4) could not be
-hoisted, for some reason, to B1, (B5, B6) can still be hoisted -- if legal and
-profitable -- to B2.
+be B3, B4, B5, B6 which will allow the instructions in (B3, B4) to be hoisted at
+B1 and those in (B5, B6) to be hoisted at B2. Even if instructions in (B3, B4)
+could not be hoisted, for some reason, to B1, the instructions in (B5, B6) can
+still be hoisted -- if legal and profitable -- to B2.
 
 \begin{figure}
 \centering
@@ -882,7 +885,7 @@ illustrated in Das \cite{das2012} and ranking expressions explained in Rosen
 Code-motion basically consists of two parts, i.e., hoisting and sinking. This
 implementation only moves congruent instructions. An immediate guarantee of this
 approach is gain in code size (the final executable may be of larger size
-because of more inlining.) The algorithm prefers hoisting to sinking. If the
+because of more inlining). The algorithm prefers hoisting to sinking. If the
 dependency of a hoistable candidate is in the same basic block as the candidate,
 then the dependency must also be hoistable, otherwise hoisting will be illegal or
 would require a complicated code generation to make it legal. The current
@@ -905,33 +908,37 @@ execution path.
 
 % Explain the overall algorithm, explain how anticipability is computed on demand
 \begin{verbatim}
-Analyses available: Dominator Tree, DFS Numbering, Memory SSA,
+int doCodeHoisting()
+  Analyses available: Dominator Tree, DFS Numbering, Memory SSA,
 
-Compute GVN of each expression in the function
-Compute DJ-graph of function and compute mergeset based on that
+  Compute GVN of each expression in the function
+  Compute DJ-graph of function and compute mergeset based on that
 
-For each value number VN with 2 or more instructions:
-  sort the instructions according to DFSIn numbers
-  if first two I1, I2 are hoistable:
-    if they are downward-safe at hoist-point:
-      if they are profitable to be hoisted at hoist-point:
-        proceed to check hoistability of subsequent instruction with same VN
-      else
-        proceed to check if I2 and I3 (if available) is hoistable
+  For each value number VN with 2 or more instructions:
+    sort the instructions according to DFSIn numbers
+    if first two I1, I2 are hoistable:
+      if they are downward-safe at hoist-point:
+        if they are profitable to be hoisted at hoist-point:
+          proceed to check hoistability of subsequent instruction with same VN
+        else
+          proceed to check if I2 and I3 (if available) is hoistable
 
-For each hoistable VN:
-  move the first one I1 to the hoist-point
-  update the use of all other candidates to refer to I1
-  remove all others.
-  if I1 has memory references (a load, store etc.)
-    update MemorySSA of I1 and others to point to the MemorySSA reference of I1
-    remove MemorySSA reference of all others which were deleted
-  update statistics
+  For each hoistable VN:
+    move the first one I1 to the hoist-point
+    update the use of all other candidates to refer to I1
+    remove all others.
+    if I1 has memory references (a load, store etc.)
+      update MemorySSA of I1 and others to point to the MemorySSA reference of I1
+      remove MemorySSA reference of all others which were deleted
+    update statistics
+
+  return number_of_hoisted_candidates
+
 
 If any of candidates were hoisted then repeat hoisting
-Once no more candidates are hoistable proceed to sinking
 \end{verbatim}
 
+Once no more candidates are hoistable proceed to sinking
 
 \begin{verbatim}
 Analyses available: Dominator Tree, DFS Numbering, Memory SSA, Mergeset
@@ -999,7 +1006,7 @@ Table~\ref{tab:compile-time} to see the impact of code-motion.
       \hline
 % TODO: Check if putting code-size or spills number is okay or only %age is required.
 % llvm trunk vs. llvm trunk with code-motion
-Benchmark       &\% change in performance \% change in codesize & \\\hline
+Benchmark       &\% change in performance & \% change in codesize \\\hline
 400.perlbench	& 1.00  & 1.00 \\\hline
 401.bzip2	& 1.00  & 1.00 \\\hline
 403.gcc	        & 1.00  & 1.01 \\\hline
