@@ -155,29 +155,29 @@
 %% Note: \begin{abstract}...\end{abstract} environment must come
 %% before \maketitle command
 \begin{abstract}
-  We present a global code motion compiler optimization which schedules
-identical computations across the program so as to save code size.  Not only
-this code motion saves code size, it exposes redundancies in some cases, it
-exposes more instruction level parallelism in the basic block when the
-computations are hoisted, and it enables other passes like loop invariant
-motion to remove more redundancies. The cost model to drive the code motion is
-based on live range analysis on \SSA{} representation such that the (virtual)
-register pressure does not increase.
+We present a global code motion compiler optimization which schedules congruent
+instructions across the program.  Not only this code motion saves code size, it
+exposes redundancies in some cases, it exposes more instruction level
+parallelism in the basic block to which instructions are moved, and it enables
+other passes like loop invariant motion to remove more redundancies. The cost
+model to drive the code motion is based on live range analysis on \SSA{}
+representation such that the (virtual) register pressure does not increase.
 
 We have implemented the pass in \LLVM{}. It is based on Global Value Numbering
-infrastructure available in \LLVM{}. The experimental results show an average
-of 2.5\% savings in code size on \SPEC{}, although the code size also
-increases in many cases because it enables more inlining. We have also seen
-execution time improvements of approximately 5\% in a couple of \SPEC{} benchmarks viz. \GCC{}
-and mcf, moreover, register spills reduced for almost all the \SPEC{}
-bencmarks when compiled for X86\_64. This is an optimistic algorithm in the
-sense that it considers all identical computations in a function as potential
-candidates. We make an extra effort to hoist candidates by partitioning the
-potential candidates in a way to enable partial hoisting in case common
-hoisting points for all the candidates cannot be found. We also formalize how
-register pressure will reduce as a result of code-motion and why sorting the
-list of potential candidates w.r.t. their depth first numbers helps hoist more
-candidates with less compile time overhead.
+infrastructure available in \LLVM{}. The experimental results show an average of
+2\% reduction in the number of spills, and saving of 1\% on overall compile time
+on \SPEC{}. This being a code-size optimization, enables more inlining in
+majority of the benchmarks. We have also seen execution
+time improvements of approximately 5\% in a couple of \SPEC{} benchmarks
+viz. \GCC{} and mcf, moreover, register spills reduced for almost all the
+\SPEC{} bencmarks when compiled for X86\_64. This is an optimistic algorithm in
+the sense that it considers all identical computations in a function as
+potential candidates. We make an extra effort to hoist candidates by
+partitioning the potential candidates in a way to enable partial hoisting in
+case common hoisting points for all the candidates cannot be found. We also
+formalize how register pressure will reduce as a result of code-motion and why
+sorting the list of potential candidates w.r.t. their depth first numbers helps
+hoist more candidates with less compile time overhead.
 \end{abstract}
 
 %% 2012 ACM Computing Classification System (CSS) concepts
@@ -984,7 +984,62 @@ redundant as a result of code-motion.
 % Experimental results: Register spills, compile time, run time. compile-time comparison w.r.t. gcc
 We ran \SPEC{} with the patch. All
 the experiments were conducted on x86\_64 Ubuntu-Linux machine and at -Ofast
-optimization level.  The results for code-hoisting are listed in
+optimization level.
+
+\begin{table}[h!]
+  \begin{center}
+    \begin{tabular}{|l|c|c|}
+      \hline
+% TODO: Check if putting code-size or spills number is okay or only %age is required.
+% llvm trunk vs. llvm trunk with code-motion
+Benchmark       &\% change in performance \% change in codesize & \\\hline
+400.perlbench	& 1.00  & 1.00 \\\hline
+401.bzip2	& 1.00  & 1.00 \\\hline
+403.gcc	        & 1.00  & 1.01 \\\hline
+429.mcf	        & 1.03  & 1.00 \\\hline
+433.milc	& 1.00  & 1.00 \\\hline
+444.namd	& 1.00  & 1.01 \\\hline
+445.gobmk	& 0.99  & 1.01 \\\hline
+447.dealII	& 0.95  & 1.01 \\\hline
+450.soplex	& 0.99  & 0.99 \\\hline
+453.povray	& 0.97  & 1.00 \\\hline
+456.hmmer	& 0.99  & 1.00 \\\hline
+458.sjeng	& 1.02  & 1.00 \\\hline
+462.libquantum	& 1.00  & 1.00 \\\hline
+464.h264ref	& 1.00  & 1.00 \\\hline
+470.lbm	        & 1.00  & 1.00 \\\hline
+471.omnetpp	& 1.00  & 0.99 \\\hline
+473.astar	& 1.00  & 1.02 \\\hline
+482.sphinx3	& 0.99  & 1.00 \\\hline
+483.xalancbmk	& 1.01  & 0.99 \\\hline
+Geomean         & 0.997 & 1.00 \\\hline
+    \end{tabular}
+  \end{center}
+  \caption{Execution time and code size with and without code-motion on SPEC2006 at -Ofast}
+  \label{tab:code-size}
+\end{table}
+
+Overall there was only a minor change in performance regressed with a few ups
+(429.mcf, 458.sjeng etc.) and a few regresssions (447.dealII, 453.povray
+etc.). The code-motion pass was run twice in the pass pipeline (at -Ofast),
+first after EarlyCSE pass and then after the inliner. Because EarlyCSE removes
+local redundancies, GCM would have to analyze less redundant instructions, also
+as inliner creates more redundancies, GCM would have more opportunities to move
+congruent instructions out of branches.
+
+Code size also remained almost the same as a result of code-motion as shown in
+Table~\cite{tab:code-size}.  The code size listed here is the text size (from
+linux size command) of the final executables for each benchmark.  Some bencmarks
+like 473.astar increased in code size by almost 2\%. This is because once the
+code-size of a function decreases it becomes cheaper to inline. As we can see in
+Table-\cite{tab:stats}, four more functions got inlined in 473.astar. Except for
+447.dealII, 450.soplex, 482.sphinx3 and 483.xalancbmk all other benchmarks got
+more functions inlined.
+
+
+
+
+  The results for code-hoisting are listed in
 Table~\ref{tab:code-motion-metric}. The table lists the number of scalars, loads,
 stores and calls hoisted as well as removed. For each category, the number of
 instructions removed is greater or equal to the number of instructions hoisted
@@ -1049,51 +1104,12 @@ candidates which do not increase the register pressure (except for loads Section
 overall spills still decreases.
 
 
-\begin{table}[h!]
-  \begin{center}
-    \begin{tabular}{|l|c|c|c|}
-      \hline
-% TODO: Check if putting code-size or spills number is okay or only %age is required.
-% llvm trunk vs. llvm trunk with code-motion
-Code size         &\% age	increase in codesize \\\hline
-400.perlbench	  & 1.00 \\\hline
-401.bzip2	  & 1.00 \\\hline
-403.gcc	          & 1.01 \\\hline
-429.mcf	          & 1.00 \\\hline
-433.milc	  & 1.00 \\\hline
-444.namd	  & 1.01 \\\hline
-445.gobmk	  & 1.01 \\\hline
-447.dealII	  & 1.01 \\\hline
-450.soplex	  & 0.99 \\\hline
-453.povray	  & 1.00 \\\hline
-456.hmmer	  & 1.00 \\\hline
-458.sjeng	  & 1.00 \\\hline
-462.libquantum	  & 1.00 \\\hline
-464.h264ref	  & 1.00 \\\hline
-470.lbm	          & 1.00 \\\hline
-471.omnetpp	  & 0.99 \\\hline
-473.astar	  & 1.02 \\\hline
-482.sphinx3	  & 1.00 \\\hline
-483.xalancbmk	  & 0.99 \\\hline
-Grand total       & 1.00 \\\hline
-    \end{tabular}
-  \end{center}
-  \caption{Change in code size with and without code-motion on SPEC2006 at -Ofast}
-  \label{tab:code-size}
-\end{table}
-
-Code size remained almost the same as a result of code-motion as shown in Table~\cite{tab:code-size}.
-The code size listed here is the text size (from linux size command) of the final executables for each benchmark.
-Some bencmarks like 473.astar increased in code size by almost 2\%. This is because once the code-size
-of a function decreases it becomes cheaper to inline. As we can see in Table-\cite{tab:stats}, four
-more functions got inlined in 473.astar. Except for 447.dealII, 450.soplex, 482.sphinx3 and 483.xalancbmk
-all other benchmarks got more functions inlined.
 
 \begin{table}[h]
   \begin{center}
     \begin{tabular}{|l|c|c|c|}
       \hline
-  Benchmark       &   Baseline	        &  GCM & \%Incrase     \\\hline
+  Benchmark       &   Baseline	        &  GCM & \%Increase     \\\hline
   400.perlbench	  &   186,829,426	& 184,690,006	& 0.99 \\\hline
   401.bzip2	  &   76,337,033	& 75,942,641	& 0.99 \\\hline
   403.gcc         &   1,079,625,231	& 1,073,158,220	& 0.99 \\\hline
