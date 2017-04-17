@@ -1010,30 +1010,30 @@ Table~\ref{tab:compile-time} to see the impact of code-motion.
       \hline
 % TODO: Check if putting code-size or spills number is okay or only %age is required.
 % llvm trunk vs. llvm trunk with code-motion
-Benchmark       &\% change in performance & \% change in codesize \\\hline
-400.perlbench	& 1.00  & 1.00 \\\hline
-401.bzip2	& 1.00  & 1.00 \\\hline
-403.gcc	        & 1.00  & 1.01 \\\hline
-429.mcf	        & 1.03  & 1.00 \\\hline
-433.milc	& 1.00  & 1.00 \\\hline
-444.namd	& 1.00  & 1.01 \\\hline
-445.gobmk	& 0.99  & 1.01 \\\hline
-447.dealII	& 0.95  & 1.01 \\\hline
-450.soplex	& 0.99  & 0.99 \\\hline
-453.povray	& 0.97  & 1.00 \\\hline
-456.hmmer	& 0.99  & 1.00 \\\hline
-458.sjeng	& 1.02  & 1.00 \\\hline
-462.libquantum	& 1.00  & 1.00 \\\hline
-464.h264ref	& 1.00  & 1.00 \\\hline
-470.lbm	        & 1.00  & 1.00 \\\hline
-471.omnetpp	& 1.00  & 0.99 \\\hline
-473.astar	& 1.00  & 1.02 \\\hline
-482.sphinx3	& 0.99  & 1.00 \\\hline
-483.xalancbmk	& 1.01  & 0.99 \\\hline
-Geomean         & 0.997 & 1.00 \\\hline
+Benchmark       &\% performance uplift (\%) at -Ofast & \% codesize uplift (\%) at -Ofast & codesize uplift (\%) at -Os\\\hline
+400.perlbench	& 1.00  & 1.00 & 1.00\\\hline
+401.bzip2	& 1.00  & 1.00 & 1.00\\\hline
+403.gcc	        & 1.00  & 1.01 & 1.00\\\hline
+429.mcf	        & 1.03  & 1.00 & 1.00\\\hline
+433.milc	& 1.00  & 1.00 & 1.00\\\hline
+444.namd	& 1.00  & 1.01 & 1.00\\\hline
+445.gobmk	& 0.99  & 1.01 & 1.00\\\hline
+447.dealII	& 0.95  & 1.01 & 0.98\\\hline
+450.soplex	& 0.99  & 0.99 & 1.00\\\hline
+453.povray	& 0.97  & 1.00 & 1.00\\\hline
+456.hmmer	& 0.99  & 1.00 & 1.00\\\hline
+458.sjeng	& 1.02  & 1.00 & 1.00\\\hline
+462.libquantum	& 1.00  & 1.00 & 1.00\\\hline
+464.h264ref	& 1.00  & 1.00 & 1.00\\\hline
+470.lbm	        & 1.00  & 1.00 & 1.00\\\hline
+471.omnetpp	& 1.00  & 0.99 & 1.00\\\hline
+473.astar	& 1.00  & 1.02 & 1.00\\\hline
+482.sphinx3	& 0.99  & 1.00 & 1.00\\\hline
+483.xalancbmk	& 1.01  & 0.99 & 1.00\\\hline
+Geomean         & 0.997 & 1.00 & 1.00\\\hline
     \end{tabular}
   \end{center}
-  \caption{Execution time and code size with and without code-motion on SPEC2006 at -Ofast}
+  \caption{Execution time and code size with and without code-motion on SPEC2006.}
   \label{tab:code-size}
 \end{table}
 
