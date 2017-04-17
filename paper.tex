@@ -792,14 +792,16 @@ would make the loaded value available by the time it is used. Also, because
 stores and calls are hoisted the least, see Table~\ref{tab:code-motion-metric},
 the performance does not change much whether they are hoisted or not.
 
-\subsection{Code generation}
+\subsection{Code generation for the optimistic code motion algorithm}
+\label{subsec:optimistic}
 Once all the legality and profitability checks are satisfied for a set of
-congruent instructions, they are suitable candidates for hoisting. A copy of the
-computation is inserted at the hoisting point along with any instructions which
-needed to be rematerialized. Thereafter, all the computations made redundant by
-the new copy are removed, and the \SSA{} form is restored by updating the
-intermediate representation (IR) to reflect the changes. At the same time
-\MemorySSA{} is also updated to get up-to-date information about memory references.
+congruent instructions, they are suitable candidates for hoisting or sinking. A
+copy of the computation is inserted at the hoisting/sinking point along with any
+instructions which needed to be rematerialized. Thereafter, all the computations
+made redundant by the new copy are removed, and the \SSA{} form is restored by
+updating the intermediate representation (IR) to reflect the changes. At the
+same time \MemorySSA{} is also updated to get up-to-date information about
+memory references.
 
 After one iteration of algorithm runs through the entire function, it creates
 more oppportunities for \emph{higher ranked} computations
@@ -814,32 +816,24 @@ Finally after the transformation is done, we verify a set of post-conditions to
 establish that program invariants are maintained: e.g., consistency of use-defs,
 and \SSA{} semantics.
 
-\section{\SSA{} based global code motion of identical computations}
-\label{sec:implementation-details}
-% Move this before legality and profitability??
-% Ranking of instructions from Zadeck
-% Liveness analysis from Ramakrishna
-In this section we will present an overview of the algorithm we implemented in
-\LLVM{}.  The amount of hoisting depends on whether we collect \GVN{} of
-instructions before finding candidates (optimistic) or, on-demand
-(pessimistic). It also depends on the generality of the \GVN{} algorithm as
-mentioned earlier in Section~\ref{subsec:finding-candidates}. We have
-implemented a optimistic global code motion of congruent instructions which uses
-the liveness analysis as illustrated in Das \cite{das2012} and ranking
-expressions explained in Rosen \cite{rosen1988global}.
+The amount of hoisting depends on whether we collect \GVN{} of instructions
+before finding candidates (optimistic) or, on-demand (pessimistic). It also
+depends on the generality of the \GVN{} algorithm as mentioned earlier in
+Section~\ref{subsec:finding-candidates}. We have implemented an optimistic
+global code motion of congruent instructions which uses the liveness analysis as
+illustrated in Das \cite{das2012} and ranking expressions explained in Rosen
+\cite{rosen1988global}.
 
 Code-motion basically consists of two parts, i.e., hoisting and sinking. This
 implementation only moves congruent instructions. An immediate guarantee of this
 approach is gain in code size (the final executable may be of larger size
-because of more inlining). The algorithm prefers hoisting to sinking. If the
+because of more inlining.) The algorithm prefers hoisting to sinking. If the
 dependency of a hoistable candidate is in the same basic block as the candidate,
-then the dependency must also be hoistable otherwise hoisting will be illegal or
+then the dependency must also be hoistable, otherwise hoisting will be illegal or
 would require a complicated code generation to make it legal. The current
 algorithm discards cases if the dependency is neither hoistable nor
 rematerializable.
 
-\subsection{Optimistic code motion algorithm}
-\label{subsec:optimistic}
 We collect the \GVN{} of all the instructions in the function and iterate on the
 list of instructions having identical \GVN{}s. The algorithm prefers hoisting to
 sinking. So first we find the common dominator dominating all such identical
@@ -858,9 +852,9 @@ Barriers are based on the concept of pinned instructions \cite{click1995global}
 but extended to adapt to \LLVM{} IR. Since a basic block in \LLVM{} IR is actually an
 extended basic block because there might be calls in the middle of a basic block
 which might not return. So barriers can be present in the middle of a basic
-block. Essentially, any instruction that cannot not guarantee progress is marked
-as a barrier. In the absense of context (as in our current implementation), some
-instructions which might be safe are still classified a barrier, e.g., volatile
+block. Essentially, any instruction that cannot guarantee progress is marked
+as a barrier. In the absence of context (as in our current implementation), some
+instructions which might be safe are still classified as barriers, e.g., volatile
 loads/stores, calls with missing attributes.
 
 \begin{verbatim}
