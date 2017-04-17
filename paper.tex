@@ -353,7 +353,7 @@ terms of compilation time overhead the implementation is quadratic in number of
 instructions to bisimulate and second, the equivalence of instructions is
 computed by comparing the operands which is neither general nor scalabale.
 
-Dhamdhere \cite{dhamdhere1988fast}, Muchnick \cite{steven1997advanced} mention
+\citet{dhamdhere1988fast}, \citet{steven1997advanced} mention
 code hoisting in a data flow framework. A list of Very Busy Expressions (VBE)
 computed which are hoisted in a basic block where the expression is
 anticipable (all the operands are available). This algorithm would hoist as far
@@ -361,7 +361,7 @@ as possible without regarding the impact on register pressure and as such a cost
 model will be required.  Also the description of VBE is based on the classic
 dataflow model and an adaptation to a sparse \SSA{} representation is required.
 
-Rosen \cite{rosen1988global} also briefly discuss hoisting computations with
+\citet{rosen1988global} also briefly discuss hoisting computations with
 identical value numbers from immediate successors. Their algorithm iterates on
 computations of same rank and move the code with identical computations from the
 sibling branch to a common dominator if they are very busy
@@ -387,19 +387,19 @@ implementation is that it works in sync with the \GVN{}-\PRE{} such that when
 new hoisting opportunities are created by \GVN{}-\PRE{}, code-hoisting will
 hoist them.
 
-Click \cite{click1995global} describe aggressive global code motion to first
+\citet{click1995global} describes aggressive global code motion to first
 schedule all the instructions as early as possible. This results in very long
 live ranges which is mitigated by again scheduling all the instructions as late
 as possible. They report sppeedup of as high as $23\%$.
 
-Barany \cite{barany2013} presented a global scheduler with ILP formulation with
+\citet{barany2013} presented a global scheduler with ILP formulation with
 a goal to minimize register pressure. The results they got were not very
 promising. It may be because they only used the scheduler for smaller functions
 ($<1000$ instructions); also, they compiled the benchmarks for ARM-Cortex which
 is more resilient to register pressure because it has more registers compared to
 X86, for example.
 
-Shobaki \cite{shobaki2013} also recently presented a combinatorial global
+\citet{shobaki2013} also recently presented a combinatorial global
 scheduler with reasonable performance improvements. It is possible that both
 Barany and Shobaki's implmentation will have similar results when compiled for
 same target architecture. Also, both suffer from the same problem, although
@@ -735,7 +735,6 @@ computing downward-safety of hoistable instructions at hoist-point
   return true
 \end{verbatim}
 
-
 \subsection{Profitability check (Cost models)}
 \label{sec:cost-models}
 After the legality checks have passed, we check if a code-motion is profitable.
@@ -879,8 +878,8 @@ before finding candidates (optimistic) or, on-demand (pessimistic). It also
 depends on the generality of the \GVN{} algorithm as mentioned earlier in
 Section~\ref{subsec:finding-candidates}. We have implemented an optimistic
 global code motion of congruent instructions which uses the liveness analysis as
-illustrated in Das \cite{das2012} and ranking expressions explained in Rosen
-\cite{rosen1988global}.
+illustrated by \citet{das2012} and ranking expressions explained by
+\citet{rosen1988global}.
 
 Code-motion basically consists of two parts, i.e., hoisting and sinking. This
 implementation only moves congruent instructions. An immediate guarantee of this
@@ -1048,7 +1047,7 @@ as inliner creates more redundancies, GCM would have more opportunities to move
 congruent instructions out of branches.
 
 Code size also remained almost the same as a result of code-motion as shown in
-Table~\cite{tab:code-size}.  The code size listed here is the text size (from
+Table~\ref{tab:code-size}.  The code size listed here is the text size (from
 linux size command) of the final executables for each benchmark.  Some bencmarks
 like 473.astar increased in code size by almost 2\%. This is because once the
 code-size of a function decreases it becomes cheaper to inline. As we can see in
@@ -1112,10 +1111,11 @@ Grand Total	  & 43349	& 42497	& 0.98 \\\hline
   \label{tab:spills}
 \end{table}
 
-Spills are listed in Table~\cite{tab:spills}. Spills were reduced by an average of 2\% on the
-\SPEC{} benchmark suite. This is a result of cost-model which limits the code-motion to those
-candidates which do not increase the register pressure (except for loads Section~\cite{sec:cost-models},
-overall spills still decreases.
+Spills are listed in Table~\ref{tab:spills}. Spills were reduced by an average
+of 2\% on the \SPEC{} benchmark suite. This is a result of cost-model which
+limits the code-motion to those candidates which do not increase the register
+pressure (except for loads Section~\ref{sec:cost-models}, overall spills still
+decreases.
 
 
 
@@ -1186,7 +1186,7 @@ is the total instruction count as outputted from valgrind (--tool=cachegrind).
   \label{tab:stats}
 \end{table}
 
-Some useful statc metric are presented in Table~\cite{tab:stats}, which shows how code-motion
+Some useful statc metric are presented in Table~\ref{tab:stats}, which shows how code-motion
 impacted important compiler optimizations like inlining and LICM. LICM removes loop invariant
 code out of the loop. It may hoist the code to the loop's preheader or sink the code to loop's
 post-dominator \cite{steven1997advanced}. As we can see number of instructions hoisted increased
