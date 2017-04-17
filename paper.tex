@@ -892,6 +892,17 @@ would require a complicated code generation to make it legal. The current
 algorithm discards cases if the dependency is neither hoistable nor
 rematerializable.
 
+\begin{verbatim}
+void doGCM()
+  Analyses available: Dominator Tree, DFS Numbering, Memory SSA,
+  Compute DJ-graph of function and compute mergeset based on that
+  do
+    Compute GVN of each expression in the function
+    int N = doCodeHoisting()
+  while (N > 0) // If any of candidates were hoisted then repeat hoisting
+  doCodeSinking()
+\end{verbatim}
+
 We collect the \GVN{} of all the instructions in the function and iterate on the
 list of instructions having identical \GVN{}s. The algorithm prefers hoisting to
 sinking. So first we find the common dominator dominating all such identical
@@ -909,11 +920,6 @@ execution path.
 % Explain the overall algorithm, explain how anticipability is computed on demand
 \begin{verbatim}
 int doCodeHoisting()
-  Analyses available: Dominator Tree, DFS Numbering, Memory SSA,
-
-  Compute GVN of each expression in the function
-  Compute DJ-graph of function and compute mergeset based on that
-
   For each value number VN with 2 or more instructions:
     sort the instructions according to DFSIn numbers
     if first two I1, I2 are hoistable:
@@ -933,32 +939,30 @@ int doCodeHoisting()
     update statistics
 
   return number_of_hoisted_candidates
-
-
-If any of candidates were hoisted then repeat hoisting
 \end{verbatim}
 
-Once no more candidates are hoistable proceed to sinking
+After no more candidates are hoistable, sinking is performed. Sinking is only
+performed once becase currently there are very few sinkable candidates
+(Table~\ref{tab:code-motion-metric}) as SimplifyCFG of LLVM (which runs before
+GCM) has a (suboptimal) code-sinking which sinks several instructions already.
 
 \begin{verbatim}
-Analyses available: Dominator Tree, DFS Numbering, Memory SSA, Mergeset
-Compute GVN of each expression in the function
+void doCodeSinking()
+  For each value number VN with 2 or more instructions:
+    if there are two instructions with same immediate successor as post-dominator
+      if both are only used in the same PHI-node of the successor
+        if both have dependencies that are available or can be made available at the sink point
+           mark VN as sinkable
 
-For each value number VN with 2 or more instructions:
-  if there are two instructions with same immediate successor as post-dominator
-    if both are only used in the same PHI-node of the successor
-      if both have dependencies that are available or can be made available at the sink point
-         mark VN as sinkable
-
-For each pair I1, I2 of sinkable instructions:
-  Move the first one I1 to the sink point which is just after all the PHI-nodes
-  in the post-dominator
-  update the use of PHI with I1
-  Remove I2 and PHI
-  if I1 is a memory reference:
-    update MemorySSA of I1 and others to point to the MemorySSA reference of I1
-    remove MemorySSA reference of all others which were deleted
-  update statistics
+  For each pair I1, I2 of sinkable instructions:
+    Move the first one I1 to the sink point which is just after all the PHI-nodes
+    in the post-dominator
+    update the use of PHI with I1
+    Remove I2 and PHI
+    if I1 is a memory reference:
+      update MemorySSA of I1 and others to point to the MemorySSA reference of I1
+      remove MemorySSA reference of all others which were deleted
+    update statistics
 
 \end{verbatim}
 
@@ -1046,7 +1050,7 @@ Table~\cite{tab:code-size}.  The code size listed here is the text size (from
 linux size command) of the final executables for each benchmark.  Some bencmarks
 like 473.astar increased in code size by almost 2\%. This is because once the
 code-size of a function decreases it becomes cheaper to inline. As we can see in
-Table-\cite{tab:stats}, four more functions got inlined in 473.astar. Except for
+Table-\ref{tab:stats}, four more functions got inlined in 473.astar. Except for
 447.dealII, 450.soplex, 482.sphinx3 and 483.xalancbmk all other benchmarks got
 more functions inlined.
 
