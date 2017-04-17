@@ -1043,41 +1043,6 @@ are hoisted the most is the early execution of this pass (before mem2reg) in the
 \LLVM{} pass pipeline. Passes like mem2reg, instcombine might actually remove
 those loads so this order may change should this pass be scheduled later.
 
-\begin{table}[h!]
-  \begin{center}
-    \begin{tabular}{|l|c|}
-      \hline
-      Metric               & Number\\\hline
-      Scalars hoisted      & 6791  \\\hline
-      Scalars removed      & 9696  \\\hline
-      Loads hoisted        & 14802 \\\hline
-      Loads removed        & 20719 \\\hline
-      Stores hoisted       & 15    \\\hline
-      Stores removed       & 15    \\\hline
-      Calls hoisted        & 8     \\\hline
-      Calls removed        & 8     \\\hline
-      Total Instructions hoisted & 21616 \\\hline
-      Total Instructions removed & 30438 \\\hline
-\end{tabular}
-  \end{center}
-  \caption{Code hoisting metrics on \LLVMTestSuite{}}
-  \label{tab:hoist-results}
-\end{table}
-
-\begin{table}[h!]
-  \begin{center}
-    \begin{tabular}{|l|c|c|}
-      \hline
-      Metric               & Before & After              \\\hline
-      Functions deleted (all callers found)       & 38250   & 38255  \\\hline
-      Functions inlined                           & 154986  & 154985 \\\hline
-      Spills inserted                             & 50724   & 50784  \\\hline
-      LICM
-\end{tabular}
-  \end{center}
-  \caption{Static metrics before and after code-hoisting on \LLVMTestSuite{}}
-  \label{tab:static-results}
-\end{table}
 
 
 Other static metrics are listed in Table~\ref{tab:static-results}. Here we can
@@ -1085,27 +1050,12 @@ see that except for rematerializing defs for splitting, which has an overhead of
 other parameters have less than 1\% overhead. This is to explain why the performance does not
 go down with our implementation (and cost-model) of code hoisting pass.
 
-\begin{table}[h!]
-  \begin{center}
-    \begin{tabular}{|l|c|}
-      \hline
-      Code-size metric  (.text)                   & Number   \\\hline
-      Total  benchmarks                           & 497      \\\hline
-      Total  gained in size                       & 39       \\\hline
-      Total  decrease in size                     & 58       \\\hline
-      Median decrease in size                     & 2.9\%    \\\hline
-      Median increase in size                     & 2.4\%    \\\hline
-    \end{tabular}
-  \end{center}
-  \caption{Code size metrics on \LLVMTestSuite{}}
-  \label{tab:code-size}
-\end{table}
 
 \begin{table}[h!]
   \begin{center}
-    \begin{tabular}{|l|c|c|c|}
+    \begin{tabular}{|l|r|r|r|}
       \hline
-Number of spills  &base(-Ofast) &code-motion(-Ofast) &\%loss \\\hline
+Number of spills  &base(-Ofast) &code-motion(-Ofast) &\%change \\\hline
 400.perlbench	  & 2539	& 2493	& 0.98 \\\hline
 401.bzip2	  & 718	        & 707	& 0.98 \\\hline
 403.gcc	          & 5782	& 5722	& 0.99 \\\hline
@@ -1118,9 +1068,9 @@ Number of spills  &base(-Ofast) &code-motion(-Ofast) &\%loss \\\hline
 453.povray	  & 4701	& 4692	& 1.09 \\\hline
 456.hmmer	  & 1197	& 1274	& 1.06 \\\hline
 458.sjeng	  & 168	        & 176	& 1.05 \\\hline
-462.libquantum	  & 118	        & 118	& 1    \\\hline
+462.libquantum	  & 118	        & 118	& 1.00 \\\hline
 464.h264ref	  & 3379	& 3454	& 1.02 \\\hline
-470.lbm	          & 33	        & 33	& 1    \\\hline
+470.lbm	          & 33	        & 33	& 1.00 \\\hline
 471.omnetpp	  & 524	        & 527	& 1.00 \\\hline
 473.astar	  & 180	        & 201	& 1.12 \\\hline
 482.sphinx3	  & 674	        & 670	& 0.99 \\\hline
@@ -1128,8 +1078,8 @@ Number of spills  &base(-Ofast) &code-motion(-Ofast) &\%loss \\\hline
 Grand Total	  & 43349	& 42497	& 0.98 \\\hline
     \end{tabular}
   \end{center}
-  \caption{Number of spills on SPEC2006 at -Ofast}
-  \label{tab:code-size}
+  \caption{Number of spills on before and after code-motion on SPEC2006 at -Ofast}
+  \label{tab:spills}
 \end{table}
 
 \begin{table}[h!]
@@ -1137,92 +1087,93 @@ Grand Total	  & 43349	& 42497	& 0.98 \\\hline
     \begin{tabular}{|l|c|c|c|}
       \hline
 % TODO: Check if putting code-size or spills number is okay or only %age is required.
-Code size         & base(ofast)	& ofast+gvnhoist&	increase in codesize \\\hline
-400.perlbench	  &  2469594	& 2478714	& 1.00 \\\hline
-401.bzip2	  &  865902	& 867502	& 1.00 \\\hline
-403.gcc	          &  4379291	& 4437467	& 1.01 \\\hline
-429.mcf	          &  794909	& 794749	& 1.00 \\\hline
-433.milc	  &  1009553	& 1010209	& 1.00 \\\hline
-444.namd	  &  282794	& 286658	& 1.01 \\\hline
-445.gobmk	  &  2474193	& 2494673	& 1.01 \\\hline
-447.dealII	  &  3577836	& 3605672	& 1.01 \\\hline
-450.soplex	  &  411254	& 409034	& 0.99 \\\hline
-453.povray	  &  1114405	& 1114241	& 1.00 \\\hline
-456.hmmer	  &  1421823	& 1425287	& 1.00 \\\hline
-458.sjeng	  &  941066	& 940626	& 1.00 \\\hline
-462.libquantum	  &  911028	& 911124	& 1.00 \\\hline
-464.h264ref	  &  1677417	& 1680841	& 1.00 \\\hline
-470.lbm	          &  795444	& 795444	& 1    \\\hline
-471.omnetpp	  &  661099	& 658411	& 0.99 \\\hline
-473.astar	  &  44296	& 45224		& 1.02 \\\hline
-482.sphinx3	  &  1337445	& 1334437	& 1.00 \\\hline
-483.xalancbmk	  &  4293600	& 4247108	& 0.99 \\\hline
+% llvm trunk vs. llvm trunk with code-motion
+Code size         &\% age	increase in codesize \\\hline
+400.perlbench	  & 1.00 \\\hline
+401.bzip2	  & 1.00 \\\hline
+403.gcc	          & 1.01 \\\hline
+429.mcf	          & 1.00 \\\hline
+433.milc	  & 1.00 \\\hline
+444.namd	  & 1.01 \\\hline
+445.gobmk	  & 1.01 \\\hline
+447.dealII	  & 1.01 \\\hline
+450.soplex	  & 0.99 \\\hline
+453.povray	  & 1.00 \\\hline
+456.hmmer	  & 1.00 \\\hline
+458.sjeng	  & 1.00 \\\hline
+462.libquantum	  & 1.00 \\\hline
+464.h264ref	  & 1.00 \\\hline
+470.lbm	          & 1.00 \\\hline
+471.omnetpp	  & 0.99 \\\hline
+473.astar	  & 1.02 \\\hline
+482.sphinx3	  & 1.00 \\\hline
+483.xalancbmk	  & 0.99 \\\hline
     \end{tabular}
   \end{center}
-  \caption{Number of spills on SPEC2006 at -Ofast}
+  \caption{Change in code size with and without code-motion on SPEC2006 at -Ofast}
   \label{tab:code-size}
 \end{table}
 
 \begin{table}[h!]
   \begin{center}
-    \begin{tabular}{|l|c|c|c|c|c|c|c|c|}
+    \begin{tabular}{|l|r|r|r|r|r|r|r|r|}
       \hline
- benchmark &      hoist licm	&hoist  &sunk licm &sunk&finline& i     &f deleted & f \\\hline
- benchmark        & base        & gvn	& base	& gvn	& base	& gvn	& base	& gvn  \\\hline
+  &  \multicolumn{2}{|c|}{Hoisted by LICM} &\multicolumn{2}{|c|}{Sunk by LICM} &\multicolumn{2}{|c|}{Functions Inlined} &  \multicolumn{2}{|c|}{Functions Deleted} \\\hline
+ Benchmark        & trunk       & GCM	& trunk	& GCM	& trunk	& GCM	& trunk	& GCM  \\\hline
  400.perlbench	  & 2428	& 2480	& 36	& 35	& 1562	& 1565	& 232	& 234  \\\hline
  401.bzip2	  & 721	        & 825	& 3	& 3	& 172	& 180	& 32	& 33   \\\hline
  403.gcc	  & 8867	& 10079	& 143	& 182	& 5034	& 5080	& 1303	& 130  \\\hline
- 429.mcf	  & 55	        & 51	& 1	& 1	& 4	& 4	& 	&      \\\hline
- 433.milc	  & 2537	& 2795	& 3	& 3	& 75	& 81	& 	&      \\\hline
+ 429.mcf	  & 55	        & 51	& 1	& 1	& 4	& 4	& 0 	& 0    \\\hline
+ 433.milc	  & 2537	& 2795	& 3	& 3	& 75	& 81	& 0	& 0    \\\hline
  444.namd	  & 2204	& 2206	& 240	& 240	& 387	& 390	& 57	& 55   \\\hline
  445.gobmk	  & 3090	& 3107	& 18	& 19	& 735	& 775	& 230	& 234  \\\hline
  447.dealII	  & 59114	& 95884	& 60	& 8	& 100891& 100692& 30219	& 29966\\\hline
  450.soplex	  & 4668	& 4848	& 18	& 17	& 9801	& 9784	& 3125	& 3112 \\\hline
  453.povray	  & 9533	& 9079	& 23	& 32	& 5522	& 5532	& 1202	& 1201 \\\hline
  456.hmmer	  & 3200	& 3232	& 3	& 8	& 562	& 562	& 103	& 101  \\\hline
- 458.sjeng	  & 400	        & 446	& 	& 	& 127	& 135	& 18	& 18   \\\hline
- 462.libquantum	  & 362	        & 386	& 	& 	& 87	& 87	& 21	& 21   \\\hline
+ 458.sjeng	  & 400	        & 446	& 0	& 0	& 127	& 135	& 18	& 18   \\\hline
+ 462.libquantum	  & 362	        & 386	& 0 	& 0	& 87	& 87	& 21	& 21   \\\hline
  464.h264ref	  & 17075	& 17153	& 4	& 4	& 338	& 382	& 72	& 72   \\\hline
- 470.lbm	  & 39	        & 39	& 	& 	& 13	& 13	& 4	& 4    \\\hline
+ 470.lbm	  & 39	        & 39	& 0	& 0	& 13	& 13	& 4	& 4    \\\hline
  471.omnetpp	  & 565	        & 661	& 32	& 30	& 4790	& 4843	& 1321	& 1316 \\\hline
- 473.astar	  & 691	        & 754	& 	& 	& 359	& 363	& 113	& 113  \\\hline
+ 473.astar	  & 691	        & 754	& 0	& 0	& 359	& 363	& 113	& 113  \\\hline
  482.sphinx3	  & 1599	& 1693	& 11	& 9	& 198	& 194	& 53	& 53   \\\hline
  483.xalancbmk	  & 9997	& 11453	& 56	& 54	& 69534	& 68839	& 29875	& 29519\\\hline
-
     \end{tabular}
   \end{center}
-  \caption{Number of spills on SPEC2006 at -Ofast}
-  \label{tab:code-size}
+  \caption{Static metrics before and after code-hoisting on SPEC2006 at -Ofast}
+  \label{tab:stats}
 \end{table}
 
 \begin{table}[h!]
   \begin{center}
-    \begin{tabular}{|l|c|c|c|c|c|c|c|c|}
+    \begin{tabular}{|l|r|r|r|r|r|r|r|r|}
       \hline
- code-motion metric &  I hoisted&I removed	&loads hoisted	&loads removed	&calls hoisted	&I sunk	&stores hoisted	&stores removed \\\hline
- 400.perlbench	  &  2387	& 2456	& 1493	& 1560	& 1	& 4	& 38	& 38 \\\hline
- 401.bzip2	  &  176	& 300	& 149	& 273	& 	& 	& 	&    \\\hline
- 403.gcc	  &  5670	& 5761	& 3109	& 3191	& 	& 1	& 3	& 3  \\\hline
- 429.mcf	  &  42	        & 43	& 37	& 38	& 	& 	& 	&    \\\hline
- 433.milc	  &  128	& 130	& 117	& 119	& 1	& 	& 	&    \\\hline
- 444.namd	  &  262	& 264	& 148	& 150	& 1	& 	& 	&    \\\hline
- 445.gobmk	  &  1021	& 1052	& 705	& 734	& 1	& 1	& 3	& 3  \\\hline
- 447.dealII	  &  10455	& 12325	& 6394	& 8210	& 32	& 	& 20	& 20 \\\hline
- 450.soplex	  &  2389	& 2731	& 1437	& 1702	& 11	& 	& 14	& 14 \\\hline
- 453.povray	  &  1967	& 2269	& 1389	& 1661	& 14	& 	& 4	& 4  \\\hline
- 456.hmmer	  &  408	& 427	& 319	& 338	& 6	& 	& 1	& 1  \\\hline
- 458.sjeng	  &  372	& 399	& 234	& 251	& 9	& 1	& 1	& 1  \\\hline
- 462.libquantum	  &  49	        & 49	& 32	& 32	& 	& 	& 	&    \\\hline
- 464.h264ref	  &  2953	& 3438	& 2238	& 2656	& 1	& 1	& 2	& 2  \\\hline
- 470.lbm	  &  23	        & 23	& 19	& 19	& 	& 	& 	&    \\\hline
- 471.omnetpp	  &  391	& 408	& 297	& 314	& 2	& 	& 	&    \\\hline
- 473.astar	  &  202	& 222	& 140	& 158	& 	& 	& 	&    \\\hline
- 482.sphinx3	  &  168	& 172	& 136	& 140	& 	& 	& 	&    \\\hline
- 483.xalancbmk	  &  5894	& 6162	& 3301	& 3495	& 3	& 2	& 4	& 4  \\\hline
+ code-motion      & Instructions&Instructions   & Loads	        &Loads	        &Stores &Stores &Calls &Instructions \\\hline
+ metric           &  hoisted    &removed	&hoisted        &removed        &hoisted&removed&hoisted & sunk     \\\hline
+ 400.perlbench	  &  2387	& 2456		& 1493		& 1560		& 38	& 38	& 1	& 4	       \\\hline
+ 401.bzip2	  &  176	& 300		& 149		& 273		& 0	& 0	& 0 	& 0		\\\hline
+ 403.gcc	  &  5670	& 5761		& 3109		& 3191		& 3	& 3	& 0	& 1	       \\\hline
+ 429.mcf	  &  42	        & 43		& 37		& 38		& 0	& 0	& 0 	& 0		\\\hline
+ 433.milc	  &  128	& 130		& 117		& 119		& 0	& 0	& 1	& 0		\\\hline
+ 444.namd	  &  262	& 264		& 148		& 150		& 0	& 0	& 1	& 0		\\\hline
+ 445.gobmk	  &  1021	& 1052		& 705		& 734		& 3	& 3	& 1	& 1	       \\\hline
+ 447.dealII	  &  10455	& 12325		& 6394		& 8210		& 20	& 20	& 32	& 0	       \\\hline
+ 450.soplex	  &  2389	& 2731		& 1437		& 1702		& 14	& 14	& 11	& 0	       \\\hline
+ 453.povray	  &  1967	& 2269		& 1389		& 1661		& 4	& 4	& 14	& 0	       \\\hline
+ 456.hmmer	  &  408	& 427		& 319		& 338		& 1	& 1	& 6	& 0	       \\\hline
+ 458.sjeng	  &  372	& 399		& 234		& 251		& 1	& 1	& 9	& 1	       \\\hline
+ 462.libquantum	  &  49	        & 49		& 32		& 32		& 0	& 0	& 0	& 0		\\\hline
+ 464.h264ref	  &  2953	& 3438		& 2238		& 2656		& 2	& 2	& 1	& 1	       \\\hline
+ 470.lbm	  &  23	        & 23		& 19		& 19		& 0	& 0	& 0	& 0		\\\hline
+ 471.omnetpp	  &  391	& 408		& 297		& 314		& 0	& 0	& 2	& 0		\\\hline
+ 473.astar	  &  202	& 222		& 140		& 158		& 0	& 0	& 0	& 0		\\\hline
+ 482.sphinx3	  &  168	& 172		& 136		& 140		& 0	& 0	& 0	& 0		\\\hline
+ 483.xalancbmk	  &  5894	& 6162		& 3301		& 3495		& 4	& 4	& 3	& 2	       \\\hline
     \end{tabular}
   \end{center}
-  \caption{Number of spills on SPEC2006 at -Ofast}
-  \label{tab:code-size}
+  \caption{Code motion stats on SPEC2006 at -Ofast}
+  \label{tab:code-motion-metric}
 \end{table}
 
 
