@@ -241,56 +241,39 @@ reduced. It is not a redundancy elimination pass, and thus it has different cost
 function and heuristics than \PRE{} or CSE. It is more similar to global code
 scheduling \cite{dragonbook,click1995global} in the sense that it will only move
 computations. Code hoisting can reduce the critical path length of execution in
-out of order machines. As more instructios are available at the hoisting point,
-the hardware has more instructions to reorder. Following example illustrates how
-hoisting can improve performance by exposing more ILP.
+out-of-order machines. As more instructions are available at the hoisting point,
+the hardware has more independent instructions to reorder. The following example
+illustrates how hoisting can improve performance by exposing more ILP.
 
 \begin{verbatim}
 float fun(float d, float min, float max, float a) {
   float tmin, tmax, inv;
 
   inv = 1.0f / d;
-  if (inv >= 0) {
-    tmin = (min - a) * inv;
-    tmax = (max - a) * inv;
-  } else {
-    tmin = (max - a) * inv;
-    tmax = (min - a) * inv;
-  }
+  if (inv >= 0) { tmin = (min - a) * inv; tmax = (max - a) * inv; }
+  else          { tmin = (max - a) * inv; tmax = (min - a) * inv; }
   return tmax + tmin;
 }
 \end{verbatim}
 
 In this program the computations of tmax and tmin are identical to the
 computations of tmin and tmax of sibling branch respectively. Both tmax and tmin
-depends on inv which depends on a division operation which is generally more
-expensive than the addition, subtraction and multiplication operations. The
-total latency of computation across each branch is:
-$C_{div} + 2(C_{sub} + C_{mul})$
-Or, for out of order processors with two add units and two multiply units:
-$C_{div} + C_{sub} + C_{mul}$
+depend on inv which depends on a division operation which is generally more
+expensive than the addition, subtraction, and multiplication operations. The
+total latency of computation across each branch is: $C_{div} + 2(C_{sub} +
+C_{mul})$.  For an out-of-order processor with two add units and two multiply
+units, the total latency of computation is $C_{div} + C_{sub} + C_{mul}$.
 
 Now if the computation of tmax and tmin are hoisted outside the
 conditionals, the C code version would look like this:
 \begin{verbatim}
 float fun(float d, float min, float max, float a) {
-  float tmin, tmax, tmin1, tmax1, inv;
-
-  tmin1 = (min - a);
-  tmax1 = (max - a);
-
-  inv = 1.0f / d;
-  tmin1 = tmin1 * inv;
-  tmax1 = tmax1 * inv;
-
-  if (inv >= 0) {
-    tmin = tmin1;
-    tmax = tmax1;
-  } else {
-    tmin = tmax1;
-    tmax = tmin1;
-  }
-
+  float tmin, tmax;
+  float inv = 1.0f / d;
+  float x = (min - a) * inv;
+  float y = (max - a) * inv;
+  if (inv >= 0) { tmin = x; tmax = y; }
+  else          { tmin = y; tmax = x; }
   return tmax + tmin;
 }
 
