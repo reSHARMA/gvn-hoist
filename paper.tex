@@ -1084,7 +1084,7 @@ Grand Total	  & 43349	& 42497	& 0.98 \\\hline
   \label{tab:spills}
 \end{table}
 
-Spills are listed in Table~\cite{tab:spills}. Sinks were reduced by an average of 2\% on the
+Spills are listed in Table~\cite{tab:spills}. Spills were reduced by an average of 2\% on the
 \SPEC{} benchmark suite. This is a result of cost-model which limits the code-motion to those
 candidates which do not increase the register pressure (except for loads Section~\cite{sec:cost-models},
 overall spills still decreases.
@@ -1116,11 +1116,19 @@ Code size         &\% age	increase in codesize \\\hline
 473.astar	  & 1.02 \\\hline
 482.sphinx3	  & 1.00 \\\hline
 483.xalancbmk	  & 0.99 \\\hline
+Grand total       & 1.00 \\\hline
     \end{tabular}
   \end{center}
   \caption{Change in code size with and without code-motion on SPEC2006 at -Ofast}
   \label{tab:code-size}
 \end{table}
+
+Code size remained almost the same as a result of code-motion as shown in Table~\cite{tab:code-size}.
+Some bencmarks like 473.astar increased in code size by almost 2\%. This is because once the code-size
+of a function decreases it becomes cheaper to inline. As we can see in Table-\cite{tab:stats}, four
+more functions got inlined in 473.astar. Except for 447.dealII, 450.soplex, 482.sphinx3 and 483.xalancbmk
+all other benchmarks got more functions inlined.
+
 
 \begin{table}[h!]
   \begin{center}
@@ -1152,6 +1160,14 @@ Code size         &\% age	increase in codesize \\\hline
   \caption{Static metrics before and after code-hoisting on SPEC2006 at -Ofast}
   \label{tab:stats}
 \end{table}
+
+Some useful statc metric are presented in Table~\cite{tab:stats}, which shows how code-motion
+impacted important compiler optimizations like inlining and LICM. LICM removes loop invariant
+code out of the loop. It may hoist the code to the loop's preheader or sink the code to loop's
+post-dominator \cite{steven1997advanced}. As we can see number of instructions hoisted increased
+significantly in several benchmarks, although number of instructions sunk did not change by much.
+Number of inlined functiosn also improved for most benchmarks. In general when more functions
+were inlined, more functions were deleted as in 400.perlbench, 445.gobmk.
 
 \begin{table}[h!]
   \begin{center}
