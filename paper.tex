@@ -723,13 +723,13 @@ and we have found performance regressions while hoisting aggressively.
 
 Moreover, \LLVM{} has a `getelementptr' instruction which computes the address
 where a load or a store would happen. It is a scalar computation and gets
-hoisted frequently even if the corresponding loads/stores would not get hoisted.
-In order to reduce register pressure while hoisting loads, we have restricted
-hoisting of address computations away from their corresponding loads and stores
-when the loads and stores cannot be moved.  This restriction is only to mitigate
-the limitations of \LLVM{'}s register allocator and may be lifted in the future,
-when the register allocation rematerialization pass has been improved to catch
-these regressions.
+hoisted frequently even if the corresponding loads/stores would not be legal to
+hoist.  In order to reduce the register pressure while hoisting loads, we have
+restricted hoisting of address computations away from their corresponding loads
+and stores when the loads and stores cannot be moved. This restriction is only
+to mitigate the limitations of \LLVM{'}s register allocator and may be lifted in
+the future, when the register allocation rematerialization pass has been
+improved to catch these regressions.
 
 \subsubsection{Hoisting an expression across a call}
 \label{cost:across-calls}
@@ -780,7 +780,7 @@ profitable -- to B2.
 
 % TODO: Rewrite the following.
 In our current implementation we keep as many candidates in one set as possible
-(greedy approach). We split the list at a point where the legality checks fail
+(greedy approach.) We split the list at a point where the legality checks fail
 to hoist subset of candidates which are legal to hoist and then start finding
 new hoisting point for the remaining ones.
 
@@ -789,8 +789,8 @@ There is a special case for hoisting load instructions when the hoist-point is
 the predecessor basic block for all the loads. Even if the register pressure
 would increase, we prefer to hoist loads in this case. The reason being, that
 would make the loaded value available by the time it is used. Also, because
-stores and calls are hoisted the least \ref{table:experimental-results}, the
-performance does not change much whether they are hoisted or not.
+stores and calls are hoisted the least, see Table~\ref{tab:code-motion-metric},
+the performance does not change much whether they are hoisted or not.
 
 \subsection{Code generation}
 Once all the legality and profitability checks are satisfied for a set of
@@ -807,7 +807,8 @@ more oppportunities for \emph{higher ranked} computations
 pass, and so we rerun the code-hoisting algorithm until there are no more
 instructions left to be hoisted.  Obviously, this is not the most optimal
 approach and can be improved by ranking the computations \cite{rosen1988global},
-or by improving the \GVN{} analysis to correctly populate congruence classes.
+or by improving the \GVN{} analysis to correctly populate congruence classes as
+the program is modified by the code generation.
 
 Finally after the transformation is done, we verify a set of post-conditions to
 establish that program invariants are maintained: e.g., consistency of use-defs,
