@@ -982,9 +982,13 @@ redundant as a result of code-motion.
 \section{Experimental Evaluation}
 \label{sec:experimental-results}
 % Experimental results: Register spills, compile time, run time. compile-time comparison w.r.t. gcc
-We ran \SPEC{} with the patch. All
-the experiments were conducted on x86\_64 Ubuntu-Linux machine and at -Ofast
-optimization level.
+We ran \SPEC{} with the patch. All the experiments were conducted on x86\_64
+Ubuntu-Linux machine and at -Ofast optimization level. Each sub benchmark was
+run three times and the best result was taken. We collected execution time,
+code-size which is listed in Table~\ref{tab:code-size}, other compiler stats are
+listed in Table~\ref{tab:spills}, Table~\ref{tab:stats}, and
+Table~\ref{tab:code-motion-metric}.  We also measured compile time
+Table~\ref{tab:compile-time} to see the impact of code-motion.
 
 \begin{table}[h!]
   \begin{center}
@@ -1036,15 +1040,12 @@ Table-\cite{tab:stats}, four more functions got inlined in 473.astar. Except for
 447.dealII, 450.soplex, 482.sphinx3 and 483.xalancbmk all other benchmarks got
 more functions inlined.
 
-
-
-
-  The results for code-hoisting are listed in
-Table~\ref{tab:code-motion-metric}. The table lists the number of scalars, loads,
-stores and calls hoisted as well as removed. For each category, the number of
-instructions removed is greater or equal to the number of instructions hoisted
-because each hoisting is performed only when at least one identical computation
-is found.
+The results for code-hoisting are listed in
+Table~\ref{tab:code-motion-metric}. The table lists the number of scalars,
+loads, stores and calls hoisted as well as removed. For each category, the
+number of instructions removed is greater or equal to the number of instructions
+hoisted because each hoisting is performed only when at least one identical
+computation is found.
 
 Loads are hoisted the most followed by scalars, stores and calls in decreasing
 order.  This was the common trend in all our experiments. One reason why loads
@@ -1057,14 +1058,11 @@ that instructions for which dependencies are not directly available in the succe
 not sunk for now. Sinking those instructions would require a look ahead on the sinkability
 of the dependencies. We plan to implement this in near future.
 
-
-
-
-Other static metrics are listed in Table~\ref{tab:stats} and in Table~\ref{tab:code-motion-metric}.
-Here we can
-see that except for rematerializing defs for splitting, which has an overhead of ~2\%, all
-other parameters have less than 1\% overhead. This is to explain why the performance does not
-go down with our implementation (and cost-model) of code hoisting pass.
+Other static metrics are listed in Table~\ref{tab:stats} and in
+Table~\ref{tab:code-motion-metric}.  Here we can see that except for
+rematerializing defs for splitting, which has an overhead of ~2\%, all other
+parameters have less than 1\% overhead. This is to explain why the performance
+does not go down with our implementation (and cost-model) of code hoisting pass.
 
 
 \begin{table}[h!]
@@ -1185,7 +1183,7 @@ were inlined, more functions were deleted as in 400.perlbench, 445.gobmk.
     \begin{tabular}{|l|r|r|r|r|r|r|r|r|r|}
       \hline
  code-motion  &\multicolumn{2}{|c|}{Total Instructions} &\multicolumn{2}{|c|}{Scalars}  & \multicolumn{2}{|c|}{Loads} & \multicolumn{1}{|c|}{Stores} &Calls   &Instructions    \\\hline
- metric           &  hoisted    &removed  &hoisted &removed&hoisted     &removed        &hoisted=removed&hoisted & sunk \\\hline
+ metric           &  H          &R        &H      &R       &H           &R              &H=R    &H & sunk \\\hline
  400.perlbench	  &  2387	& 2456	  &  855  & 857	   & 1493	& 1560		& 38	& 1	& 4	        \\\hline
  401.bzip2	  &  176	& 300	  &  27	  & 27	   & 149	& 273		& 0	& 0 	& 0		\\\hline
  403.gcc	  &  5670	& 5761	  &  2558 & 2567   & 3109	& 3191		& 3	& 0	& 1	        \\\hline
@@ -1208,7 +1206,7 @@ were inlined, more functions were deleted as in 400.perlbench, 445.gobmk.
  Grand total      &34957	&38631	  &13091  &13418   &21694	&25041	        &90	&82     &10             \\\hline
     \end{tabular}
   \end{center}
-  \caption{Code motion stats on SPEC2006 at -Ofast}
+  \caption{Code motion stats on SPEC2006 at -Ofast, H(Hoisted), R(Removed); Loads are hoisted the most followed by scalars, stores and calls}
   \label{tab:code-motion-metric}
 \end{table}
 
