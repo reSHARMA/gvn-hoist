@@ -678,6 +678,61 @@ expressions are moved in the current implementation, there is no need to check
 for undefinedness resulting due to movement of instructions. This simplifies the
 implementation.
 
+\subsubsection{Barriers}
+Barriers are based on the concept of pinned instructions \cite{click1995global}
+but extended to adapt to \LLVM{} IR. Since a basic block in \LLVM{} IR is
+actually an extended basic block because there might be calls in the middle of a
+basic block which might not return. Essentially, any instruction that cannot
+guarantee progress is marked as a barrier. In the absence of context, as in our
+current implementation, some instructions which might be safe are still
+classified as barriers, e.g., volatile loads/stores, calls with missing
+attributes.
+
+\begin{verbatim}
+computing barriers:
+for each basic block B in a function:
+  barrier_found = false
+  for each instruction I in B:
+    if I does not guarantee progress:
+      mark I as a barrier instruction
+      barrier_found = true
+      break;
+
+  // Find the last barrier below which instructions can be sunk.
+  // If there was no barrier in B, any instruction satisfying
+  // other legality checks can be sunk.
+  if barrier_found:
+    for each instruction I in B in reverse order:
+      if I does not guarantee progress:
+        mark I as a sink barrier
+        break
+\end{verbatim}
+
+\subsubsection{Downward-safety of movable instructions}
+
+In order to be able to move an instruction that has side effects, we must
+guarantee that the side-effects of that instructions before and after its motion
+will produce the same side-effects.  For hoisting in particular, we need to
+prove that on all execution paths from the hoisting point to the end of the
+program the side effects appear in the same order.
+
+\begin{verbatim}
+computing downward-safety of hoistable instructions at hoist-point
+  Worklist = list of all basic blocks of hoistable instructions
+  for each basic block B in the dominator tree starting at hoist-point:
+    if Worklist is empty
+      return false // Path exists! not downward safe
+    if B is in Worklist:
+      remove B from worklist
+      remove subtree with root at B // Available at B => downward safe from B
+    if B is a leaf basic block:
+      return false  // Path exists! not downward safe
+    if B dominates hoist-point:
+      return false  // Back edge
+  return true
+\end{verbatim}
+
+
 \subsection{Profitability check (Cost models)}
 \label{sec:cost-models}
 After the legality checks have passed, we check if a code-motion is profitable.
@@ -848,53 +903,7 @@ it should be noted that we only hoist very busy expressions to avoid checking
 for undefined behaviors resulting because of introducing extra computation in an
 execution path.
 
-Barriers are based on the concept of pinned instructions \cite{click1995global}
-but extended to adapt to \LLVM{} IR. Since a basic block in \LLVM{} IR is actually an
-extended basic block because there might be calls in the middle of a basic block
-which might not return. So barriers can be present in the middle of a basic
-block. Essentially, any instruction that cannot guarantee progress is marked
-as a barrier. In the absence of context (as in our current implementation), some
-instructions which might be safe are still classified as barriers, e.g., volatile
-loads/stores, calls with missing attributes.
-
-\begin{verbatim}
-computing barriers:
-for each basic block B in a function:
-  barrier_found = false
-  for each instruction I in B:
-    if I does not guarantee progress:
-      mark I as a barrier instruction
-      barrier_found = true
-      break;
-
-  // Find the last barrier below which instructions can be sunk.
-  // If there was no barrier in B, any instruction satisfying
-  // other legality checks can be sunk.
-  if barrier_found:
-    for each instruction I in B in reverse order:
-      if I does not guarantee progress:
-        mark I as a sink barrier
-        break
-\end{verbatim}
-
-\begin{verbatim}
-computing downward-safety of hoistable instructions at hoist-point
-Worklist = list of all basic blocks of hoistable instructions
-for each basic block B in the dominator tree starting at hoist-point:
-  if Worklist is empty
-    return false // Path exists! not downward safe
-  if B is in Worklist:
-    remove B from worklist
-    remove subtree with root at B // Available at B => downward safe from B
-  if B is a leaf basic block:
-    return false  // Path exists! not downward safe
-  if B dominates hoist-point:
-    return false  // Back edge
-
-\end{verbatim}
-
 % Explain the overall algorithm, explain how anticipability is computed on demand
-% explain the pinned-instructions/barriers.
 \begin{verbatim}
 Analyses available: Dominator Tree, DFS Numbering, Memory SSA,
 
@@ -949,9 +958,9 @@ For each pair I1, I2 of sinkable instructions:
 Code hoisting opens new opportunities for other hoistable candidates which were
 of higher rank (depended on candidates which got hoisted). Ideally we could
 iterate on lower ranking expressions first and then proceed to higher ranking
-expressions in the same iteration but \LLVM{'}s \GVN{} infrastucture does not compute
-equivalence classes in a effective way. We found it simpler to just recompute
-the value numbers and start finding hoistable candidates again.
+expressions in the same iteration but \LLVM{'}s \GVN{} infrastucture does not
+compute equivalence classes in a effective way. We found it simpler to just
+recompute the value numbers and start finding hoistable candidates again.
 
 \subsection{Time complexity of algorithm}
 The complexity of code hoisting is linear in number of instructions that are
