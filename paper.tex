@@ -404,11 +404,9 @@ scheduler with reasonable performance improvements. It is possible that both
 Barany and Shobaki's implmentation will have similar results when compiled for
 same target architecture. Also, both suffer from the same problem, although
 Shobaki not so much, of large compile times which is not feasible for industrial
-compilers like \GCC{} and \LLVM{}.
-
-With the algorithm described in the next section, we got a reduction in register
-spills, improved inliner heuristics, improved compile time and some performance
-improvements on \SPEC{} benchmarks.
+compilers like \GCC{} and \LLVM{}. With the algorithm described in the next
+section, we got a reduction in register spills, improved inliner heuristics,
+improved compile time and some performance improvements on \SPEC{} benchmarks.
 
 % TODO: References
 % Sink instructions
@@ -437,15 +435,10 @@ program that we shortly describe below:
   information.
 \end{itemize}
 
-The GCM pass can be broadly divided into the following steps that we will
-describe in the rest of this section:
-\begin{itemize}
-\item find candidates (congruent instructions) suitable for code-motion,
-\item compute a point in the program where it is both legal and profitable to
-  move the code,
-\item move the code to hoist point or sink point, and
-\item update data structures to continue iterative code motion.
-\end{itemize}
+Dominance graphs, Global Value Numbers and Memory SSA are already available in
+\LLVM{} but there is no facility to infer liveness of virtual registers. For
+that we implemented DJ-Graph data structure that allows us to calculate
+MergeSets which is used in the liveness analysis in our implementation of GCM.
 
 \subsection{Liveness using DJ-graph}
 DJ-graph \cite{Sreedhar1996} is a data structure that augments the dominator
@@ -554,6 +547,16 @@ variable is a kill we iterate on all the subsequent instructions in a basic
 block checking for uses, the \emph{isKill} function uses
 \emph{isLiveOutUsingMergeSet} to find out if an operand is killed in an
 instruction.
+
+The GCM pass can be broadly divided into the following steps that we will
+describe in the rest of this section:
+\begin{itemize}
+\item find candidates (congruent instructions) suitable for code-motion,
+\item compute a point in the program where it is both legal and profitable to
+  move the code,
+\item move the code to hoist point or sink point, and
+\item update data structures to continue iterative code motion.
+\end{itemize}
 
 \subsection{Finding candidates to move}
 \label{subsec:finding-candidates}
@@ -1116,8 +1119,6 @@ of 2\% on the \SPEC{} benchmark suite. This is a result of cost-model which
 limits the code-motion to those candidates which do not increase the register
 pressure (except for loads Section~\ref{sec:cost-models}, overall spills still
 decreases.
-
-
 
 \begin{table}[h]
   \begin{center}
