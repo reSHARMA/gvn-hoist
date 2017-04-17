@@ -1036,7 +1036,13 @@ Loads are hoisted the most followed by scalars, stores and calls in decreasing
 order.  This was the common trend in all our experiments. One reason why loads
 are hoisted the most is the early execution of this pass (before mem2reg) in the
 \LLVM{} pass pipeline. Passes like mem2reg, instcombine might actually remove
-those loads so this order may change should this pass be scheduled later.
+those loads so this order may change should this pass be scheduled later. The number
+of instructions sunk is very less because \LLVM{} has a code sinking pass inside SimplifyCFG
+which is run before the global code-motion and sinks some instructions. Another reason is
+that instructions for which dependencies are not directly available in the successor is
+not sunk for now. Sinking those instructions would require a look ahead on the sinkability
+of the dependencies. We plan to implement this in near future.
+
 
 
 
