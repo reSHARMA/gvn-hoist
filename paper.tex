@@ -321,7 +321,7 @@ code out of branches, and in general global scheduling
 \cite{click1995global}. Some relate code-hoisting to code-size optimization
 \cite{rosen1988global} and many \cite{barany2013, shobaki2013} use global
 scheduling to improve performance. Most of the recent work on global scheduling
-are done using integer linear programming (ILP), which results in prohibitively
+are done using integer linear programming (ILP,) which results in prohibitively
 high compile time. To the best of our knowledge we have not found any reference
 which explored \gcm{} of congruent instructions in as much detail us. A part of
 our implementation (aggressive code hoisting) is already merged
@@ -356,7 +356,7 @@ computed by comparing the operands which is neither general nor scalable.
 \citet{dhamdhere1988fast} and \citet{steven1997advanced} mention
 code hoisting in a data-flow framework. A list of Very Busy Expressions (VBE)
 computed which are hoisted in a basic-block where the expression is
-anticipable (all the operands are available). This algorithm would hoist as far
+anticipable (all the operands are available.) This algorithm would hoist as far
 as possible without regarding the impact on register pressure and as such a cost
 model will be required.  Also the description of VBE is based on the classic
 data-flow model and an adaptation to a sparse \SSA{} representation is required.
@@ -448,7 +448,7 @@ and merge-sets to compute liveness of variables as illustrated in
 require any bitvectors to be maintained for each basic-block. The underlying
 simplicity of liveness computation is due to \SSA{} form, where the the values
 only flow (from def to use) either through dominator edges or the join edges
-(where we insert a PHI). The DJ-graph contains both these edges which allows for
+(where we insert a PHI.) The DJ-graph contains both these edges which allows for
 computation of merge-sets for each basic-block, i.e., a set of all basic-blocks
 where the values can flow from a particular basic-block. We have implemented the
 merge-set computation based on a DJ-graph as illustrated in \cite{das2005}. A
@@ -548,13 +548,14 @@ instruction.
 The \GCM{} pass can be broadly divided into the following steps that we will
 describe in the rest of this section:
 \begin{itemize}
-\item find candidates (congruent instructions) suitable for \gcm{} (Section~\ref{subsec:finding-candidates}),
+\item find candidates (congruent instructions) suitable for \gcm{}
+  (Section~\ref{subsec:finding-candidates},)
 \item compute a point in the program where it is both legal
   (Section~\ref{subsec:legality}) and profitable
   (Section~\ref{subsec:cost-models}) to move the code,
 \item move the code to hoist point or sink point
-  (Section~\ref{subsec:optimistic}), and
-\item update data structures to continue iterative \gcm{} (Section~\ref{subsec:optimistic}).
+  (Section~\ref{subsec:optimistic},) and
+\item update data structures to continue iterative \gcm{} (Section~\ref{subsec:optimistic}.)
 \end{itemize}
 
 \subsection{Finding candidates to move}
@@ -581,7 +582,7 @@ would better account for equivalent loads and their dependent instructions.
 
 The process of computing \GVN{} can be on-demand (as we come across an
 instruction) or, precomputed (computing \GVN{} of all the instructions
-beforehand). Which process to choose is determined by the scope of code-hoisting
+beforehand.) Which process to choose is determined by the scope of code-hoisting
 we want to perform. In a pessimistic approach, we want to hoist a limited set of
 instructions from the sibling branches as we iterate the DFS tree bottom-up, it
 is sufficient to compute \GVN{} values on-demand. Whereas, in the optimistic
@@ -614,7 +615,7 @@ paths.
 \subsubsection{Legality of hoisting scalars}
 Scalars are the easiest to hoist because we do not have to analyze them for
 aliasing memory references. As long as all the operands are available (or can be
-made available by rematerialization), the scalar computations can be hoisted.
+made available by rematerialization,) the scalar computations can be hoisted.
 
 \subsubsection{Legality of hoisting loads}
 The availability of operand to the load (an address) is checked at the hoisting
@@ -747,7 +748,7 @@ possible. Following are the cost models which are implemented:
 \subsubsection{Reduce register pressure}
 \label{hoist:reg-pressure}
 Hoisting upwards will decrease the live-range of its use, if it is a last use (a
-kill), but increase the live-range of its definition. Conversely, sinking will
+kill,) but increase the live-range of its definition. Conversely, sinking will
 decrease the live-range of the defined register but increase the live-range for
 killed operands. If the live-range after \gcm{} is less than before it will
 be moved. Essentially, as long as there is one killed operand, code hoisting
@@ -818,7 +819,7 @@ closer hoisting point for each subset.
 In order to hoist a subset of identical instructions, we partition the list of
 all candidates in a way to maximize the total number of hoist instructions.  By sorting
 the list of all the candidates in the increasing order of their depth first
-search discovery time stamp \cite{clrs} (DFSIn numbers), we make sure that
+search discovery time stamp \cite{clrs} (DFSIn numbers,) we make sure that
 candidates closer in the list have their common dominator nearby. In
 Figure-\ref{fig:dfsin}, if B3, B4, B5, and B6 have identical computations and if
 for some reason, they cannot be hoisted at B0, then we partition the set of
@@ -845,8 +846,8 @@ still be hoisted -- if legal and profitable -- to B2.
 
 % TODO: Rewrite the following.
 In our current implementation we keep as many candidates in one set as possible
-(greedy approach). To start with, first two candidates are tried for
-hoistability (see Section~\ref{subsec:optimistic}), if that passes then the next
+(greedy approach.) To start with, first two candidates are tried for
+hoistability (see Section~\ref{subsec:optimistic},) if that passes then the next
 instruction is tried (if available) and so on until a non-hoistable instruction
 is found. The partition starts from that point.  We split the list at a point
 where the legality checks fail to hoist subset of candidates which are legal to
@@ -877,7 +878,7 @@ establish that program invariants are maintained: e.g., consistency of use-defs,
 and \SSA{} semantics.
 
 The amount of hoisting depends on whether we collect \GVN{} of instructions
-before finding candidates (optimistic) or, on-demand (pessimistic). It also
+before finding candidates (optimistic) or, on-demand (pessimistic.) It also
 depends on the generality of the \GVN{} algorithm as mentioned earlier in
 Section~\ref{subsec:finding-candidates}. We have implemented an optimistic
 \gcm{} of congruent instructions which uses the liveness analysis as
@@ -887,7 +888,7 @@ illustrated by \citet{das2012} and ranking expressions explained by
 \GCM{} basically consists of two parts, i.e., hoisting and sinking. This
 implementation only moves congruent instructions. An immediate guarantee of this
 approach is gain in code size (the final executable may be of larger size
-because of more inlining). The algorithm prefers hoisting to sinking. If the
+because of more inlining.) The algorithm prefers hoisting to sinking. If the
 dependency of a hoistable candidate is in the same basic-block as the candidate,
 then the dependency must also be hoistable, otherwise hoisting will be illegal or
 would require a complicated code generation to make it legal. The current
@@ -964,7 +965,7 @@ void doCodeSinking()
 \end{verbatim}
 
 Code hoisting opens new opportunities for other hoistable candidates which were
-of higher rank (depended on candidates which got hoisted). Ideally we could
+of higher rank (depended on candidates which got hoisted.) Ideally we could
 iterate on lower ranking expressions first and then proceed to higher ranking
 expressions in the same iteration but \LLVM{'}s \GVN{} infrastructure does not
 compute equivalence classes in an effective way. We found it simpler to just
@@ -980,7 +981,7 @@ on-demand for hoistable candidates so it does not affect the overall compilation
 time by much. Other analyses like Alias Analysis, \MemorySSA{} and Dominator Tree
 are already available in the \LLVM{} pass pipeline. Although we recompute \GVN{}, and
 Barriers for each iteration of the \gcm{}, we have not seen significant
-increase in the compilation times (see Section~\ref{tab:compile-time}). We have also
+increase in the compilation times (see Section~\ref{tab:compile-time}.) We have also
 provided appropriate compiler
 flags to expedite \gcm{} by bailing out with fewer iterations, or skip the
 liveness based profitability analysis to aggressively move the code as long as
@@ -1040,7 +1041,7 @@ Geomean         & 0.997 &  & \\\hline
 
 Overall there was only a minor change in the performance numbers with a few improvements 
 (429.mcf, 458.sjeng, etc.) and a few regressions (447.dealII, 453.povray,
-etc.). The \gcm{} pass was run twice in the pass pipeline (at -Ofast),
+etc.) The \gcm{} pass was run twice in the pass pipeline (at -Ofast,)
 first after EarlyCSE pass, and then after the inliner. Because EarlyCSE removes
 local redundancies, \GCM{} would have to analyze less redundant instructions, also
 as inliner creates more redundancies, \GCM{} would have more opportunities to move
@@ -1051,7 +1052,7 @@ We see some nice gains in code size at -Os with \gcm{} (403.gcc, 447.dealII, and
 is the text size delta (from linux size command) of the final executable for
 each benchmark.  On the other hand, some benchmarks like 473.astar increased in
 code size by almost 2\%. This is because once the code-size of a function
-decreases (due to \GCM{}), it becomes cheaper to inline. As we can see in
+decreases (due to \GCM{},) it becomes cheaper to inline. As we can see in
 Table~\ref{tab:stats}, four more functions got inlined in 473.astar. Except for
 447.dealII, 450.soplex, 482.sphinx3 and 483.xalancbmk all other benchmarks got
 more functions inlined. Also, since the pass runs early, it affects many
@@ -1231,7 +1232,7 @@ dependencies. We plan to implement this in near future.
  Grand total      &34957	&38631	  &13091  &13418   &21694	&25041	        &90	&82     &10             \\\hline
     \end{tabular}
   \end{center}
-  \caption{\GCM{} stats on SPEC2006 at -Ofast, H(Hoisted), R(Removed); Loads are
+  \caption{\GCM{} stats on SPEC2006 at -Ofast, H(Hoisted,) R(Removed); Loads are
     hoisted the most followed by scalars, stores and calls.}
   \label{tab:code-motion-metric}
 \end{table}
