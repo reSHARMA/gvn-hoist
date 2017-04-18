@@ -459,8 +459,8 @@ simplified version of the merge-set that we implemented is presented here:
 // lnode) is not the subset of the merge-set of lnode.
 bool still_inconsistent(Node lnode, JEdges JE, Visited V, MergeSet MergeSet)
   for e in (all incoming edges to lnode)
-    if (e is in JE && e in V)
-      if (MergeSet(Source Node of e) is not a subset of MergeSet(lnode))
+    if e is in JE and e in V
+      if MergeSet(Source Node of e) is not a subset of MergeSet(lnode)
         return true
   return false
 
@@ -470,7 +470,7 @@ bool constructMergeSet_1(BFSList B, JEdges JE, DomLevel DL)
   V = empty list of visited edges
   for n in B
     for e in (all incoming edges to n)
-      if (e is in JE && e not in V)
+      if e is in JE and e not in V
         V(e) = true
         let tmp = Source Node of e
         let tnode = Target Node of e
