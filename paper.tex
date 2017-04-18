@@ -312,7 +312,7 @@ are several advantages of \GCM{}:
   hoisted or sunk;
 \item it enables more loop invariant code motion (LICM): as LICM passes, in
   general, cannot effectively reason about instructions within conditional
-  branches in the context of loops, code-hoisting is needed to move instructions
+  branches in the context of loops, code-motion is needed to move instructions
   out of conditional expressions and expose them to LICM.
 \end{itemize}
 
@@ -605,7 +605,7 @@ to move the instruction.
 
 Subsequently, it is checked that the side-effects of the computations (if any)
 do not intersect with any side-effects between the instructions to be
-hoisted/sunk and their hoisting/sinking point. It is also necessary to check if
+moved and their hoisting/sinking point. It is also necessary to check if
 there are indirect branch targets, e.g., landing pad, case statements, goto
 labels, etc., along the path because it becomes difficult to prove safety checks
 in those cases. In our current implementation we discard candidates on those
@@ -737,13 +737,12 @@ computing downward-safety of hoistable instructions at hoist-point
 
 \subsection{Profitability check (Cost models)}
 \label{subsec:cost-models}
-After the legality checks have passed, we check if a \gcm{} is profitable.
-That takes into account the impact \gcm{} would have on various parameters
-that might affect runtime performance, e.g., impact on live-range, gain in the
-code size. Since this is mostly a code-size optimization pass, the goal is to
-not regress in performance across popular benchmarks and at the same time to reduce
-code size as much as possible. Following are the cost models which are
-implemented:
+After the legality checks have passed, we check if a \gcm{} is profitable.  That
+takes into account the impact \gcm{} would have on various parameters that might
+affect runtime performance, e.g., impact on live-range, gain in the code
+size. The current implementation makes effort to not regress in performance
+across popular benchmarks and at the same time to reduce code size as much as
+possible. Following are the cost models which are implemented:
 
 \subsubsection{Reduce register pressure}
 \label{hoist:reg-pressure}
@@ -787,6 +786,15 @@ and stores when the loads and stores cannot be moved. This restriction is only
 to mitigate the limitations of \LLVM{'}s register allocator and may be lifted in
 the future, when the register allocation rematerialization pass has been
 improved to catch these regressions.
+
+There is a special case for hoisting load instructions when the hoist-point is
+the predecessor basic-block for all the congruent loads. Even if the register
+pressure would increase, we prefer to hoist loads in this case. The reason
+being, that would make the loaded value available by the time it is used. Also,
+because stores and calls are hoisted the least, see
+Table~\ref{tab:code-motion-metric}, the performance does not change much whether
+they are hoisted or not.
+
 
 \subsubsection{Hoisting an expression across a call}
 \label{cost:across-calls}
@@ -837,17 +845,12 @@ still be hoisted -- if legal and profitable -- to B2.
 
 % TODO: Rewrite the following.
 In our current implementation we keep as many candidates in one set as possible
-(greedy approach.) We split the list at a point where the legality checks fail
-to hoist subset of candidates which are legal to hoist and then start finding
-new hoisting point for the remaining ones.
-
-
-There is a special case for hoisting load instructions when the hoist-point is
-the predecessor basic-block for all the loads. Even if the register pressure
-would increase, we prefer to hoist loads in this case. The reason being, that
-would make the loaded value available by the time it is used. Also, because
-stores and calls are hoisted the least, see Table~\ref{tab:code-motion-metric},
-the performance does not change much whether they are hoisted or not.
+(greedy approach). To start with, first two candidates are tried for
+hoistability (see Section~\ref{subsec:optimistic}), if that passes then the next
+instruction is tried (if available) and so on until a non-hoistable instruction
+is found. The partition starts from that point.  We split the list at a point
+where the legality checks fail to hoist subset of candidates which are legal to
+hoist and then start finding new hoisting point for the remaining ones.
 
 \subsection{Code generation for the optimistic \gcm{} algorithm}
 \label{subsec:optimistic}
