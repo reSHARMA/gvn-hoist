@@ -648,6 +648,7 @@ pure calls, loads can be hoisted but stores can't. Also, if a call throws
 exceptions, or if it may not return, nothing can be hoisted across that call.
 
 \subsubsection{Legality of sinking expressions}
+\label{subsec:legality-sink}
 Sometimes, hoisting is not upward-safe \cite{click1995global}, e.g., if the
 expressions are in a landing pad, sinking of those expressions
 may reduce code size. Sinking may also reduce the register pressure in some
@@ -1046,7 +1047,7 @@ Geomean         & 0.997 & 1.00 & 1.00\\\hline
 Overall there was only a minor change in performance regressed with a few ups
 (429.mcf, 458.sjeng etc.) and a few regresssions (447.dealII, 453.povray
 etc.). The code-motion pass was run twice in the pass pipeline (at -Ofast),
-first after EarlyCSE pass and then after the inliner. Because EarlyCSE removes
+first after EarlyCSE pass, and then after the inliner. Because EarlyCSE removes
 local redundancies, GCM would have to analyze less redundant instructions, also
 as inliner creates more redundancies, GCM would have more opportunities to move
 congruent instructions out of branches.
@@ -1055,35 +1056,28 @@ Code size also remained almost the same as a result of code-motion as shown in
 Table~\ref{tab:code-size}.  The code size listed here is the text size (from
 linux size command) of the final executables for each benchmark.  Some bencmarks
 like 473.astar increased in code size by almost 2\%. This is because once the
-code-size of a function decreases it becomes cheaper to inline. As we can see in
-Table-\ref{tab:stats}, four more functions got inlined in 473.astar. Except for
-447.dealII, 450.soplex, 482.sphinx3 and 483.xalancbmk all other benchmarks got
-more functions inlined.
+code-size of a function decreases (due to GCM), it becomes cheaper to inline. As
+we can see in Table-\ref{tab:stats}, four more functions got inlined in
+473.astar. Except for 447.dealII, 450.soplex, 482.sphinx3 and 483.xalancbmk all
+other benchmarks got more functions inlined.
 
-The results for code-hoisting are listed in
+The compile time metrics of GCM are listed in
 Table~\ref{tab:code-motion-metric}. The table lists the number of scalars,
 loads, stores and calls hoisted as well as removed. For each category, the
 number of instructions removed is greater or equal to the number of instructions
 hoisted because each hoisting is performed only when at least one identical
-computation is found.
-
-Loads are hoisted the most followed by scalars, stores and calls in decreasing
-order.  This was the common trend in all our experiments. One reason why loads
-are hoisted the most is the early execution of this pass (before mem2reg) in the
-\LLVM{} pass pipeline. Passes like mem2reg, instcombine might actually remove
-those loads so this order may change should this pass be scheduled later. The number
-of instructions sunk is very less because \LLVM{} has a code sinking pass inside SimplifyCFG
-which is run before the global code-motion and sinks some instructions. Another reason is
-that instructions for which dependencies are not directly available in the successor is
-not sunk for now. Sinking those instructions would require a look ahead on the sinkability
-of the dependencies. We plan to implement this in near future.
-
-Other static metrics are listed in Table~\ref{tab:stats} and in
-Table~\ref{tab:code-motion-metric}.  Here we can see that except for
-rematerializing defs for splitting, which has an overhead of ~2\%, all other
-parameters have less than 1\% overhead. This is to explain why the performance
-does not go down with our implementation (and cost-model) of code hoisting pass.
-
+computation is found. Loads are hoisted the most followed by scalars, stores and
+calls in decreasing order.  This was the common trend in all our
+experiments. One reason why loads are hoisted the most is the early execution of
+this pass (before mem2reg) in the \LLVM{} pass pipeline. Passes like mem2reg,
+instcombine might actually remove those loads so this order may change should
+this pass be scheduled later. The number of instructions sunk is very less
+because \LLVM{} has a code sinking pass inside SimplifyCFG which runs before the
+GCM and sinks some instructions. Another reason is that instructions for which
+dependencies are not directly available in the successor
+(Section~\ref{subsec:legality-sink}) is not sunk for now. Sinking those
+instructions would require a look ahead on the sinkability of the
+dependencies. We plan to implement this in near future.
 
 \begin{table}[h!]
   \begin{center}
