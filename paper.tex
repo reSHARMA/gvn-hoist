@@ -696,23 +696,25 @@ classified as barriers, e.g., volatile loads/stores, calls with missing
 attributes.
 
 \begin{verbatim}
-computing barriers:
-for each basic-block B in a function:
-  barrier_found = false
-  for each instruction I in B:
-    if I does not guarantee progress:
-      mark I as a barrier instruction
-      barrier_found = true
-      break;
-
-  // Find the last barrier below which instructions can be sunk.
-  // If there was no barrier in B, any instruction satisfying
-  // other legality checks can be sunk.
-  if barrier_found:
-    for each instruction I in B in reverse order:
+// Compute barriers for both hoistable and sinkable
+// candidates.
+void compute_barriers()
+  for each basic-block B in a function:
+    barrier_found = false
+    for each instruction I in B:
       if I does not guarantee progress:
-        mark I as a sink barrier
-        break
+        mark I as a barrier instruction
+        barrier_found = true
+        break;
+
+    // Find the last barrier below which instructions can be sunk.
+    // If there was no barrier in B, any instruction satisfying
+    // other legality checks can be sunk.
+    if barrier_found:
+      for each instruction I in B in reverse order:
+        if I does not guarantee progress:
+          mark I as a sink barrier
+          break
 \end{verbatim}
 
 \subsubsection{Downward-safety of movable instructions}
@@ -724,7 +726,8 @@ prove that on all execution paths from the hoisting point to the end of the
 program the side effects appear in the same order.
 
 \begin{verbatim}
-computing downward-safety of hoistable instructions at hoist-point
+// Compute downward safety of hoistable instructions at hoist-point
+void compute_downward_safety()
   Worklist = list of all basic-blocks of hoistable instructions
   for each basic-block B in the dominator tree starting at hoist-point:
     if Worklist is empty, return false // Path exists! not downward safe
@@ -921,6 +924,7 @@ execution path.
 
 \begin{verbatim}
 int doCodeHoisting()
+  // Collect hoistable candidates
   For each value number VN with 2 or more instructions (I1, I2, ..., Ik)
     sort the instructions according to DFSIn numbers
     if first two I1, I2 are hoistable and if they are downward-safe at hoist-point
@@ -928,6 +932,8 @@ int doCodeHoisting()
       proceed to check ability to hoist of subsequent instruction with same VN
     else
       proceed to check if I2 and I3 (if available) can be hoisted
+
+  // Do the code hoisting and update statistics
   For each set of instructions (I1, ..., Ik) with same VN that can be hoisted:
     move the first one I1 to the hoist-point
     update the use of all other candidates (I2, ..., Ik) to refer to I1
@@ -936,6 +942,7 @@ int doCodeHoisting()
       update MemorySSA of I1 and others to point to the MemorySSA reference of I1
       remove MemorySSA reference of all others which were deleted
     update statistics
+
   return number of hoisted instructions
 \end{verbatim}
 
@@ -947,21 +954,27 @@ performed once because currently there are very few sinkable candidates
 
 \begin{verbatim}
 void doCodeSinking()
+  // Find sinkable instructions
   For each value number VN with 2 or more instructions
     if there are two instructions with same immediate successor as post-dominator
       if both are only used in the same PHI-node (PN) of the successor
         if both have dependencies that are available at the sink point
            // available or can be made available by rematerialization
            mark VN as sinkable
+
+  // Sink the instructions and update statistics
   For each pair (I1, I2) of sinkable instructions
     Move I1 to the sink point
     // the sink point is just after all the PHI-nodes in the post-dominator
     update all the uses of PHI node (PN) with I1
     Remove I2 and PN
     if I1 is a memory reference:
-      update MemorySSA of I1 and others to point to the MemorySSA reference of I1
+      update MemorySSA of I1
+      update MemorySSA of removed instructions to point to the MemorySSA reference of I1
       remove MemorySSA reference of all others which were deleted
     update statistics
+
+  return number of sinked instructions
 \end{verbatim}
 
 Code hoisting opens new opportunities for other hoistable candidates which were
