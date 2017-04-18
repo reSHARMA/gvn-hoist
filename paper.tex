@@ -1032,7 +1032,7 @@ Benchmarks      & at -Ofast (high better)& at -Ofast (high better) & at -Os (hig
 Geomean         & 0.997 &  & \\\hline
     \end{tabular}
   \end{center}
-  \caption{Execution time (ratio) and code size change (bytes) with and without
+  \caption{Execution time (ratio) and code size change (Bytes) with and without
     \gcm{} (\GCM{}) on \SPEC{}: performance uplift at -Ofast in mcf and sjeng;
     code size improvement in dealII at -Os.}
   \label{tab:code-size}
@@ -1128,7 +1128,8 @@ still decreases.
     \end{tabular}
   \end{center}
   \caption{Change in total number of instructions executed during the
-    compilation with and without \gcm{} (\GCM{}) on \SPEC{} at -Ofast.}
+    compilation with and without \gcm{} (\GCM{}) on \SPEC{} at -Ofast. The
+    instructions were counted using valgrind.}
   \label{tab:compile-time}
 \end{table}
 
