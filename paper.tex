@@ -319,20 +319,20 @@ In fact, there are several advantages of \GCM{}.
   out of conditional expressions and expose them to LICM.
 \end{itemize}
 
-There have been a lot of work both in industry and academia to hoist and sink
+There has been a lot of work both in industry and academia to hoist and sink
 code out of branches, and in general global scheduling
 \cite{click1995global}. Some relate code-hoisting to code-size optimization
 \cite{rosen1988global} and many \cite{barany2013, shobaki2013} use global
 scheduling to improve performance. Most of the recent work on global scheduling
 are done using integer linear programming (ILP), which results in prohibitively
 high compile time. To the best of our knowledge we have not found any reference
-which explored \gcm{} of congruent instructions in as much detail as we
-have done. A part of our implementation (aggressive code hoisting) is already
-merged in \LLVM{} trunk, however, a general implementation of \gcm{} of
-congruent (non redundant) expressions is still missing from \GCC{} and \LLVM{}
-trunk. The main contributions of this paper are:
+which explored \gcm{} of congruent instructions in as much detail us. A part of
+our implementation (aggressive code hoisting) is already merged
+in \LLVM{} trunk, however, a general implementation of \gcm{} of congruent (non
+redundant) expressions is still missing from \GCC{} and \LLVM{} trunk. The main
+contributions of this paper are:
 \begin{itemize}
-\item a new optimistic algorithm to move congruent instructiosn out of branches;
+\item a new optimistic algorithm to move congruent instructions out of branches;
 \item a cost model to reduce interference and hence, reduce spills;
 \item a technique to maximize hoisting in an optimistic approach by partitioning
   the list of potential candidates sorted by their DFS visit number;
@@ -498,7 +498,7 @@ void  constructMergeSet(CFG G) {
 }
 \end{verbatim}
 
-We compute merge sets of the control flow graph which remains the same through
+We compute merge sets, of the control flow graph, which remain same throughout
 the \gcm{} transformation. For \gcm{} we only want to know if a use
 operand is a kill (to compute changes in register pressure.) For that we only
 need to know whether the use is also required later in the execution path. A
@@ -560,7 +560,7 @@ describe in the rest of this section:
   (Section~\ref{subsec:cost-models}) to move the code,
 \item move the code to hoist point or sink point
   (Section~\ref{subsec:optimistic}), and
-\item update data structures to continue iterative \gcm{}.
+\item update data structures to continue iterative \gcm{} (Section~\ref{subsec:optimistic}).
 \end{itemize}
 
 \subsection{Finding candidates to move}
@@ -980,10 +980,11 @@ on-demand for hoistable candidates so it does not affect the overall compilation
 time by much. Other analyses like Alias Analysis, \MemorySSA{} and Dominator Tree
 are already available in the \LLVM{} pass pipeline. Although we recompute \GVN{}, and
 Barriers for each iteration of the \gcm{}, we have not seen signinficant
-increase in the compilation times. We have also provided appropriate compiler
+increase in the compilation times (see Section~\ref{tab:compile-time}). We have also
+provided appropriate compiler
 flags to expedite \gcm{} by bailing out with fewer iterations, or skip the
 liveness based profitability analysis to aggressively move the code as long as
-they are legal (Section~\ref{sec:experimental-results}).
+they are legal.
 
 The analysis is followed by a simple code generation that adds the identified
 instruction in the destination point and removes all instructions rendered
@@ -993,11 +994,11 @@ redundant as a result of \gcm{}.
 \section{Experimental Evaluation}
 \label{sec:experimental-results}
 % Experimental results: Register spills, compile time, run time. compile-time comparison w.r.t. gcc
-We ran \SPEC{} with the patch. All the experiments were conducted on an
-\xlinux{} machine and at -Ofast optimization level. Each sub benchmark was
-run three times and the best result was taken. We collected execution time,
-code-size which is listed in Table~\ref{tab:code-size}, other compiler stats are
-listed in Table~\ref{tab:spills}, Table~\ref{tab:stats}, and
+For evaluation of \gcm{}, we built \SPEC{} with the patch. All the experiments
+were conducted on an \xlinux{} machine and at -Ofast optimization level. Each
+sub benchmark was run three times and the best result was taken. We collected
+execution time and code-size which is listed in Table~\ref{tab:code-size}, other
+compiler stats are listed in Table~\ref{tab:spills}, Table~\ref{tab:stats}, and
 Table~\ref{tab:code-motion-metric}.  We also measured compile time
 Table~\ref{tab:compile-time} to see the impact of \gcm{}.
 
@@ -1037,7 +1038,7 @@ Geomean         & 0.997 & 1.00 & 1.00\\\hline
   \label{tab:code-size}
 \end{table}
 
-Overall there was only a minor change in performance regressed with a few ups
+Overall there was only a minor change in the performance numbers with a few improvements 
 (429.mcf, 458.sjeng etc.) and a few regresssions (447.dealII, 453.povray
 etc.). The \gcm{} pass was run twice in the pass pipeline (at -Ofast),
 first after EarlyCSE pass, and then after the inliner. Because EarlyCSE removes
@@ -1058,11 +1059,11 @@ The compile time metrics of \GCM{} are listed in
 Table~\ref{tab:code-motion-metric}. The table lists the number of scalars,
 loads, stores and calls hoisted as well as removed. For each category, the
 number of instructions removed is greater or equal to the number of instructions
-hoisted because each hoisting is performed only when at least one identical
+hoisted because each code-motion is performed only when at least one identical
 computation is found. Loads are hoisted the most followed by scalars, stores and
 calls in decreasing order.  This was the common trend in all our
 experiments. One reason why loads are hoisted the most is the early execution of
-this pass (before mem2reg) in the \LLVM{} pass pipeline. Passes like mem2reg and
+this pass (before mem2reg pass which scalarizes some memory references) in the \LLVM{} pass pipeline. Passes like mem2reg and
 instcombine might actually remove those loads and the number of hoisted loads
 may change should the \GCM{} pass be scheduled later. We can see a few sunk
 instructions even if \LLVM{} has a code sinking and hoisting transforms in the
@@ -1143,9 +1144,9 @@ still decreases.
 \end{table}
 
 The compilation time actually reduced for most of the benchmarks as a result of code motion.
-This is because as \gcm{} removes (congruent) instructions, the number of instructions
+This is because, as \gcm{} removes (congruent) instructions, the number of instructions
 to be processed by later compilation passes also reduces. The compilation time listed here
-is the total instruction count as outputted from valgrind (--tool=cachegrind).
+is the total instruction count as outputted from valgrind (--tool=cachegrind) \cite{valgrind}.
 
 
 \begin{table}[h!]
@@ -1181,12 +1182,12 @@ is the total instruction count as outputted from valgrind (--tool=cachegrind).
   \label{tab:stats}
 \end{table}
 
-Some useful statc metric are presented in Table~\ref{tab:stats}, which shows how \gcm{}
+Some useful static metrics are presented in Table~\ref{tab:stats}, which shows how \gcm{}
 impacted important compiler optimizations like inlining and LICM. LICM removes loop invariant
 code out of the loop. It may hoist the code to the loop's preheader or sink the code to loop's
 post-dominator \cite{steven1997advanced}. As we can see number of instructions hoisted increased
 significantly in several benchmarks, although number of instructions sunk did not change by much.
-Number of inlined functiosn also improved for most benchmarks. In general when more functions
+Number of inlined functions also improved for most benchmarks. In general when more functions
 were inlined, more functions were deleted as in 400.perlbench, 445.gobmk.
 
 \begin{table}[h!]
@@ -1223,8 +1224,8 @@ were inlined, more functions were deleted as in 400.perlbench, 445.gobmk.
 
 
 While benchmarking \SPEC{} we see both increase as well as decrease in
-the codesizes of the final binaries. Since the pass runs early, it affects many
-optimizations which rely on the number of instructions, lenth of the use-def
+the codesize of the final binaries. Since the pass runs early, it affects many
+optimizations which rely on the number of instructions, length of the use-def
 chain, and other metrics. For instance, the inliner is impacted by a decrease in
 the number of instructions in the caller and callee, as its heuristics estimate
 the size of functions to be inlined.
@@ -1238,33 +1239,36 @@ long latency of the division operation.
 
 \section{Conclusion and Future Work}
 \label{sec:future-work}
+
 We have presented the \gcm{} of congruent computations in SSA form. We saw that
 it improves inlining and LICM opportunities, reduces register spills, it also
-improves performance in some cases. To preserve performance and not hoist too
-much we have presented some cost models to lower register pressure. A part of
-this implementation is already merged in LLVM trunk as GVNHoist.cpp, and we
-posted the \GCM{} implementation for review.
+improves performance in some cases. To preserve performance and not hoist/sink
+too much, we have implemented a register pressure aware cost model as described
+in Section~\ref{subsec:cost-models}. A part of this implementation is already
+merged in LLVM trunk as GVNHoist.cpp and we posted the \GCM{} implementation for
+review
 
 There are a few improvements that we would like to make. First would be to
 integrate this with \LLVM{'}s new GVN-PRE implementation such that more
 congruent instructions can be scheduled. This would also expose more
 redundancies to the GVN-PRE.  In general it is a good idea to start with lower
-ranked expression first such that maximum hoisting can happen in one iteration,
+ranked expressions first such that maximum hoisting can happen in one iteration,
 however, current implementation does not rank the expressions and iteratively
 finds a fixed point when no more candidates are available. Even this
-implementation converges quickly and no compile time regressions have been
-observed because of code hoisting pass. This is not the most optimal approach
+implementation converges quickly and no compile time regression have been
+observed. This is not the most optimal approach in terms of compile time complexity
 and results in multiple data structures to be recomputed. This can be improved
 by ranking the computations \cite{rosen1988global}. Also, since \GCM{} runs very
 early in the pass pipeline, it will be good to evaluate the codesize/performance
 impact when it is run in sync with \GVN{}-\PRE{} just like \GCC{} does.
 
 With the implementation of \GCM{} in \LLVM{}, the passes which rely on the
-code-size/instruction-count to make optimization decisions need to be
-revisited. The first candidate would be the inliner. We have seen different
-inlining decisions in Table~\ref{tab:code-size}, before and after code-hoisting
-was enabled.  Since inliner has several magic numbers tuned for the previous
-pass layout, it would need some improvement.
+code-size or instruction-counts to make optimization decisions need to be
+revisited. The first candidate would be the inliner. We have seen difference
+in inlining decisions (Table~\ref{tab:code-size}), when \gcm{}
+was enabled.  Since inliner has several cost-models tuned for the previous
+pass layout, that would need some improvement.
+
 
 %% Acknowledgments
 \begin{acks}                            %% acks environment is optional
