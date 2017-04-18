@@ -455,7 +455,6 @@ merge-set computation based on a DJ-graph as illustrated in \cite{das2005}. A
 simplified version of the merge-set that we implemented is presented here:
 
 \begin{verbatim}
-
 // Return true if the merge-set of source node of a visited J-edge (incoming edge of
 // lnode) is not the subset of the merge-set of lnode.
 bool still_inconsistent(Node lnode, JEdges JE, Visited V, MergeSet MergeSet)
@@ -484,15 +483,13 @@ bool constructMergeSet_1(BFSList B, JEdges JE, DomLevel DL)
   return repeat
 
 // Construct merge-set of each node in Control-Flow-Graph G of a function.
-void  constructMergeSet(CFG G) {
+void constructMergeSet(CFG G)
   B = Breadth First Order of G
   JE = JEdges of G
   DL = List of Path length (from root) of each node in G.
-
   do // Call until a fixed point is reached.
     Repeat = constructMergeSet_1(B, JE, DL)
   while (Repeat)
-}
 \end{verbatim}
 
 We compute merge sets, of the control flow graph, which remain same throughout
