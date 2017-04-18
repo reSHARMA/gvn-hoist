@@ -1072,11 +1072,11 @@ hoisted because each hoisting is performed only when at least one identical
 computation is found. Loads are hoisted the most followed by scalars, stores and
 calls in decreasing order.  This was the common trend in all our
 experiments. One reason why loads are hoisted the most is the early execution of
-this pass (before mem2reg) in the \LLVM{} pass pipeline. Passes like mem2reg,
-instcombine might actually remove those loads so this order may change should
-this pass be scheduled later. The number of instructions sunk is very less
-because \LLVM{} has a code sinking pass inside SimplifyCFG which runs before the
-\GCM{} and sinks some instructions. Another reason is that instructions for which
+this pass (before mem2reg) in the \LLVM{} pass pipeline. Passes like mem2reg and
+instcombine might actually remove those loads and the number of hoisted loads may change should
+the \GCM{} pass be scheduled later. The number of instructions sunk is very less
+because \LLVM{} has a code sinking and hoisting transform inside SimplifyCFG pass which runs before
+\GCM{} and sinks and hoists some instructions with some rather severe limitations. Another reason is that instructions for which
 dependencies are not directly available in the successor
 (Section~\ref{subsec:legality-sink}) is not sunk for now. Sinking those
 instructions would require a look ahead on the sinkability of the
