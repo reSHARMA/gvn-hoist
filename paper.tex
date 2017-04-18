@@ -1038,11 +1038,12 @@ Table~\ref{tab:compile-time} to see the impact of \gcm{}.
 
 \begin{table}[h!]
   \begin{center}
+    \scalebox{0.7}{
     \begin{tabular}{|l|c|c|c|}
       \hline
 % TODO: Check if putting code-size or spills number is okay or only %age is required.
 % llvm trunk vs. llvm trunk with code-motion
-                &\% performance uplift & size decrease in Bytes & size decrease in Bytes\\
+                &\% performance uplift & size reduction in Bytes & size reduction in Bytes\\
 Benchmarks      & at -Ofast (high better)& at -Ofast (high better) & at -Os (high better)\\\hline
 400.perlbench	& 1.00  & -9120  & 544  \\\hline
 401.bzip2	& 1.00  & -1600  & 128  \\\hline
@@ -1064,7 +1065,7 @@ Benchmarks      & at -Ofast (high better)& at -Ofast (high better) & at -Os (hig
 482.sphinx3	& 0.99  & 3008   & -176 \\\hline
 483.xalancbmk	& 1.01  & 46492  & 4012 \\\hline
 Geomean         & 0.997 &  & \\\hline
-    \end{tabular}
+    \end{tabular}}
   \end{center}
   \caption{Execution time (ratio) and code size change (Bytes) with and without
     \gcm{} (\GCM{}) on \SPEC{}: performance uplift at -Ofast in mcf and sjeng;
@@ -1099,6 +1100,7 @@ inlining, loop-unrolling, code-versioning are very aggressive at -Ofast.
 
 \begin{table}[h!]
   \begin{center}
+    \scalebox{0.7}{
     \begin{tabular}{|l|r|r|r|}
       \hline
 Number of spills  &base(-Ofast) &\GCM{}(-Ofast) &\%change (low better) \\\hline
@@ -1122,7 +1124,7 @@ Number of spills  &base(-Ofast) &\GCM{}(-Ofast) &\%change (low better) \\\hline
 482.sphinx3	  & 674	        & 670	& 0.99 \\\hline
 483.xalancbmk	  & 5102	& 4965	& 0.97 \\\hline
 Grand Total	  & 43349	& 42497	& 0.98 \\\hline
-    \end{tabular}
+    \end{tabular}}
   \end{center}
   \caption{Number of spills before and after \gcm{}(\GCM{}) on SPEC2006 at
     -Ofast. Spills reduced by 2\%.}
@@ -1137,6 +1139,7 @@ still decreases.
 
 \begin{table}[h]
   \begin{center}
+    \scalebox{0.7}{
     \begin{tabular}{|l|c|c|c|}
       \hline
   Benchmarks      &   Baseline	        & \GCM{}           & \%Decrease (low better) \\\hline
@@ -1159,7 +1162,7 @@ still decreases.
   473.astar	  &   78,351,117	& 77,872,820	& 0.99 \\\hline
   482.sphinx3	  &   158,434,290	& 156,586,406	& 0.99 \\\hline
   483.xalancbmk	  &   22,485,708,759	& 22,455,060,569& 1.00 \\\hline
-    \end{tabular}
+    \end{tabular}}
   \end{center}
   \caption{Change in total number of instructions executed during the
     compilation with and without \gcm{} (\GCM{}) on \SPEC{} at -Ofast. The
@@ -1177,6 +1180,7 @@ executed during the compilation of each benchmark as output from valgrind
 
 \begin{table}[h!]
   \begin{center}
+    \scalebox{0.8}{
     \begin{tabular}{|l|r|r|r|r|r|r|r|r|r|r|r|r|}
       \hline
   &  \multicolumn{3}{|c|}{Hoisted by LICM} &\multicolumn{3}{|c|}{Sunk by LICM} &\multicolumn{3}{|c|}{Functions Inlined} &  \multicolumn{3}{|c|}{Functions Deleted} \\\hline
@@ -1200,7 +1204,7 @@ executed during the compilation of each benchmark as output from valgrind
  {\Small 473.astar}	  & 691	        & 754	& 9.1 & 0	& 0	& 0.0  & 359	& 363	  & 1.1 & 113	& 113	& 0.0  \\\hline
  {\Small 482.sphinx}	  & 1599	& 1693	& 5.9 & 11	& 9	& -18.2& 198	& 194	  & -2.0& 53	& 53	& 0.0  \\\hline
  {\Small 483.xalanc}	  & 9997	& 11453	& 14.6& 56	& 54	& -3.6 & 69534	& 68839	  & -1.0& 29875	& 29519	& -1.2 \\\hline
-    \end{tabular}
+    \end{tabular}}
   \end{center}
   \caption{Static metrics before (Base) and after \gcm{} (\GCM{}) on
     \SPEC{} at -Ofast. The \% Column show percentage increase in metric
@@ -1239,6 +1243,7 @@ dependencies. We plan to implement this in near future.
 
 \begin{table}[h!]
   \begin{center}
+    \scalebox{0.8}{
     \begin{tabular}{|l|r|r|r|r|r|r|r|r|r|}
       \hline
  \GCM{}  &\multicolumn{2}{|c|}{Total Instructions} &\multicolumn{2}{|c|}{Scalars}  & \multicolumn{2}{|c|}{Loads} & \multicolumn{1}{|c|}{Stores} &Calls   &Instructions    \\\hline
@@ -1263,7 +1268,7 @@ dependencies. We plan to implement this in near future.
  482.sphinx3	  &  168	& 172	  &  32	  & 32	   & 136	& 140		& 0	& 0	& 0		\\\hline
  483.xalancbmk	  &  5894	& 6162	  &  2586 & 2660   & 3301	& 3495		& 4	& 3	& 2	        \\\hline
  Grand total      &34957	&38631	  &13091  &13418   &21694	&25041	        &90	&82     &10             \\\hline
-    \end{tabular}
+    \end{tabular}}
   \end{center}
   \caption{\GCM{} stats on SPEC2006 at -Ofast, H(Hoisted,) R(Removed); Loads are
     hoisted the most followed by scalars, stores and calls.}
