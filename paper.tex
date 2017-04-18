@@ -580,9 +580,9 @@ available after having hoisted load instructions.  This limitation should be
 addressed in a new implementation of the \GVN{} based on \MemorySSA{}, that
 would better account for equivalent loads and their dependent instructions.
 
-The process of computing \GVN{} can be on-demand (as we come across an
-instruction) or, precomputed (computing \GVN{} of all the instructions
-beforehand.) Which process to choose is determined by the scope of code-hoisting
+The process of computing \GVN{} can be on-demand, as we come across an
+instruction, or precomputed, computing \GVN{} of all the instructions
+beforehand. Which process to choose is determined by the scope of code-hoisting
 we want to perform. In a pessimistic approach, we want to hoist a limited set of
 instructions from the sibling branches as we iterate the DFS tree bottom-up, it
 is sufficient to compute \GVN{} values on-demand. Whereas, in the optimistic
@@ -614,7 +614,7 @@ paths.
 
 \subsubsection{Legality of hoisting scalars}
 Scalars are the easiest to hoist because we do not have to analyze them for
-aliasing memory references. As long as all the operands are available (or can be
+aliasing memory references. As long as all the operands are available, or can be
 made available by rematerialization,) the scalar computations can be hoisted.
 
 \subsubsection{Legality of hoisting loads}
