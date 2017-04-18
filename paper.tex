@@ -1049,26 +1049,6 @@ we can see in Table-\ref{tab:stats}, four more functions got inlined in
 473.astar. Except for 447.dealII, 450.soplex, 482.sphinx3 and 483.xalancbmk all
 other benchmarks got more functions inlined.
 
-The compile time metrics of \GCM{} are listed in
-Table~\ref{tab:code-motion-metric}. The table lists the number of scalars,
-loads, stores and calls hoisted as well as removed. For each category, the
-number of instructions removed is greater or equal to the number of instructions
-hoisted because each code-motion is performed only when at least one identical
-computation is found. Loads are hoisted the most followed by scalars, stores and
-calls in decreasing order.  This was the common trend in all our
-experiments. One reason why loads are hoisted the most is the early execution of
-this pass (before mem2reg pass which scalarizes some memory references) in the \LLVM{} pass pipeline. Passes like mem2reg and
-instcombine might actually remove those loads and the number of hoisted loads
-may change should the \GCM{} pass be scheduled later. We can see a few sunk
-instructions even if \LLVM{} has a code sinking and hoisting transforms in the
-SimplifyCFG pass which runs before \GCM{}: this is because sinking and hoisting
-in SimplifyCFG have some rather severe limitations to make the analysis and code
-transform very fast in order to be able to run the pass several times.  Another
-reason is that instructions for which dependencies are not directly available in
-the successor (Section~\ref{subsec:legality-sink}) is not sunk for now. Sinking
-those instructions would require a look ahead on the ability to sink the
-dependencies. We plan to implement this in near future.
-
 \begin{table}[h!]
   \begin{center}
     \begin{tabular}{|l|r|r|r|}
@@ -1183,6 +1163,27 @@ post-dominator \cite{steven1997advanced}. As we can see number of instructions h
 significantly in several benchmarks, although number of instructions sunk did not change by much.
 Number of inlined functions also improved for most benchmarks. In general when more functions
 were inlined, more functions were deleted as in 400.perlbench, 445.gobmk.
+
+The compile time metrics of \GCM{} are listed in
+Table~\ref{tab:code-motion-metric}. The table lists the number of scalars,
+loads, stores and calls hoisted as well as removed. For each category, the
+number of instructions removed is greater or equal to the number of instructions
+hoisted because each code-motion is performed only when at least one identical
+computation is found. Loads are hoisted the most followed by scalars, stores and
+calls in decreasing order.  This was the common trend in all our
+experiments. One reason why loads are hoisted the most is the early execution of
+this pass (before mem2reg pass which scalarizes some memory references) in the
+\LLVM{} pass pipeline. Passes like mem2reg and instcombine might actually remove
+those loads and the number of hoisted loads may change should the \GCM{} pass be
+scheduled later. We can see a few sunk instructions even if \LLVM{} has a code
+sinking and hoisting transforms in the SimplifyCFG pass which runs before
+\GCM{}: this is because sinking and hoisting in SimplifyCFG have some rather
+severe limitations to make the analysis and code transform very fast in order to
+be able to run the pass several times.  Another reason is that instructions for
+which dependencies are not directly available in the successor
+(Section~\ref{subsec:legality-sink}) is not sunk for now. Sinking those
+instructions would require a look ahead on the ability to sink the
+dependencies. We plan to implement this in near future.
 
 \begin{table}[h!]
   \begin{center}
