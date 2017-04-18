@@ -923,17 +923,14 @@ for undefined behaviors resulting because of introducing extra computation in an
 execution path.
 
 \begin{verbatim}
-int doCodeHoisting()
-  // Collect hoistable candidates
+int doCodeHoisting() // Find hoistable candidates and do hoisting
   For each value number VN with 2 or more instructions (I1, I2, ..., Ik)
     sort the instructions according to DFSIn numbers
     if first two I1, I2 are hoistable and if they are downward-safe at hoist-point
-       and if they are profitable to be hoisted at hoist-point
-      proceed to check ability to hoist of subsequent instruction with same VN
+          and if they are profitable to be hoisted at hoist-point
+      proceed to check the ability to hoist subsequent instruction with same VN
     else
       proceed to check if I2 and I3 (if available) can be hoisted
-
-  // Do the code hoisting and update statistics
   For each set of instructions (I1, ..., Ik) with same VN that can be hoisted:
     move the first one I1 to the hoist-point
     update the use of all other candidates (I2, ..., Ik) to refer to I1
@@ -942,11 +939,10 @@ int doCodeHoisting()
       update MemorySSA of I1 and others to point to the MemorySSA reference of I1
       remove MemorySSA reference of all others which were deleted
     update statistics
-
   return number of hoisted instructions
 \end{verbatim}
 
-\newpage
+%\newpage
 After no more candidates are hoistable, sinking is performed. Sinking is only
 performed once because currently there are very few sinkable candidates
 (Table~\ref{tab:code-motion-metric}) as SimplifyCFG of LLVM (which runs before
