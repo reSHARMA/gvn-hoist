@@ -1007,27 +1007,27 @@ Table~\ref{tab:compile-time} to see the impact of \gcm{}.
 % TODO: Check if putting code-size or spills number is okay or only %age is required.
 % llvm trunk vs. llvm trunk with code-motion
                 &\% performance uplift & \% code size decrease & \% code size decrease\\
-Benchmarks      & at -Ofast (high better)& at -Ofast (low better) & at -Os (low better)\\\hline
-400.perlbench	& 1.00  & 1.00 & 1.00\\\hline
-401.bzip2	& 1.00  & 1.00 & 1.00\\\hline
-403.gcc	        & 1.00  & 1.01 & 1.00\\\hline
-429.mcf	        & 1.03  & 1.00 & 1.00\\\hline
-433.milc	& 1.00  & 1.00 & 1.00\\\hline
-444.namd	& 1.00  & 1.01 & 1.00\\\hline
-445.gobmk	& 0.99  & 1.01 & 1.00\\\hline
-447.dealII	& 0.95  & 1.01 & 0.98\\\hline
-450.soplex	& 0.99  & 0.99 & 1.00\\\hline
-453.povray	& 0.97  & 1.00 & 1.00\\\hline
-456.hmmer	& 0.99  & 1.00 & 1.00\\\hline
-458.sjeng	& 1.02  & 1.00 & 1.00\\\hline
-462.libquantum	& 1.00  & 1.00 & 1.00\\\hline
-464.h264ref	& 1.00  & 1.00 & 1.00\\\hline
-470.lbm	        & 1.00  & 1.00 & 1.00\\\hline
-471.omnetpp	& 1.00  & 0.99 & 1.00\\\hline
-473.astar	& 1.00  & 1.02 & 1.00\\\hline
-482.sphinx3	& 0.99  & 1.00 & 1.00\\\hline
-483.xalancbmk	& 1.01  & 0.99 & 1.00\\\hline
-Geomean         & 0.997 & 1.00 & 1.00\\\hline
+Benchmarks      & at -Ofast (high better)& at -Ofast (high better) & at -Os (high better)\\\hline
+400.perlbench	& 1.00  & -9120  & 544.00  \\\hline
+401.bzip2	& 1.00  & -1600  & 128.00  \\\hline
+403.gcc	        & 1.00  & -58176 & 3384.00 \\\hline
+429.mcf	        & 1.03  & 160    & 16.00   \\\hline
+433.milc	& 1.00  & -656   & 224.00  \\\hline
+444.namd	& 1.00  & -3864  & -1168.00\\\hline
+445.gobmk	& 0.99  & -20480 & -264.00 \\\hline
+447.dealII	& 0.95  & -27836 & 50934.00\\\hline
+450.soplex	& 0.99  & 2220   & 348.00  \\\hline
+453.povray	& 0.97  & 164    & -472.00 \\\hline
+456.hmmer	& 0.99  & -3464  & -352.00 \\\hline
+458.sjeng	& 1.02  & 440    & 1456.00 \\\hline
+462.libquantum	& 1.00  & -96    & 0.00    \\\hline
+464.h264ref	& 1.00  & -3424  & 864.00  \\\hline
+470.lbm	        & 1.00  & 0      & 0.00    \\\hline
+471.omnetpp	& 1.00  & 2688   & 200.00  \\\hline
+473.astar	& 1.00  & -928   & 152.00  \\\hline
+482.sphinx3	& 0.99  & 3008   & -176.00 \\\hline
+483.xalancbmk	& 1.01  & 46492  & 4012.00 \\\hline
+Geomean         & 0.997 &  & \\\hline
     \end{tabular}
   \end{center}
   \caption{Execution time and code size with and without \gcm{}
