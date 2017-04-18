@@ -932,14 +932,14 @@ int doCodeHoisting()
     if first two I1, I2 are hoistable:
       if they are downward-safe at hoist-point:
         if they are profitable to be hoisted at hoist-point:
-          proceed to check hoistability of subsequent instruction with same VN
+          proceed to check ability to hoist of subsequent instruction with same VN
         else
-          proceed to check if I2 and I3 (if available) is hoistable
+          proceed to check if I2 and I3 (if available) can be hoisted
 
-  For each hoistable VN:
+  For each set of instructions (I1, ..., Ik) with same VN that can be hoisted:
     move the first one I1 to the hoist-point
-    update the use of all other candidates to refer to I1
-    remove all others.
+    update the use of all other candidates (I2, ..., Ik) to refer to I1
+    remove all other instructions (I2, ..., Ik)
     if I1 has memory references (a load, store etc.)
       update MemorySSA of I1 and others to point to the MemorySSA reference of I1
       remove MemorySSA reference of all others which were deleted
@@ -1248,12 +1248,12 @@ long latency of the division operation.
 
 \section{Conclusion and Future Work}
 \label{sec:future-work}
-We have presented the \gcm{} of congruent computations in SSA
-form. We saw that it improves inlining and LICM opportunities, reduces register
-spills, it also improves performance in some cases. To preserve performance and
-not hoist too much we have register pressure aware cost models described in
-Section~\ref{subsec:cost-models}. A part of this implementation is already merged
-in LLVM trunk as GVNHoist.cpp. We will post the \GCM{} implementation for review.
+We have presented the \gcm{} of congruent computations in SSA form. We saw that
+it improves inlining and LICM opportunities, reduces register spills, it also
+improves performance in some cases. To preserve performance and not hoist too
+much we have presented some cost models to lower register pressure. A part of
+this implementation is already merged in LLVM trunk as GVNHoist.cpp, and we
+posted the \GCM{} implementation for review.
 
 There are a few improvements that we would like to make. First would be to
 integrate this with \LLVM{'}s new GVN-PRE implementation such that more
@@ -1262,7 +1262,7 @@ redundancies to the GVN-PRE.  In general it is a good idea to start with lower
 ranked expression first such that maximum hoisting can happen in one iteration,
 however, current implementation does not rank the expressions and iteratively
 finds a fixed point when no more candidates are available. Even this
-implementation converges quickly and no compile time regression have been
+implementation converges quickly and no compile time regressions have been
 observed because of code hoisting pass. This is not the most optimal approach
 and results in multiple data structures to be recomputed. This can be improved
 by ranking the computations \cite{rosen1988global}. Also, since \GCM{} runs very
@@ -1270,7 +1270,7 @@ early in the pass pipeline, it will be good to evaluate the codesize/performance
 impact when it is run in sync with \GVN{}-\PRE{} just like \GCC{} does.
 
 With the implementation of \GCM{} in \LLVM{}, the passes which rely on the
-code-size/instruction-count to make optimization decisions needs to be
+code-size/instruction-count to make optimization decisions need to be
 revisited. The first candidate would be the inliner. We have seen different
 inlining decisions in Table~\ref{tab:code-size}, before and after code-hoisting
 was enabled.  Since inliner has several magic numbers tuned for the previous
