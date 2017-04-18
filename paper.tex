@@ -1087,7 +1087,7 @@ Grand Total	  & 43349	& 42497	& 0.98 \\\hline
 Spills are listed in Table~\ref{tab:spills}. Spills were reduced by an average
 of 2\% on the \SPEC{} benchmark suite. This is a result of cost-model which
 limits the \gcm{} to those candidates which do not increase the register
-pressure (except for loads Section~\ref{subsec:cost-models}, overall spills
+pressure (except for loads Section~\ref{subsec:cost-models},) overall spills
 still decreases.
 
 \begin{table}[h]
@@ -1124,7 +1124,7 @@ still decreases.
 The compilation time actually reduced for most of the benchmarks as a result of code motion.
 This is because, as \gcm{} removes (congruent) instructions, the number of instructions
 to be processed by later compilation passes also reduces. The compilation time listed here
-is the total instruction count as outputted from valgrind (--tool=cachegrind) \cite{valgrind}.
+is the total instruction count as outputted from valgrind -{}-tool=cachegrind \cite{valgrind}.
 
 
 \begin{table}[h!]
