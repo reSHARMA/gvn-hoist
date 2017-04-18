@@ -177,7 +177,7 @@ benchmarks viz. mcf and sjeng, moreover, register spills reduced by 2\% on the
 algorithm in the sense that it considers all congruent instructions in a
 function as potential candidates. We make an extra effort to hoist candidates by
 partitioning the potential candidates in a way to enable partial hoisting in
-case common hoisting points for all the candidates cannot be found. We also
+case a common hoisting point for all the candidates cannot be found. We also
 formalize how register pressure will reduce as a result of \gcm{}, and how
 \gcm{} increases instruction level parallelism thereby enabling more \ooo{}
 execution on modern architectures.
@@ -1049,14 +1049,14 @@ congruent instructions out of branches.
 We see some nice gains in code size at -Os with \gcm{} (403.gcc, 447.dealII, and
 483.xalancbmk) as shown in Table~\ref{tab:code-size}.  The code size listed here
 is the text size delta (from linux size command) of the final executable for
-each benchmark.  Some benchmarks like 473.astar increased in code size by almost
-2\%. This is because once the code-size of a function decreases (due to \GCM{}),
-it becomes cheaper to inline. As we can see in Table~\ref{tab:stats}, four more
-functions got inlined in 473.astar. Except for 447.dealII, 450.soplex,
-482.sphinx3 and 483.xalancbmk all other benchmarks got more functions
-inlined. Also, since the pass runs early, it affects many optimizations which
-rely on the number of instructions, length of the use-def chain, and other
-metrics.
+each benchmark.  On the other hand, some benchmarks like 473.astar increased in
+code size by almost 2\%. This is because once the code-size of a function
+decreases (due to \GCM{}), it becomes cheaper to inline. As we can see in
+Table~\ref{tab:stats}, four more functions got inlined in 473.astar. Except for
+447.dealII, 450.soplex, 482.sphinx3 and 483.xalancbmk all other benchmarks got
+more functions inlined. Also, since the pass runs early, it affects many
+optimizations which rely on the number of instructions, length of the use-def
+chain, and other metrics.
 
 The code-size at -Ofast is very widespread with huge gains in 483.xalancbmk to
 serious regressions in 403.gcc. This is mostly because the compiler's focus is
