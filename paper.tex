@@ -1046,7 +1046,7 @@ Table~\ref{tab:code-size}.  The code size listed here is the text size (from
 linux size command) of the final executable for each benchmark.  Some benchmarks
 like 473.astar increased in code size by almost 2\%. This is because once the
 code-size of a function decreases (due to \GCM{}), it becomes cheaper to
-inline. As we can see in Table-\ref{tab:stats}, four more functions got inlined
+inline. As we can see in Table~\ref{tab:stats}, four more functions got inlined
 in 473.astar. Except for 447.dealII, 450.soplex, 482.sphinx3 and 483.xalancbmk
 all other benchmarks got more functions inlined. Also, since the pass runs
 early, it affects many optimizations which rely on the number of instructions,
@@ -1080,7 +1080,7 @@ Grand Total	  & 43349	& 42497	& 0.98 \\\hline
     \end{tabular}
   \end{center}
   \caption{Number of spills before and after \gcm{}(\GCM{}) on SPEC2006 at
-    -Ofast. Spills reduced by 2\% overall.}
+    -Ofast. Spills reduced by 2\%.}
   \label{tab:spills}
 \end{table}
 
@@ -1117,14 +1117,16 @@ still decreases.
     \end{tabular}
   \end{center}
   \caption{Change in total number of instructions executed during the
-    compilation with and without \gcm{} (\GCM{}) on \SPEC{} at -Ofast}
+    compilation with and without \gcm{} (\GCM{}) on \SPEC{} at -Ofast.}
   \label{tab:compile-time}
 \end{table}
 
-The compilation time actually reduced for most of the benchmarks as a result of code motion.
-This is because, as \gcm{} removes (congruent) instructions, the number of instructions
-to be processed by later compilation passes also reduces. The compilation time listed here
-is the total instruction count as outputted from valgrind -{}-tool=cachegrind \cite{valgrind}.
+The compilation time actually reduced for most of the benchmarks as a result of
+code motion.  This is because, as \gcm{} removes (congruent) instructions, the
+number of instructions to be processed by later compilation passes also
+reduces. The compilation time listed here is the total instruction count
+executed during the compilation of each benchmark as output from valgrind
+-{}-tool=cachegrind \cite{valgrind}.
 
 
 \begin{table}[h!]
@@ -1156,7 +1158,7 @@ is the total instruction count as outputted from valgrind -{}-tool=cachegrind \c
   \end{center}
   \caption{Static metrics before (Base) and after \gcm{} (\GCM{}) on
     \SPEC{} at -Ofast. The \% Column show percentage increase in metric
-    w.r.t. Base. \GCM{} improves LICM and inlining}
+    w.r.t. Base. \GCM{} improves LICM and inlining.}
   \label{tab:stats}
 \end{table}
 
@@ -1217,7 +1219,8 @@ dependencies. We plan to implement this in near future.
  Grand total      &34957	&38631	  &13091  &13418   &21694	&25041	        &90	&82     &10             \\\hline
     \end{tabular}
   \end{center}
-  \caption{\GCM{} stats on SPEC2006 at -Ofast, H(Hoisted), R(Removed); Loads are hoisted the most followed by scalars, stores and calls}
+  \caption{\GCM{} stats on SPEC2006 at -Ofast, H(Hoisted), R(Removed); Loads are
+    hoisted the most followed by scalars, stores and calls.}
   \label{tab:code-motion-metric}
 \end{table}
 
@@ -1256,7 +1259,7 @@ impact when it is run in sync with \GVN{}-\PRE{} just like \GCC{} does.
 With the implementation of \GCM{} in \LLVM{}, the passes which rely on the
 code-size or instruction-counts to make optimization decisions need to be
 revisited. The first candidate would be the inliner. We have seen difference
-in inlining decisions (Table~\ref{tab:code-size}), when \gcm{}
+in inlining decisions in Table~\ref{tab:code-size}, when \gcm{}
 was enabled.  Since inliner has several cost-models tuned for the previous
 pass layout, that would need some improvement.
 
