@@ -161,7 +161,7 @@
 We present a \gcm{} (\GCM{}) compiler optimization which schedules
 congruent instructions across the program.  Not only this saves code size, it
 exposes redundancies in some cases, it exposes more instruction level
-parallelism in the basic block to which instructions are moved, and it enables
+parallelism in the basic-block to which instructions are moved, and it enables
 other passes like loop invariant motion to remove more redundancies. The cost
 model to drive the code motion is based on live range analysis on \SSA{}
 representation such that the (virtual) register pressure does not increase, which
@@ -224,8 +224,8 @@ execution on modern architectures.
 Compiler techniques to remove redundant computations are composed of an analysis
 phase that detects identical computations in the program and a transformation
 phase that reduces the number of run-time computations.  Classical scalar
-optimizations like CSE \cite{dragonbook} work very well on single basic blocks but
-when it comes to detect redundancies across basic blocks these techniques fall
+optimizations like CSE \cite{dragonbook} work very well on single basic-blocks but
+when it comes to detect redundancies across basic-blocks these techniques fall
 short: more complex passes like GCSE and \PRE{} have been designed to handle these
 cases based on dataflow analysis \cite{morel1979global}.  At first these
 techniques were described in the classical data-flow analysis framework, and
@@ -234,7 +234,7 @@ time \cite{briggs1994effective,chow1997new,kennedy1999partial} and brought these
 techniques in the main stream: nowadays \SSA{} based \PRE{} is available in every
 industrial compiler.
 
-This paper describes \gcm{} of congruent instructions \cite{briggs1997}, a
+This paper describes \gcm{} (\GCM{}) of congruent instructions \cite{briggs1997}, a
 technique that uses the information computed for \PRE{} to detect identical
 computations but has a transformation phase whose goal differs from \PRE{}: it
 removes identical computations from different branches of execution.  These
@@ -251,9 +251,8 @@ more ILP.
 
 \begin{verbatim}
 float fun(float d, float min, float max, float a) {
-  float tmin, tmax, inv;
-
-  inv = 1.0f / d;
+  float tmin, tmax;
+  float inv = 1.0f / d;
   if (inv >= 0) { tmin = (min - a) * inv; tmax = (max - a) * inv; }
   else          { tmin = (max - a) * inv; tmax = (min - a) * inv; }
   return tmax + tmin;
@@ -279,17 +278,15 @@ float fun(float d, float min, float max, float a) {
   if (inv < 0) { tmin = y; tmax = x; }
   return tmax + tmin;
 }
-
 \end{verbatim}
 
 In this code the division operation can be executed in parallel with the two
 subtractions because there are no dependencies among them. So the total number
 of cycles will be $max(C_{div}, C_{sub}) + C_{mul} = C_{div} + C_{mul}$; since
-$C_{div}$ is usually much greater than $C_{sub}$ \cite{x86,aarch64}.
-
-%GCC: 23286 has interesting test cases.
-
-In fact, there are several advantages of \GCM{}.
+$C_{div}$ is usually much greater than $C_{sub}$ \cite{x86,aarch64}. We have
+seen the performance of an \ooo{} processor going up by $15\%$ on a benchmark
+containing the above motivating example running in a tight loop.  In fact, there
+are several advantages of \GCM{}:
 \begin{itemize}
 \item it helps reduce the code size of the program by replacing multiple
   instructions with one although the final code size may be higher because of
@@ -311,7 +308,7 @@ In fact, there are several advantages of \GCM{}.
   architectures which execute all code in branches based on masking or
   predication;
 \item it may improve loop vectorization by reducing a loop with control flow to
-  a loop with a single BB, should all the instructions in a conditional get
+  a loop with a single basic-block, should all the instructions in a conditional get
   hoisted or sinked;
 \item it enables more loop invariant code motion (LICM): as LICM passes, in
   general, cannot effectively reason about instructions within conditional
@@ -348,7 +345,7 @@ There are a lot of bug reports in \GCC{} and \LLVM{} bugzillas
 \cite{GCCCodeHoistingBugs, LLVMCodeHoistingBugs}, showing the interest in having
 a more powerful code hoist transform.  The current \LLVM{} implementation of
 code hoisting in SimplifyCFG.cpp is very limited to hoisting from identical
-basic blocks: the instructions of two sibling basic blocks are read at the same
+basic-blocks: the instructions of two sibling basic-blocks are read at the same
 time, and all the instructions of the blocks are hoisted to the common parent
 block as long as the compiler is able to prove that the instructions are
 equivalent.  This implementation does not allow for an easy extension: first in
@@ -358,7 +355,7 @@ computed by comparing the operands which is neither general nor scalabale.
 
 \citet{dhamdhere1988fast}, \citet{steven1997advanced} mention
 code hoisting in a data flow framework. A list of Very Busy Expressions (VBE)
-computed which are hoisted in a basic block where the expression is
+computed which are hoisted in a basic-block where the expression is
 anticipable (all the operands are available). This algorithm would hoist as far
 as possible without regarding the impact on register pressure and as such a cost
 model will be required.  Also the description of VBE is based on the classic
@@ -374,7 +371,7 @@ missing, also there is no mention of sinking congruent instructions.
 \GCC{} recently got code-hoisting \cite{GCCCodeHoisting} which is implemented as
 part of \GVN{}-\PRE{}: it uses the set of ANTIC\_IN and AVAIL\_OUT value
 expressions computed for \PRE{}. ANTIC\_IN[B] contains very busy expressions at
-basic block B, i.e., values computed on all paths from B to exit and
+basic-block B, i.e., values computed on all paths from B to exit and
 AVAIL\_OUT[B] contains values which are already available. The algorithm hoists
 top down to a predecessor.  It uses ANTIC\_IN[B] to know what expressions will
 be computed on every path from B to exit, and can be computed in B.  It uses
@@ -393,7 +390,7 @@ hoist them.
 \citet{click1995global} describes aggressive \gcm{} to first
 schedule all the instructions as early as possible. This results in very long
 live ranges which is mitigated by again scheduling all the instructions as late
-as possible. They report sppeedup of as high as $23\%$.
+as possible. They report a speedup of as high as $23\%$.
 
 \citet{barany2013} presented a global scheduler with ILP formulation with
 a goal to minimize register pressure. The results they got were not very
@@ -448,12 +445,12 @@ DJ-graph \cite{Sreedhar1996} is a data structure that augments the dominator
 tree with join-edges to keep track of data-flow in a program. We use DJ-graph
 and merge-sets to compute liveness of variables as illustrated in
 \cite{das2012}.  It is very efficient for computing liveness and does not
-require any bitvectors to be maintained for each basic block. The underlying
+require any bitvectors to be maintained for each basic-block. The underlying
 simplicity of liveness computation is due to \SSA{} form, where the the values
 only flow (from def to use) either through dominator edges or the join edges
 (where we insert a PHI). The DJ-graph contains both these edges which allows for
-computation of merge-sets for each basic block, i.e., a set of all basic blocks
-where the values can flow from a particular basic block. We have implemented the
+computation of merge-sets for each basic-block, i.e., a set of all basic-blocks
+where the values can flow from a particular basic-block. We have implemented the
 merge-set computation based on a DJ-graph as illustrated in \cite{das2005}. A
 simplified version of the merge-set that we implemented is presented here:
 
@@ -502,16 +499,16 @@ We compute merge sets, of the control flow graph, which remain same throughout
 the \gcm{} transformation. For \gcm{} we only want to know if a use
 operand is a kill (to compute changes in register pressure.) For that we only
 need to know whether the use is also required later in the execution path. A
-variable is live out of a basic block B if it is used in the merge set of B. We
+variable is live out of a basic-block B if it is used in the merge set of B. We
 compute the live-out relation on-demand when profitability of hoistable/sinkable
 candidates is to be evaluated. A simplified version of
 \emph{isLiveOutUsingMergeSet} is presented here:
 
 \begin{verbatim}
-// Return true if variable A is liveout from basic block N
+// Return true if variable A is liveout from basic-block N
 bool isLiveOutUsingMergeSet(Node N, Variable A)
   if (A is defined in N)
-    if (A is used outside any basic block other than N)
+    if (A is used outside any basic-block other than N)
       return true
     return false
 
@@ -544,10 +541,10 @@ of uses and nodes because each node can have many instructions and hence many
 uses. Also, while iterating on the dominator of each user of a variable we may
 reach to the beginning of a function, in that case the inner while loop needs to
 terminate. These two cases were missing from the algorithm and we came across
-them during implementation. If a variable is not live-out of a basic block, it
-still may be used later in the basic block: to establish whether a use of a
-variable is a kill we iterate on all the subsequent instructions in a basic
-block checking for uses, the \emph{isKill} function uses
+them during implementation. If a variable is not live-out of a basic-block, it
+still may be used later in the basic-block: to establish whether a use of a
+variable is a kill we iterate on all the subsequent instructions in a
+basic-block checking for uses, the \emph{isKill} function uses
 \emph{isLiveOutUsingMergeSet} to find out if an operand is killed in an
 instruction.
 
@@ -569,7 +566,7 @@ The first step is to find a set of congruent instructions
 \cite{briggs1997}. This is performed by a linear scan of all instructions of the
 program and classifying them by their value numbers. We could compute available
 and anticipable sets as computed by \GCC{'}s code-hoisting but that would be a lot
-of data structures to maintain at each basic block level. For \GCC{} it makes sense
+of data structures to maintain at each basic-block level. For \GCC{} it makes sense
 because their code-hoisting is integrated with \GVN{}-\PRE{} which already has those
 data structures available.
 
@@ -692,9 +689,9 @@ implementation.
 
 \subsubsection{Barriers}
 Barriers are based on the concept of pinned instructions \cite{click1995global}
-but extended to adapt to \LLVM{} IR. Since a basic block in \LLVM{} IR is
-actually an extended basic block because there might be calls in the middle of a
-basic block which might not return. Essentially, any instruction that cannot
+but extended to adapt to \LLVM{} IR. Since a basic-block in \LLVM{} IR is
+actually an extended basic-block because there might be calls in the middle of a
+basic-block which might not return. Essentially, any instruction that cannot
 guarantee progress is marked as a barrier. In the absence of context, as in our
 current implementation, some instructions which might be safe are still
 classified as barriers, e.g., volatile loads/stores, calls with missing
@@ -702,7 +699,7 @@ attributes.
 
 \begin{verbatim}
 computing barriers:
-for each basic block B in a function:
+for each basic-block B in a function:
   barrier_found = false
   for each instruction I in B:
     if I does not guarantee progress:
@@ -730,13 +727,13 @@ program the side effects appear in the same order.
 
 \begin{verbatim}
 computing downward-safety of hoistable instructions at hoist-point
-  Worklist = list of all basic blocks of hoistable instructions
-  for each basic block B in the dominator tree starting at hoist-point:
+  Worklist = list of all basic-blocks of hoistable instructions
+  for each basic-block B in the dominator tree starting at hoist-point:
     if Worklist is empty, return false // Path exists! not downward safe
     if B is in Worklist:
       remove B from worklist
       remove subtree with root at B // Available at B => downward safe from B
-    if B is a leaf basic block, return false  // Path exists! not downward safe
+    if B is a leaf basic-block, return false  // Path exists! not downward safe
     if B dominates hoist-point, return false  // Back edge
   return true
 \end{verbatim}
@@ -849,7 +846,7 @@ new hoisting point for the remaining ones.
 
 
 There is a special case for hoisting load instructions when the hoist-point is
-the predecessor basic block for all the loads. Even if the register pressure
+the predecessor basic-block for all the loads. Even if the register pressure
 would increase, we prefer to hoist loads in this case. The reason being, that
 would make the loaded value available by the time it is used. Also, because
 stores and calls are hoisted the least, see Table~\ref{tab:code-motion-metric},
@@ -891,7 +888,7 @@ illustrated by \citet{das2012} and ranking expressions explained by
 implementation only moves congruent instructions. An immediate guarantee of this
 approach is gain in code size (the final executable may be of larger size
 because of more inlining). The algorithm prefers hoisting to sinking. If the
-dependency of a hoistable candidate is in the same basic block as the candidate,
+dependency of a hoistable candidate is in the same basic-block as the candidate,
 then the dependency must also be hoistable, otherwise hoisting will be illegal or
 would require a complicated code generation to make it legal. The current
 algorithm discards cases if the dependency is neither hoistable nor
