@@ -949,7 +949,7 @@ int doCodeHoisting()
 After no more candidates are hoistable, sinking is performed. Sinking is only
 performed once becase currently there are very few sinkable candidates
 (Table~\ref{tab:code-motion-metric}) as SimplifyCFG of LLVM (which runs before
-GCM) has a (suboptimal) code-sinking which sinks several instructions already.
+GCM) has a code-sinking which already sinks several instructions.
 
 \begin{verbatim}
 void doCodeSinking()
@@ -1015,8 +1015,8 @@ Table~\ref{tab:compile-time} to see the impact of code-motion.
       \hline
 % TODO: Check if putting code-size or spills number is okay or only %age is required.
 % llvm trunk vs. llvm trunk with code-motion
-                &\% performance uplift & \% codesize increase & \% codesize increase\\
-Benchmarks      & at -Ofast& at -Ofast & at -Os\\\hline
+                &\% performance uplift & \% codesize decrease & \% codesize decrease\\
+Benchmarks      & at -Ofast (high better)& at -Ofast (low better) & at -Os (low better)\\\hline
 400.perlbench	& 1.00  & 1.00 & 1.00\\\hline
 401.bzip2	& 1.00  & 1.00 & 1.00\\\hline
 403.gcc	        & 1.00  & 1.01 & 1.00\\\hline
@@ -1083,7 +1083,7 @@ dependencies. We plan to implement this in near future.
   \begin{center}
     \begin{tabular}{|l|r|r|r|}
       \hline
-Number of spills  &base(-Ofast) &GCM(-Ofast) &\%change \\\hline
+Number of spills  &base(-Ofast) &GCM(-Ofast) &\%change (low better) \\\hline
 400.perlbench	  & 2539	& 2493	& 0.98 \\\hline
 401.bzip2	  & 718	        & 707	& 0.98 \\\hline
 403.gcc	          & 5782	& 5722	& 0.99 \\\hline
@@ -1116,12 +1116,11 @@ limits the code-motion to those candidates which do not increase the register
 pressure (except for loads Section~\ref{subsec:cost-models}, overall spills
 still decreases.
 
-
 \begin{table}[h]
   \begin{center}
     \begin{tabular}{|l|c|c|c|}
       \hline
-  Benchmarks      &   Baseline	        & GCM           & \%Increase \\\hline
+  Benchmarks      &   Baseline	        & GCM           & \%Decrease (low better) \\\hline
   400.perlbench	  &   186,829,426	& 184,690,006	& 0.99 \\\hline
   401.bzip2	  &   76,337,033	& 75,942,641	& 0.99 \\\hline
   403.gcc         &   1,079,625,231	& 1,073,158,220	& 0.99 \\\hline
@@ -1143,7 +1142,8 @@ still decreases.
   483.xalancbmk	  &   22,485,708,759	& 22,455,060,569& 1.00 \\\hline
     \end{tabular}
   \end{center}
-  \caption{Change in compilation time with and without global-code-motion (GCM) on SPEC2006 at -Ofast}
+  \caption{Change in total number of instructions executed during the
+    compilation with and without global-code-motion (GCM) on \SPEC{} at -Ofast}
   \label{tab:compile-time}
 \end{table}
 
