@@ -97,7 +97,8 @@
 \def \SPEC {SPEC Cpu 2006}
 \def \gcm {global-code-motion}
 \def \GCM {GCM}
-
+\def \xlinux {x86\_64-linux}
+\def \ooo {out-of-order}
 %% Author information
 %% Contents and number of authors suppressed with 'anonymous'.
 %% Each author should be introduced by \author, followed by
@@ -168,18 +169,18 @@ translates to 2\% fewer spills while compiling \SPEC{} benchmark suite.
 
 We have implemented the pass in \LLVM{}. It is based on Global Value Numbering
 infrastructure available in \LLVM{}. The experimental results show an average
-saving of 1\% on overall compile time on \SPEC{}. \GCM{} enables more inlining and
-exposes more loop invariant code motion opportunities in majority of the
+saving of 1\% on overall compile time on \SPEC{}. \GCM{} enables more inlining
+and exposes more loop invariant code motion opportunities in majority of the
 benchmarks. We have also seen execution time improvements in a few of \SPEC{}
 benchmarks viz. mcf and sjeng, moreover, register spills reduced by 2\% on the
-\SPEC{} bencmarks suite when compiled for X86\_64. This is an optimistic
+\SPEC{} bencmarks suite when compiled for \xlinux{}. This is an optimistic
 algorithm in the sense that it considers all congruent instructions in a
 function as potential candidates. We make an extra effort to hoist candidates by
 partitioning the potential candidates in a way to enable partial hoisting in
 case common hoisting points for all the candidates cannot be found. We also
 formalize how register pressure will reduce as a result of \gcm{}, and how
-\gcm{} increases instruction level parallelism thereby enabling more out of
-order execution on modern architectures.
+\gcm{} increases instruction level parallelism thereby enabling more \ooo{}
+execution on modern architectures.
 \end{abstract}
 
 %% 2012 ACM Computing Classification System (CSS) concepts
@@ -243,7 +244,7 @@ reduced. It is not a redundancy elimination pass, and thus it has different cost
 function and heuristics than \PRE{} or CSE. It is more similar to global code
 scheduling \cite{dragonbook,click1995global} in the sense that it will only move
 computations. Code hoisting, for example, can reduce the critical path length of
-execution in out-of-order machines. As more instructions are available at the
+execution in \ooo{} machines. As more instructions are available at the
 hoisting point, the hardware has more independent instructions to reorder. The
 following example illustrates how hoisting can improve performance by exposing
 more ILP.
@@ -263,8 +264,8 @@ In this program the computations of tmax and tmin are identical to the
 computations of tmin and tmax of sibling branch respectively. Both tmax and tmin
 depend on inv which depends on a division operation which is generally more
 expensive than the addition, subtraction, and multiplication operations. The
-total latency of computation across each branch is: $C_{div} + 2(C_{sub} +
-C_{mul})$.  For an out-of-order processor with two add units and two multiply
+total latency of computation across each branch is: $C_{div} + 2(C_{sub} + C_{mul})$.
+For an \ooo{} processor with two add units and two multiply
 units, the total latency of computation is $C_{div} + C_{sub} + C_{mul}$.
 
 Now if the computation of tmax and tmin are hoisted outside the
@@ -299,7 +300,7 @@ In fact, there are several advantages of \GCM{}.
   passes. By hoisting identical computations to be executed earlier, instruction
   schedulers can move heavy computations earlier in order to avoid pipeline
   bubbles;
-\item it reduces branch misprediction penalty on out-of-order processors with
+\item it reduces branch misprediction penalty on \ooo{} processors with
   speculative execution of branches: by hoisting or sinking expressions out of
   branches, it can effectively reduce the amount of code to be speculatively
   executed and hence reduce the critical path;
@@ -993,7 +994,7 @@ redundant as a result of \gcm{}.
 \label{sec:experimental-results}
 % Experimental results: Register spills, compile time, run time. compile-time comparison w.r.t. gcc
 We ran \SPEC{} with the patch. All the experiments were conducted on an
-x86\_64-linux machine and at -Ofast optimization level. Each sub benchmark was
+\xlinux{} machine and at -Ofast optimization level. Each sub benchmark was
 run three times and the best result was taken. We collected execution time,
 code-size which is listed in Table~\ref{tab:code-size}, other compiler stats are
 listed in Table~\ref{tab:spills}, Table~\ref{tab:stats}, and
@@ -1231,7 +1232,7 @@ the size of functions to be inlined.
 The code shown in Section~\ref{sec:intro} is a reduced example that appears in a
 hot loop of a proprietary benchmark.  When the expressions are hoisted from the
 conditional clauses, the overall performance of that benchmark improves by
-$15\%$ on an out-of-order processor due to increased instruction level
+$15\%$ on an \ooo{} processor due to increased instruction level
 parallelism, and better scheduling of the instructions, accommodating for the
 long latency of the division operation.
 
