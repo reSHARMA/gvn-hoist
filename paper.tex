@@ -1010,31 +1010,31 @@ Table~\ref{tab:compile-time} to see the impact of \gcm{}.
 % llvm trunk vs. llvm trunk with code-motion
                 &\% performance uplift & \% code size decrease & \% code size decrease\\
 Benchmarks      & at -Ofast (high better)& at -Ofast (high better) & at -Os (high better)\\\hline
-400.perlbench	& 1.00  & -9120  & 544.00  \\\hline
-401.bzip2	& 1.00  & -1600  & 128.00  \\\hline
-403.gcc	        & 1.00  & -58176 & 3384.00 \\\hline
-429.mcf	        & 1.03  & 160    & 16.00   \\\hline
-433.milc	& 1.00  & -656   & 224.00  \\\hline
-444.namd	& 1.00  & -3864  & -1168.00\\\hline
-445.gobmk	& 0.99  & -20480 & -264.00 \\\hline
-447.dealII	& 0.95  & -27836 & 50934.00\\\hline
-450.soplex	& 0.99  & 2220   & 348.00  \\\hline
-453.povray	& 0.97  & 164    & -472.00 \\\hline
-456.hmmer	& 0.99  & -3464  & -352.00 \\\hline
-458.sjeng	& 1.02  & 440    & 1456.00 \\\hline
-462.libquantum	& 1.00  & -96    & 0.00    \\\hline
-464.h264ref	& 1.00  & -3424  & 864.00  \\\hline
-470.lbm	        & 1.00  & 0      & 0.00    \\\hline
-471.omnetpp	& 1.00  & 2688   & 200.00  \\\hline
-473.astar	& 1.00  & -928   & 152.00  \\\hline
-482.sphinx3	& 0.99  & 3008   & -176.00 \\\hline
-483.xalancbmk	& 1.01  & 46492  & 4012.00 \\\hline
+400.perlbench	& 1.00  & -9120  & 544  \\\hline
+401.bzip2	& 1.00  & -1600  & 128  \\\hline
+403.gcc	        & 1.00  & -58176 & 3384 \\\hline
+429.mcf	        & 1.03  & 160    & 16   \\\hline
+433.milc	& 1.00  & -656   & 224  \\\hline
+444.namd	& 1.00  & -3864  & -1168\\\hline
+445.gobmk	& 0.99  & -20480 & -264 \\\hline
+447.dealII	& 0.95  & -27836 & 50934\\\hline
+450.soplex	& 0.99  & 2220   & 348  \\\hline
+453.povray	& 0.97  & 164    & -472 \\\hline
+456.hmmer	& 0.99  & -3464  & -352 \\\hline
+458.sjeng	& 1.02  & 440    & 1456 \\\hline
+462.libquantum	& 1.00  & -96    & 0    \\\hline
+464.h264ref	& 1.00  & -3424  & 864  \\\hline
+470.lbm	        & 1.00  & 0      & 0    \\\hline
+471.omnetpp	& 1.00  & 2688   & 200  \\\hline
+473.astar	& 1.00  & -928   & 152  \\\hline
+482.sphinx3	& 0.99  & 3008   & -176 \\\hline
+483.xalancbmk	& 1.01  & 46492  & 4012 \\\hline
 Geomean         & 0.997 &  & \\\hline
     \end{tabular}
   \end{center}
-  \caption{Execution time and code size with and without \gcm{}
-    (\GCM{}) on \SPEC{}: performance uplift at -Ofast in mcf and sjeng; code size
-    improvement in dealII at -Os.}
+  \caption{Execution time (ratio) and code size change (bytes) with and without
+    \gcm{} (\GCM{}) on \SPEC{}: performance uplift at -Ofast in mcf and sjeng;
+    code size improvement in dealII at -Os.}
   \label{tab:code-size}
 \end{table}
 
@@ -1046,16 +1046,22 @@ local redundancies, \GCM{} would have to analyze less redundant instructions, al
 as inliner creates more redundancies, \GCM{} would have more opportunities to move
 congruent instructions out of branches.
 
-Code size also remained almost the same as a result of \gcm{} as shown in
-Table~\ref{tab:code-size}.  The code size listed here is the text size (from
-linux size command) of the final executable for each benchmark.  Some benchmarks
-like 473.astar increased in code size by almost 2\%. This is because once the
-code-size of a function decreases (due to \GCM{}), it becomes cheaper to
-inline. As we can see in Table~\ref{tab:stats}, four more functions got inlined
-in 473.astar. Except for 447.dealII, 450.soplex, 482.sphinx3 and 483.xalancbmk
-all other benchmarks got more functions inlined. Also, since the pass runs
-early, it affects many optimizations which rely on the number of instructions,
-length of the use-def chain, and other metrics.
+We see some nice gains in code size at -Os with \gcm{} (403.gcc, 447.dealII, and
+483.xalancbmk) as shown in Table~\ref{tab:code-size}.  The code size listed here
+is the text size delta (from linux size command) of the final executable for
+each benchmark.  Some benchmarks like 473.astar increased in code size by almost
+2\%. This is because once the code-size of a function decreases (due to \GCM{}),
+it becomes cheaper to inline. As we can see in Table~\ref{tab:stats}, four more
+functions got inlined in 473.astar. Except for 447.dealII, 450.soplex,
+482.sphinx3 and 483.xalancbmk all other benchmarks got more functions
+inlined. Also, since the pass runs early, it affects many optimizations which
+rely on the number of instructions, length of the use-def chain, and other
+metrics.
+
+The code-size at -Ofast is very widespread with huge gains in 483.xalancbmk to
+serious regressions in 403.gcc. This is mostly because the compiler's focus is
+to improve performance at the cost of code-size at -Ofast, so passes like
+inlining, loop-unrolling, code-versioning are very aggressive at -Ofast.
 
 \begin{table}[h!]
   \begin{center}
