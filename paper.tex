@@ -227,7 +227,7 @@ phase that reduces the number of run-time computations.  Classical scalar
 optimizations like CSE \cite{dragonbook} work very well on single basic-blocks but
 when it comes to detect redundancies across basic-blocks these techniques fall
 short: more complex passes like GCSE and \PRE{} have been designed to handle these
-cases based on dataflow analysis \cite{morel1979global}.  At first these
+cases based on data-flow analysis \cite{morel1979global}.  At first these
 techniques were described in the classical data-flow analysis framework, and
 later the use of the \SSA{} representation lowered the cost in terms of compilation
 time \cite{briggs1994effective,chow1997new,kennedy1999partial} and brought these
@@ -353,13 +353,13 @@ terms of compilation time overhead the implementation is quadratic in number of
 instructions to bisimulate and second, the equivalence of instructions is
 computed by comparing the operands which is neither general nor scalabale.
 
-\citet{dhamdhere1988fast}, \citet{steven1997advanced} mention
-code hoisting in a data flow framework. A list of Very Busy Expressions (VBE)
+\citet{dhamdhere1988fast} and \citet{steven1997advanced} mention
+code hoisting in a data-flow framework. A list of Very Busy Expressions (VBE)
 computed which are hoisted in a basic-block where the expression is
 anticipable (all the operands are available). This algorithm would hoist as far
 as possible without regarding the impact on register pressure and as such a cost
 model will be required.  Also the description of VBE is based on the classic
-dataflow model and an adaptation to a sparse \SSA{} representation is required.
+data-flow model and an adaptation to a sparse \SSA{} representation is required.
 
 \citet{rosen1988global} also briefly discuss hoisting computations with
 identical value numbers from immediate successors. Their algorithm iterates on
@@ -403,10 +403,10 @@ X86, for example.
 scheduler with reasonable performance improvements. It is possible that both
 Barany and Shobaki's implmentation will have similar results when compiled for
 same target architecture. Also, both suffer from the same problem, although
-Shobaki not so much, of large compile times which is not feasible for industrial
+Shobaki not so much, of large compile times which would not suit in industrial
 compilers like \GCC{} and \LLVM{}. With the algorithm described in the next
 section, we got a reduction in register spills, improved inliner heuristics,
-improved compile time and some performance improvements on \SPEC{} benchmarks.
+improved compile time, and show performance improvements on \SPEC{} benchmarks.
 
 % TODO: References
 % Sink instructions
