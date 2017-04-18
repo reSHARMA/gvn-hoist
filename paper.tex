@@ -173,7 +173,7 @@ saving of 1\% on overall compile time on \SPEC{}. \GCM{} enables more inlining
 and exposes more loop invariant code motion opportunities in majority of the
 benchmarks. We have also seen execution time improvements in a few of \SPEC{}
 benchmarks viz. mcf and sjeng, moreover, register spills reduced by 2\% on the
-\SPEC{} bencmarks suite when compiled for \xlinux{}. This is an optimistic
+\SPEC{} benchmarks suite when compiled for \xlinux{}. This is an optimistic
 algorithm in the sense that it considers all congruent instructions in a
 function as potential candidates. We make an extra effort to hoist candidates by
 partitioning the potential candidates in a way to enable partial hoisting in
@@ -210,7 +210,7 @@ execution on modern architectures.
 
 %% Keywords
 %% comma separated list
-\keywords{Optimizng Compilers, \GCC{}, \LLVM{}, Code Generation, Global Scheduling}  %% \keywords is optional
+\keywords{Optimizing Compilers, \GCC{}, \LLVM{}, Code Generation, Global Scheduling}  %% \keywords is optional
 
 %% \maketitle
 %% Note: \maketitle command must come after title commands, author
@@ -309,7 +309,7 @@ are several advantages of \GCM{}:
   predication;
 \item it may improve loop vectorization by reducing a loop with control flow to
   a loop with a single basic-block, should all the instructions in a conditional get
-  hoisted or sinked;
+  hoisted or sunk;
 \item it enables more loop invariant code motion (LICM): as LICM passes, in
   general, cannot effectively reason about instructions within conditional
   branches in the context of loops, code-hoisting is needed to move instructions
@@ -351,7 +351,7 @@ block as long as the compiler is able to prove that the instructions are
 equivalent.  This implementation does not allow for an easy extension: first in
 terms of compilation time overhead the implementation is quadratic in number of
 instructions to bisimulate and second, the equivalence of instructions is
-computed by comparing the operands which is neither general nor scalabale.
+computed by comparing the operands which is neither general nor scalable.
 
 \citet{dhamdhere1988fast} and \citet{steven1997advanced} mention
 code hoisting in a data-flow framework. A list of Very Busy Expressions (VBE)
@@ -401,7 +401,7 @@ X86, for example.
 
 \citet{shobaki2013} also recently presented a combinatorial global
 scheduler with reasonable performance improvements. It is possible that both
-Barany and Shobaki's implmentation will have similar results when compiled for
+Barany and Shobaki's implementation will have similar results when compiled for
 same target architecture. Also, both suffer from the same problem, although
 Shobaki not so much, of large compile times which would not suit in industrial
 compilers like \GCC{} and \LLVM{}. With the algorithm described in the next
@@ -497,7 +497,7 @@ the \gcm{} transformation. For \gcm{} we only want to know if a use
 operand is a kill (to compute changes in register pressure.) For that we only
 need to know whether the use is also required later in the execution path. A
 variable is live out of a basic-block B if it is used in the merge set of B. We
-compute the live-out relation on-demand when profitability of hoistable/sinkable
+compute the live-out relation on-demand when profitability of hoist/sink
 candidates is to be evaluated. A simplified version of
 \emph{isLiveOutUsingMergeSet} is presented here:
 
@@ -618,7 +618,7 @@ made available by rematerialization), the scalar computations can be hoisted.
 
 \subsubsection{Legality of hoisting loads}
 The availability of operand to the load (an address) is checked at the hoisting
-point. If that is not available we try to rematerialize the addresss if
+point. If that is not available we try to rematerialize the address if
 possible.  Along the path, from current position of the load instruction
 backwards on the control flow to the hoisting point, we check whether there are
 writes to memory that may alias with the load, in which case the candidate is
@@ -671,17 +671,17 @@ B3: phi(c1, c2)
 
 In this example (c1, c2) or (d1, d2) are potential sinkable candidates. Since
 (c1, c2) depend on i1 and i2 respectively which are also in their original basic
-blocks, c1 and c2 are not anticipable in B3. So without knowing the sinkability
+blocks, c1 and c2 are not anticipable in B3. So without knowing the ability to sink
 of `i1' and `i2' it would be illegal to sink (c1, c2) to B3. On the other hand
 (d1, d2) can safely be sunk because their operands are readily available at the
 sink point, i.e., B3. It should also be noted that, just because the expressions
 are identical and operands are available, it still requires a unique
 post-dominating PHI to use the exact same values to be legally sinkable.
 
-A general global scheduling algorithm also requires checks for undefinedness
+A general global scheduling algorithm also requires checks for undefined values
 when introducing a new computation along a path. Since only very busy
 expressions are moved in the current implementation, there is no need to check
-for undefinedness resulting due to movement of instructions. This simplifies the
+for undefined resulting due to movement of instructions. This simplifies the
 implementation.
 
 \subsubsection{Barriers}
@@ -775,7 +775,7 @@ freed.
 Ideally, it should be okay to hoist all the instructions and a later
 live-range-splitting \cite{cooper1998live} pass should make the right decision
 of rematerializing the instruction should it be beneficial to do so. But the
-current live-range splitting pass of \LLVM{} is not making the optimial decision
+current live-range splitting pass of \LLVM{} is not making the optimal decision
 and we have found performance regressions while hoisting aggressively.
 
 Moreover, \LLVM{} has a `getelementptr' instruction which computes the address
@@ -798,7 +798,7 @@ pressure is high because the number of available registers are reduced by the
 number of caller saved registers. In that situation a computation that increases
 register pressure is not profitable to hoist.
 
-\subsubsection{Partitioning the list of hoistable candidates to maximize hoisting}
+\subsubsection{Partitioning the list of hoist candidates to maximize hoisting}
 \label{subsec:partition}
 %The partition algorithm is described as follows:
 In the approach, described in Section~\ref{subsec:optimistic}, it is possible
@@ -808,7 +808,7 @@ hoist a subset of instructions by splitting the set of candidates and finding a
 closer hoisting point for each subset.
 
 In order to hoist a subset of identical instructions, we partition the list of
-all candidates in a way to maximize the total number of hoistings.  By sorting
+all candidates in a way to maximize the total number of hoist instructions.  By sorting
 the list of all the candidates in the increasing order of their depth first
 search discovery time stamp \cite{clrs} (DFSIn numbers), we make sure that
 candidates closer in the list have their common dominator nearby. In
@@ -861,7 +861,7 @@ same time \MemorySSA{} is also updated to get up-to-date information about
 memory references.
 
 After one iteration of algorithm runs through the entire function, it creates
-more oppportunities for \emph{higher ranked} computations
+more opportunities for \emph{higher ranked} computations
 \cite{rosen1988global}. Currently, this is a limitation of the \GVN{} analysis
 pass, and so we rerun the code-hoisting algorithm until there are no more
 instructions left to be hoisted.  Obviously, this is not the most optimal
@@ -908,7 +908,7 @@ computations and perform legality checks, as described in
 Section~\ref{subsec:legality}. Often times it is not possible to hoist all the
 instructions to one common dominator, due to legality constraints, e.g.,
 intersecting side-effects, or profitability constraints, e.g., increasing
-register pressure; in those cases, this algorithmn would partition
+register pressure; in those cases, this algorithm would partition
 (Section~\ref{subsec:partition}) the list of identical instructions into subsets
 which can be partially hoisted to their respective common dominators. However,
 it should be noted that we only hoist very busy expressions to avoid checking
@@ -937,7 +937,7 @@ int doCodeHoisting()
 
 \newpage
 After no more candidates are hoistable, sinking is performed. Sinking is only
-performed once becase currently there are very few sinkable candidates
+performed once because currently there are very few sinkable candidates
 (Table~\ref{tab:code-motion-metric}) as SimplifyCFG of LLVM (which runs before
 \GCM{}) has a code-sinking which already sinks several instructions.
 
@@ -961,7 +961,7 @@ void doCodeSinking()
 Code hoisting opens new opportunities for other hoistable candidates which were
 of higher rank (depended on candidates which got hoisted). Ideally we could
 iterate on lower ranking expressions first and then proceed to higher ranking
-expressions in the same iteration but \LLVM{'}s \GVN{} infrastucture does not
+expressions in the same iteration but \LLVM{'}s \GVN{} infrastructure does not
 compute equivalence classes in an effective way. We found it simpler to just
 recompute the value numbers and start finding hoistable candidates again.
 
@@ -974,7 +974,7 @@ instructions in a function. Liveness analysis is expensive and only performed
 on-demand for hoistable candidates so it does not affect the overall compilation
 time by much. Other analyses like Alias Analysis, \MemorySSA{} and Dominator Tree
 are already available in the \LLVM{} pass pipeline. Although we recompute \GVN{}, and
-Barriers for each iteration of the \gcm{}, we have not seen signinficant
+Barriers for each iteration of the \gcm{}, we have not seen significant
 increase in the compilation times (see Section~\ref{tab:compile-time}). We have also
 provided appropriate compiler
 flags to expedite \gcm{} by bailing out with fewer iterations, or skip the
@@ -1003,7 +1003,7 @@ Table~\ref{tab:compile-time} to see the impact of \gcm{}.
       \hline
 % TODO: Check if putting code-size or spills number is okay or only %age is required.
 % llvm trunk vs. llvm trunk with code-motion
-                &\% performance uplift & \% codesize decrease & \% codesize decrease\\
+                &\% performance uplift & \% code size decrease & \% code size decrease\\
 Benchmarks      & at -Ofast (high better)& at -Ofast (low better) & at -Os (low better)\\\hline
 400.perlbench	& 1.00  & 1.00 & 1.00\\\hline
 401.bzip2	& 1.00  & 1.00 & 1.00\\\hline
@@ -1034,7 +1034,7 @@ Geomean         & 0.997 & 1.00 & 1.00\\\hline
 \end{table}
 
 Overall there was only a minor change in the performance numbers with a few improvements 
-(429.mcf, 458.sjeng etc.) and a few regresssions (447.dealII, 453.povray
+(429.mcf, 458.sjeng etc.) and a few regressions (447.dealII, 453.povray
 etc.). The \gcm{} pass was run twice in the pass pipeline (at -Ofast),
 first after EarlyCSE pass, and then after the inliner. Because EarlyCSE removes
 local redundancies, \GCM{} would have to analyze less redundant instructions, also
@@ -1043,7 +1043,7 @@ congruent instructions out of branches.
 
 Code size also remained almost the same as a result of \gcm{} as shown in
 Table~\ref{tab:code-size}.  The code size listed here is the text size (from
-linux size command) of the final executables for each benchmark.  Some bencmarks
+linux size command) of the final executable for each benchmark.  Some benchmarks
 like 473.astar increased in code size by almost 2\%. This is because once the
 code-size of a function decreases (due to \GCM{}), it becomes cheaper to
 inline. As we can see in Table-\ref{tab:stats}, four more functions got inlined
@@ -1221,8 +1221,6 @@ dependencies. We plan to implement this in near future.
   \label{tab:code-motion-metric}
 \end{table}
 
-
-
 The code shown in Section~\ref{sec:intro} is a reduced example that appears in a
 hot loop of a proprietary benchmark.  When the expressions are hoisted from the
 conditional clauses, the overall performance of that benchmark improves by
@@ -1252,7 +1250,7 @@ implementation converges quickly and no compile time regression have been
 observed. This is not the most optimal approach in terms of compile time complexity
 and results in multiple data structures to be recomputed. This can be improved
 by ranking the computations \cite{rosen1988global}. Also, since \GCM{} runs very
-early in the pass pipeline, it will be good to evaluate the codesize/performance
+early in the pass pipeline, it will be good to evaluate the code size/performance
 impact when it is run in sync with \GVN{}-\PRE{} just like \GCC{} does.
 
 With the implementation of \GCM{} in \LLVM{}, the passes which rely on the
