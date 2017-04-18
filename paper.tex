@@ -1045,10 +1045,12 @@ Code size also remained almost the same as a result of \gcm{} as shown in
 Table~\ref{tab:code-size}.  The code size listed here is the text size (from
 linux size command) of the final executables for each benchmark.  Some bencmarks
 like 473.astar increased in code size by almost 2\%. This is because once the
-code-size of a function decreases (due to \GCM{}), it becomes cheaper to inline. As
-we can see in Table-\ref{tab:stats}, four more functions got inlined in
-473.astar. Except for 447.dealII, 450.soplex, 482.sphinx3 and 483.xalancbmk all
-other benchmarks got more functions inlined.
+code-size of a function decreases (due to \GCM{}), it becomes cheaper to
+inline. As we can see in Table-\ref{tab:stats}, four more functions got inlined
+in 473.astar. Except for 447.dealII, 450.soplex, 482.sphinx3 and 483.xalancbmk
+all other benchmarks got more functions inlined. Also, since the pass runs
+early, it affects many optimizations which rely on the number of instructions,
+length of the use-def chain, and other metrics.
 
 \begin{table}[h!]
   \begin{center}
@@ -1077,7 +1079,8 @@ Number of spills  &base(-Ofast) &\GCM{}(-Ofast) &\%change (low better) \\\hline
 Grand Total	  & 43349	& 42497	& 0.98 \\\hline
     \end{tabular}
   \end{center}
-  \caption{Number of spills before and after \gcm{}(\GCM{}) on SPEC2006 at -Ofast}
+  \caption{Number of spills before and after \gcm{}(\GCM{}) on SPEC2006 at
+    -Ofast. Spills reduced by 2\% overall.}
   \label{tab:spills}
 \end{table}
 
@@ -1219,12 +1222,6 @@ dependencies. We plan to implement this in near future.
 \end{table}
 
 
-While benchmarking \SPEC{} we see both increase as well as decrease in
-the codesize of the final binaries. Since the pass runs early, it affects many
-optimizations which rely on the number of instructions, length of the use-def
-chain, and other metrics. For instance, the inliner is impacted by a decrease in
-the number of instructions in the caller and callee, as its heuristics estimate
-the size of functions to be inlined.
 
 The code shown in Section~\ref{sec:intro} is a reduced example that appears in a
 hot loop of a proprietary benchmark.  When the expressions are hoisted from the
