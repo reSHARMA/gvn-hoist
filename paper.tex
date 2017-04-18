@@ -607,7 +607,7 @@ Subsequently, it is checked that the side-effects of the computations (if any)
 do not intersect with any side-effects between the instructions to be
 hoisted/sunk and their hoisting/sinking point. It is also necessary to check if
 there are indirect branch targets, e.g., landing pad, case statements, goto
-labels etc., along the path because it becomes difficult to prove safety checks
+labels, etc., along the path because it becomes difficult to prove safety checks
 in those cases. In our current implementation we discard candidates on those
 paths.
 
@@ -1034,7 +1034,7 @@ Geomean         & 0.997 & 1.00 & 1.00\\\hline
 \end{table}
 
 Overall there was only a minor change in the performance numbers with a few improvements 
-(429.mcf, 458.sjeng etc.) and a few regressions (447.dealII, 453.povray
+(429.mcf, 458.sjeng, etc.) and a few regressions (447.dealII, 453.povray,
 etc.). The \gcm{} pass was run twice in the pass pipeline (at -Ofast),
 first after EarlyCSE pass, and then after the inliner. Because EarlyCSE removes
 local redundancies, \GCM{} would have to analyze less redundant instructions, also
