@@ -158,29 +158,29 @@
 %% Note: \begin{abstract}...\end{abstract} environment must come
 %% before \maketitle command
 \begin{abstract}
-We present a \gcm{} (\GCM{}) compiler optimization which schedules
-congruent instructions across the program.  Not only this saves code size, it
-exposes redundancies in some cases, it exposes more instruction level
-parallelism in the basic-block to which instructions are moved, and it enables
-other passes like loop invariant motion to remove more redundancies. The cost
-model to drive the code motion is based on live range analysis on \SSA{}
-representation such that the (virtual) register pressure does not increase, which
-translates to 2\% fewer spills while compiling \SPEC{} benchmark suite.
+We present a \gcm{} (\GCM{}) compiler optimization which schedules congruent
+instructions across the program.  Not only \GCM{} saves code size, it exposes
+redundancies in some cases, it exposes more instruction level parallelism in the
+basic-block to which instructions are moved, and it enables other passes like
+loop invariant motion to remove more redundancies. The cost model to drive the
+code motion is based on liveness analysis on \SSA{} representation such that the
+(virtual) register pressure does not increase resulting in 2\% fewer spills on
+the \SPEC{} benchmark suite.
 
 We have implemented the pass in \LLVM{}. It is based on Global Value Numbering
 infrastructure available in \LLVM{}. The experimental results show an average
-saving of 1\% on overall compile time on \SPEC{}. \GCM{} enables more inlining
-and exposes more loop invariant code motion opportunities in majority of the
-benchmarks. We have also seen execution time improvements in a few of \SPEC{}
-benchmarks viz. mcf and sjeng, moreover, register spills reduced by 2\% on the
-\SPEC{} benchmarks suite when compiled for \xlinux{}. This is an optimistic
-algorithm in the sense that it considers all congruent instructions in a
-function as potential candidates. We make an extra effort to hoist candidates by
-partitioning the potential candidates in a way to enable partial hoisting in
-case a common hoisting point for all the candidates cannot be found. We also
-formalize how register pressure will reduce as a result of \gcm{}, and how
-\gcm{} increases instruction level parallelism thereby enabling more \ooo{}
-execution on modern architectures.
+saving of 1\% on the total compilation time on \SPEC{}. \GCM{} enables more
+inlining and exposes more loop invariant code motion opportunities in majority
+of the benchmarks. We have also seen execution time improvements in a few of
+\SPEC{} benchmarks viz. mcf and sjeng, moreover, register spills reduced by 2\%
+on the \SPEC{} benchmarks suite when compiled for \xlinux{}. \GCM{} is an
+optimistic algorithm in the sense that it considers all congruent instructions
+in a function as potential candidates. We make an extra effort to hoist
+candidates by partitioning the potential candidates in a way to enable partial
+hoisting in case a common hoisting point for all the candidates cannot be
+found. We also formalize why register pressure reduces as a result of \gcm{},
+and how \gcm{} increases instruction level parallelism thereby enabling more
+\ooo{} execution on modern architectures.
 \end{abstract}
 
 %% 2012 ACM Computing Classification System (CSS) concepts
@@ -224,30 +224,32 @@ execution on modern architectures.
 Compiler techniques to remove redundant computations are composed of an analysis
 phase that detects identical computations in the program and a transformation
 phase that reduces the number of run-time computations.  Classical scalar
-optimizations like CSE \cite{dragonbook} work very well on single basic-blocks but
-when it comes to detect redundancies across basic-blocks these techniques fall
-short: more complex passes like GCSE and \PRE{} have been designed to handle these
-cases based on data-flow analysis \cite{morel1979global}.  At first these
-techniques were described in the classical data-flow analysis framework, and
-later the use of the \SSA{} representation lowered the cost in terms of compilation
-time \cite{briggs1994effective,chow1997new,kennedy1999partial} and brought these
-techniques in the main stream: nowadays \SSA{} based \PRE{} is available in every
-industrial compiler.
+optimizations like Common Subexpression Elimination (CSE) \cite{dragonbook} work
+very well on single basic-blocks (local level) but when it comes to detect
+redundancies across basic-blocks (global level) these techniques fall short:
+more complex passes like Global Common Subexpression Elimination (GCSE) and
+Partial Redundancy Elimination (\PRE{}) have been designed to handle these cases
+based on data-flow analysis \cite{morel1979global}.  At first these techniques
+were described in the classical data-flow analysis framework, but later the use
+of Static Single Assignment (\SSA{}) representation lowered their cost in terms
+of compilation time \cite{briggs1994effective,chow1997new,kennedy1999partial}
+and brought these techniques in the main stream: nowadays \SSA{} based \PRE{} is
+available in industrial compilers like \GCC{} and \LLVM{}.
 
-This paper describes \gcm{} (\GCM{}) of congruent instructions \cite{briggs1997}, a
-technique that uses the information computed for \PRE{} to detect identical
-computations but has a transformation phase whose goal differs from \PRE{}: it
-removes identical computations from different branches of execution.  These
-identical computations in different branches of execution are not redundant
-computations at run-time and the number of run-time computations is not
-reduced. It is not a redundancy elimination pass, and thus it has different cost
-function and heuristics than \PRE{} or CSE. It is more similar to global code
-scheduling \cite{dragonbook,click1995global} in the sense that it will only move
-computations. Code hoisting, for example, can reduce the critical path length of
-execution in \ooo{} machines. As more instructions are available at the
-hoisting point, the hardware has more independent instructions to reorder. The
-following example illustrates how hoisting can improve performance by exposing
-more ILP.
+This paper describes \gcm{} (\GCM{}) of congruent instructions
+\cite{briggs1997}, a technique that uses the information computed for \PRE{} to
+detect identical computations but has a transformation phase whose goal differs
+from \PRE{}: it removes identical computations from different branches of
+execution.  These identical computations in different branches of execution are
+not redundant computations at run-time and the number of run-time computations
+is not reduced. It is not a redundancy elimination pass, and thus it has
+different cost function and heuristics than \PRE{} or CSE. It is similar to
+global code scheduling \cite{dragonbook,click1995global} in the sense that it
+will only move computations. Code hoisting, for example, can reduce the critical
+path length of execution in \ooo{} machines. As more instructions are available
+at the hoisting point, the hardware has more independent instructions to
+reorder. The following example illustrates how hoisting can improve performance
+by exposing more ILP.
 
 \begin{verbatim}
 float fun(float d, float min, float max, float a) {
@@ -463,7 +465,15 @@ bool still_inconsistent(Node lnode, JEdges JE, Visited V, MergeSet MergeSet)
       if MergeSet(Source Node of e) is not a subset of MergeSet(lnode)
         return true
   return false
+\end{verbatim}
 
+Each basic block which has a join-edge (J-Edge) to its successor will have a
+merge-set that is a subset of the merge-set of its successor \cite{das2005}. The
+function \emph{still\_inconsistent} returns true if this invariant is not
+satisfied which allows the function \emph{constructMergeSet} to repeat.
+
+
+\begin{verbatim}
 // Compute a merge-set top-down in breadth first order.
 bool constructMergeSet_1(BFSList B, JEdges JE, DomLevel DL)
   repeat = false
@@ -481,7 +491,9 @@ bool constructMergeSet_1(BFSList B, JEdges JE, DomLevel DL)
           tmp = dom-parent(tmp)
         repeat = still_inconsistent(lnode, JE, MergeSet)
   return repeat
-
+\end{verbatim}
+\newpage
+\begin{verbatim}
 // Construct merge-set of each node in Control-Flow-Graph G of a function.
 void constructMergeSet(CFG G)
   B = Breadth First Order of G
@@ -521,15 +533,22 @@ bool isLiveOutUsingMergeSet(Node N, Variable A)
       if B in MergeSet(N) return true
       B = dom-parent(B)
   return false
+\end{verbatim}
 
+If a variable is not live-out of a basic-block, it still may be used later in
+the basic-block. To establish whether a use of a variable is a kill we iterate
+on all the subsequent instructions in a basic-block checking for uses, the
+\emph{isKill} function uses \emph{isLiveOutUsingMergeSet} to find out if an
+operand is killed in an instruction.
+
+\begin{verbatim}
 // Return true if op is the last use of the operand in I.
 bool isKill(Operand op, Instruction I)
   if (isLiveOutUsingMergeSet(op))
     return false
-
-  for each I1 after I in basic_block(I)
+  for each I1 after I in basic block of I
     if (I1 uses op)
-      return false
+      return false // Not a kill
   return true
 \end{verbatim}
 
@@ -538,12 +557,7 @@ of uses and nodes because each node can have many instructions and hence many
 uses. Also, while iterating on the dominator of each user of a variable we may
 reach to the beginning of a function, in that case the inner while loop needs to
 terminate. These two cases were missing from the algorithm and we came across
-them during implementation. If a variable is not live-out of a basic-block, it
-still may be used later in the basic-block: to establish whether a use of a
-variable is a kill we iterate on all the subsequent instructions in a
-basic-block checking for uses, the \emph{isKill} function uses
-\emph{isLiveOutUsingMergeSet} to find out if an operand is killed in an
-instruction.
+them during implementation.
 
 The \GCM{} pass can be broadly divided into the following steps that we will
 describe in the rest of this section:
@@ -720,22 +734,31 @@ void compute_barriers()
 \subsubsection{Downward-safety of movable instructions}
 
 In order to be able to move an instruction that has side effects, we must
-guarantee that the side-effects of that instructions before and after its motion
-will produce the same side-effects.  For hoisting in particular, we need to
-prove that on all execution paths from the hoisting point to the end of the
-program the side effects appear in the same order.
-
+guarantee that the side-effects of that instruction before and after its
+code-motion will produce the same side-effects.  For hoisting in particular, we
+need to prove that on all execution paths from the hoisting point to the end of
+the program the side effects appear in the same order. In general, we cannot
+introduce a new computation along any path of execution without checking for
+undefined behaviors. The algorithm \emph{compute\_downward\_safety} computes if
+hoisting a set of instruction to a common hoisting point is downward-safe
+\cite{steven1997advanced}. Since \GCM{} is only dealing with VBEs, computing
+downward-safety ensures that no undefined behaviors are introduced as a result
+of code-motion.
+\newline
 \begin{verbatim}
-// Compute downward safety of hoistable instructions at hoist-point
-void compute_downward_safety()
+// Return true if a hoistable instruction is downward safe at hoist-point
+bool compute_downward_safety()
   Worklist = list of all basic-blocks of hoistable instructions
   for each basic-block B in the dominator tree starting at hoist-point:
-    if Worklist is empty, return false // Path exists! not downward safe
+    if Worklist is empty
+       return false // Path exists! not downward safe
     if B is in Worklist:
       remove B from worklist
       remove subtree with root at B // Available at B => downward safe from B
-    if B is a leaf basic-block, return false  // Path exists! not downward safe
-    if B dominates hoist-point, return false  // Back edge
+    if B is a leaf basic-block
+      return false  // Path exists! not downward safe
+    if B dominates hoist-point
+      return false  // Back edge
   return true
 \end{verbatim}
 
@@ -901,7 +924,9 @@ rematerializable.
 \begin{verbatim}
 void doGCM()
   Analyses available: Dominator Tree, DFS Numbering, Memory SSA,
-  Compute DJ-graph of function and compute mergeset based on that
+  Compute DJ-graph of function
+  compute mergeset based on that (using constructMergeSet function)
+  compute barriers (using compute_barriers function)
   do
     Compute GVN of each expression in the function
   while (doCodeHoisting() > 0) // Repeat hoisting if any candidates were hoisted.
@@ -909,19 +934,18 @@ void doGCM()
 \end{verbatim}
 
 We collect the \GVN{} of all the instructions in the function and iterate on the
-list of instructions having identical \GVN{}s. The algorithm prefers hoisting to
-sinking. So first we find the common dominator dominating all such identical
-computations and perform legality checks, as described in
+list of instructions having identical \GVN{}s. The algorithm \emph{doGCM}
+prefers hoisting (\emph{doCodeHoisting}) to sinking (\emph{doCodeSinking}).
+
+For hoisting, we find a common dominator dominating all a set of congruent
+instructions and perform legality checks, as described in
 Section~\ref{subsec:legality}. Often times it is not possible to hoist all the
 instructions to one common dominator, due to legality constraints, e.g.,
 intersecting side-effects, or profitability constraints, e.g., increasing
 register pressure; in those cases, this algorithm would partition
 (Section~\ref{subsec:partition}) the list of identical instructions into subsets
-which can be partially hoisted to their respective common dominators. However,
-it should be noted that we only hoist very busy expressions to avoid checking
-for undefined behaviors resulting because of introducing extra computation in an
-execution path.
-
+which can be partially hoisted to their respective common dominators.
+\newpage
 \begin{verbatim}
 int doCodeHoisting() // Find hoistable candidates and do hoisting
   For each value number VN with 2 or more instructions (I1, I2, ..., Ik)
