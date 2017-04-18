@@ -389,7 +389,7 @@ implementation is that it works in sync with the \GVN{}-\PRE{} such that when
 new hoisting opportunities are created by \GVN{}-\PRE{}, code-hoisting will
 hoist them.
 
-\citet{click1995global} describes aggressive global code motion to first
+\citet{click1995global} describes aggressive \gcm{} to first
 schedule all the instructions as early as possible. This results in very long
 live ranges which is mitigated by again scheduling all the instructions as late
 as possible. They report sppeedup of as high as $23\%$.
@@ -416,9 +416,9 @@ improved compile time and some performance improvements on \SPEC{} benchmarks.
 % Liveness analysis from Ramakrishna
 % Experimental results: Register spills, compile time, run time.
 
-\section{Code motion}
+\section{Global code motion}
 
-The algorithm for code motion uses several common representations of the
+The algorithm for \gcm{} uses several common representations of the
 program that we shortly describe below:
 \begin{itemize}
 \item Dominance (DOM) and Post-Dominance (PDOM) relations \cite{dragonbook} on a
@@ -559,7 +559,7 @@ describe in the rest of this section:
   (Section~\ref{subsec:cost-models}) to move the code,
 \item move the code to hoist point or sink point
   (Section~\ref{subsec:optimistic}), and
-\item update data structures to continue iterative code motion.
+\item update data structures to continue iterative \gcm{}.
 \end{itemize}
 
 \subsection{Finding candidates to move}
@@ -762,7 +762,7 @@ killed operands. If the live-range after \gcm{} is less than before it will
 be moved. Essentially, as long as there is one killed operand, code hoisting
 will either decrease or preserve the register pressure.  Similarly, code-sinking
 will either decrease or preserve the register pressure as long as there is one
-operand killed at most.  The following example explains how code motion of
+operand killed at most.  The following example explains how \gcm{} of
 identical computations can reduce the register pressure.
 
 \begin{verbatim}
@@ -857,7 +857,7 @@ would make the loaded value available by the time it is used. Also, because
 stores and calls are hoisted the least, see Table~\ref{tab:code-motion-metric},
 the performance does not change much whether they are hoisted or not.
 
-\subsection{Code generation for the optimistic code motion algorithm}
+\subsection{Code generation for the optimistic \gcm{} algorithm}
 \label{subsec:optimistic}
 Once all the legality and profitability checks are satisfied for a set of
 congruent instructions, they are suitable candidates for hoisting or sinking. A
@@ -885,7 +885,7 @@ The amount of hoisting depends on whether we collect \GVN{} of instructions
 before finding candidates (optimistic) or, on-demand (pessimistic). It also
 depends on the generality of the \GVN{} algorithm as mentioned earlier in
 Section~\ref{subsec:finding-candidates}. We have implemented an optimistic
-global code motion of congruent instructions which uses the liveness analysis as
+\gcm{} of congruent instructions which uses the liveness analysis as
 illustrated by \citet{das2012} and ranking expressions explained by
 \citet{rosen1988global}.
 
@@ -1248,7 +1248,7 @@ long latency of the division operation.
 
 \section{Conclusion and Future Work}
 \label{sec:future-work}
-We have presented the global code motion of congruent computations in SSA
+We have presented the \gcm{} of congruent computations in SSA
 form. We saw that it improves inlining and LICM opportunities, reduces register
 spills, it also improves performance in some cases. To preserve performance and
 not hoist too much we have register pressure aware cost models described in
