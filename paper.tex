@@ -949,10 +949,12 @@ void doCodeSinking()
   For each value number VN with 2 or more instructions
     if there are two instructions with same immediate successor as post-dominator
       if both are only used in the same PHI-node (PN) of the successor
-        if both have dependencies that are available or can be made available at the sink point
+        if both have dependencies that are available at the sink point
+           // available or can be made available by rematerialization
            mark VN as sinkable
   For each pair (I1, I2) of sinkable instructions
-    Move I1 to the sink point which is just after all the PHI-nodes in the post-dominator
+    Move I1 to the sink point
+    // the sink point is just after all the PHI-nodes in the post-dominator
     update all the uses of PHI node (PN) with I1
     Remove I2 and PN
     if I1 is a memory reference:
@@ -994,9 +996,9 @@ redundant as a result of \gcm{}.
 % Experimental results: Register spills, compile time, run time. compile-time comparison w.r.t. gcc
 For evaluation of \gcm{}, we built \SPEC{} with the patch. All the experiments
 were conducted on an \xlinux{} machine and at -Ofast optimization level. Each
-sub benchmark was run three times and the best result was taken. We collected
+benchmark was run three times and the best result was taken. We collected
 execution time and code-size which is listed in Table~\ref{tab:code-size}, other
-compiler stats are listed in Table~\ref{tab:spills}, Table~\ref{tab:stats}, and
+compiler statistics are listed in Table~\ref{tab:spills}, Table~\ref{tab:stats}, and
 Table~\ref{tab:code-motion-metric}.  We also measured compile time
 Table~\ref{tab:compile-time} to see the impact of \gcm{}.
 
