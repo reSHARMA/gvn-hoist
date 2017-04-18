@@ -975,7 +975,7 @@ Code hoisting opens new opportunities for other hoistable candidates which were
 of higher rank (depended on candidates which got hoisted). Ideally we could
 iterate on lower ranking expressions first and then proceed to higher ranking
 expressions in the same iteration but \LLVM{'}s \GVN{} infrastucture does not
-compute equivalence classes in a effective way. We found it simpler to just
+compute equivalence classes in an effective way. We found it simpler to just
 recompute the value numbers and start finding hoistable candidates again.
 
 \subsection{Time complexity of algorithm}
