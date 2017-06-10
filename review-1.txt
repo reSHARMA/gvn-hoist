@@ -1,0 +1,51 @@
+===========================================================================
+                          OOPSLA'17 Review #208A
+---------------------------------------------------------------------------
+         Paper #208: Global code motion of congruent instructions
+---------------------------------------------------------------------------
+
+                      Overall merit: D. Reject
+                         Confidence: Y. I am knowledgeable in this area,
+                                        but not an expert
+
+                         ===== Paper summary =====
+
+This paper presents an implementation of a global code motion pass in the LLVM compiler.  The paper builds on a lot of related work, and implements new data structures in LLVM to enable an intraprocedural analysis to hoist and sink instructions inside branches (they have to be duplicated on both paths) to before and after the if-else code.  The paper presents some experimental results showing that GCM can improve code size and register spills, sometimes performance, and doesn’t increase (or slightly decreases) compile time.
+
+                      ===== Comments for author =====
+
+While I’m sure this piece of engineering effort, to get GCM implemented in LLVM, could be useful to developers and LLVM users, it is not a research paper.  There is no novelty that I can see in this paper.  The authors take existing algorithms and implement them in LLVM.  Furthermore, in several cases in the paper, the authors say that the implementation, or other LLVM code is not optimized fully to make their GCM perform the best it could.  That optimization should be done before publishing such a work.  
+
+The presentation of this paper also leaves a lot to be desired.  There is no high-level picture of the steps of your GCM compiler pass.  There are very few code examples that walk the reader through concepts.  A running example would greatly benefit this paper.  Also, a set of assumptions and a general description of this GCM implementation would have been useful up front (in Section 3).  As it was, I had to find embedded in the text somewhere that the pass was intraprocedural (although I found this odd because “global” implies interprocedural), and operated only on Very Busy Expressions. Furthermore, I don’t think it benefits the paper or improves readability to have pseudocode for all of the different parts of the compiler pass embedding inline in the text itself.  Key parts of the code can be put in Figures and explained where appropriate. 
+
+At the end of the paper, I failed to see the real benefit of GCM.  Yes, it can reduce code size, but sometimes it increases it.  Same with register spilling.  It doesn’t always reduce execution time, nor always improve compiler time (which shouldn’t be measured in compiler instructions executed).  So I don’t see the appeal/benefit of running this algorithm in general in the LLVM compiler.   Furthermore, your results were not statistically significant because you report on just one execution of each benchmark.
+
+More detailed comments: 
+ - The abstract is a bit rambly and doesn’t clearly list contributions or differentiate this work from previous work.
+ - In the contributions list in the intro, you mention sorting potential candidates by their DFS visit number.  This is not explained here.  In general the intro should remain high-level.  In general, I don’t remember this being discussed anywhere, and I don’t know that you do actually sort candidates in this way, do you?
+ - There are several missing articles (i.e., “the”) in the paper, and some small grammar mistakes (pluralization versus singularization)
+ - The GCC algorithm isn’t really compared with your algorithm - qualitatively in the related work section or quantitatively in results.  
+ - Section 3.1 was quite low-level and was not put in the context of the whole GCM algorithm well.  I would have liked a higher-level description first.  I think Section 3.1 would have been better integrated into the descriptions where relevant in the rest of Section 3. 
+ - Why is the limitation mentioned in 3.2 not already done? [Same with other limitations mentioned throughout the paper.] 
+ - In 3.3, I find the terminology not exact.  What do you mean by “use-operands” and why do these need to be “available at that position”?
+ - Landing pad should be more fully described.
+ - The ranking of expressions (mentioned in 3.3.5) isn’t really well explained - this is peppered throughout the text, but not clearly spelled out.  I think you say later that you don’t rank expressions, but that ranking expressions would make GCM better?
+ - At the end of 3.3.5, why does using VBE make it so that you don’t need to check for undefined behavior?
+ - 3.4.1, it seems that you informally describe reducing register pressure, but don’t formally list your thresholds or how you implement your cost model.  Same with 3.4.2: it’s too informal/anecdotal. 
+ - Lines 16 and 17 at the end of 3.4.1 don’t make sense.  Are you saying that because your GCM algorithm doesn’t end up hoisting calls and stores much, it doesn’t matter if you have special rules about more aggressively hoisting with them?  This is an odd argument.
+ - Did you end up evaluating the partial hoisting technique you implemented?  Does this result in lots more hoisting if you support the partitioning of hoist candidates?  
+ - When coming to 3.5, I didn’t understand the reference to “higher-ranked computations”, but I think it might be in reference to the ordering you mention in 3.4.3?  This, again, should be more clearly explained in 1 place in the text. 
+ - Also in 3.5, re-running your algorithm many times seems expensive.  Why are the optimizations listed in the text not already implemented?  
+ - Also 3.5, I didn’t understand why it is illegal - lines 21 and 22 on page 12?
+ - Why does line 12 on page 13 remove all other instructions?  I thought you were trying to group instructions with this algorithm?  
+ - On line 33 of page 13, the algorithm says the sink point is just after the PHI-nodes, but in the example on page 8, it should be before the PHI nodes, right?
+ - When talking about time complexity in 3.6, you should not say “it does not affect the overall compilation time by much”.  That is imprecise language.
+ - In 3.6, it says “See Section 3”, but I think you mean Section 4 for experimental results. 
+ - Why in Section 4 do you say results are with -Ofast, but then present results with -Os as well.  What is -Os for?  
+ - In Section 4, it is not statistically accurate to just report the numbers for the best execution.  If you do multiple runs of a benchmark, you should report the average and have confidence intervals and error bars to report statistically significant results.
+ - Why can’t you time the compiler itself?  It doesn’t seem correct to report the number of instructions run by the compiler.  
+ - Results should be presented in graphs, which are a lot easier to read than tables.
+ - You mention that LLVM already had a code sinking and hoisting transformation.  How does the number of instructions that it can hoist and sink compare to your GCM?  You mention the existing implementation has limitations because it needs to be fast - why is your algorithm not subject to the same limitations?  
+ - As mentioned above, I don’t see a clear win with your GCM algorithm.  I don’t know why LLVM should always run with this option.
+ - Table 4 has a % over 100.
+
