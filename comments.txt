@@ -6,17 +6,26 @@ the novelty of this paper. We will highlight them again:
 - Cost model (explained in 3.4) to reduce register pressure and partitioning to
 increase number of hoistable candidates.
 
-- A global code motion optimization in SSA form is already not reported, much
-less using liveness analysis and scheduling in a careful way to reduce register
-pressure. Moving congruent computation is also not reported, and the advantages
-associated with it viz., simplicity of safety checks, and guaranteed reduction
-in instruction count; combine that with liveness analysis to reduce live-range
-and we get GCM which offers a careful balance of several extremes
+- A global code motion optimization in SSA form is reported only once (Click
+1995), and none using liveness analysis and scheduling in a careful way to
+reduce register pressure. Moving congruent computation is also not reported, and
+the advantages associated with it viz., simplicity of safety checks, and
+guaranteed reduction in instruction count; combine that with liveness analysis
+to reduce live-range and we get GCM which offers a careful balance of several
+extremes
 
-- An optimization to reduce register spills
+- An optimization to reduce register spills. Reducing register spills is an end
+  to itself. When it does not improve performance it indicates limitation of
+  cost models in other optimization passes. In industrial compilers most
+  compiler optimizations will have magic-numbers (cost-models) which are hacks
+  to relieve optimization authors from considering multiple parameters. For
+  example: constant propagation may increase register pressure, but instead of
+  computing the affect on register pressure, the author may chose to propagate
+  values only so far (say next basic block only). Now this is a problem because
+  introduction of GCM will not benefit this optimization which it should.
+
 - A code size optimization which does not degrade performance
 - A compiler optimization which reduces compile time
-
 
 Other general comments:
 
@@ -24,17 +33,17 @@ Other general comments:
   actual implementation.  It has been our experience with most research papers
   that they just give overviews without any insight into the real implementation
   and that renders paper only of academic interest. An example that validates
-  the point: When we implemented the live-variable using the Das et al., the
-  algorithm in the paper actually had a bug. Having a clear (pseudo)code would
-  allow continuation of the research.
+  the point: When we implemented the live-variable using the Das et al. (Das
+  2012), the algorithm in the paper actually had a bug. Having a clear
+  (pseudo)code would allow continuation of the research.
 
 - Some parts of what we used were already present (liveness analysis, computing
-  barriers, for example), there is a novelty is connecting these individual
-  research works and combining them to form a GCM optimization.
+  barriers, DJ graph, for example), however, there is a novelty is connecting
+  these individual research works and combining them to form a GCM optimization.
 
-- We did not explain few terms like ranking, global optimization, use-operands
-  because these are well known terms to any compiler developer. Now that it has
-  been pointed out we will explain them.
+- We did not explain few terms like ranking, global optimization, use-operands,
+  availability, because these are well known terms to any compiler
+  developer. Now that it has been pointed out we will explain them.
 
 
 Clarification to individual reviewers:
@@ -50,20 +59,19 @@ Reviwer1:
 - We reported compile time with valgrind because measuring the compile time
 requires playing with the build system of the benchmark suite
 
+- We only present code-size results with -Os as this is the compiler option used
+  for code-size optimizations.
+
 Thank you for suggesting several corrections.
 
 Reviewer2:
-
 - The cost-model is explained in detail in section-3.4
 
 - We take both code-size decrease and improved inlining as wins because decrease
   in code-size enables more inlining but only after a certain
   threshold. Moreover, at -Os (Table 1) code size reduces for most benchmarks.
 
-- Reducing register spills is an end to itself. When it does not improve
-  performance it indicates limitation of post-register-allocation optimization
-  passes.
-
 Reviewer3:
 - In general GCM converges within 2-3 iterations for each function
 
+We are ready to provide more clarification if required.
