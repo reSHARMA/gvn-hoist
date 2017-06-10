@@ -666,7 +666,7 @@ expressions are in a landing pad, sinking of those expressions
 may reduce code size. Sinking may also reduce the register pressure in some
 cases, e.g., when the use operands are not kills. For sinking, higher ranked
 expressions would be sunk first. And it would be illegal to sink higher ranked
-identical expressions if they are not anticipable in the common
+identical expressions if they are not fully anticipable in the common
 post-dominator. For example:
 
 \begin{verbatim}
@@ -686,7 +686,7 @@ B3: phi(c1, c2)
 
 In this example (c1, c2) or (d1, d2) are potential sinkable candidates. Since
 (c1, c2) depend on i1 and i2 respectively which are also in their original basic
-blocks, c1 and c2 are not anticipable in B3. So without knowing the ability to sink
+blocks, c1 and c2 are not fully anticipable in B3. So without knowing the ability to sink
 of `i1' and `i2' it would be illegal to sink (c1, c2) to B3. On the other hand
 (d1, d2) can safely be sunk because their operands are readily available at the
 sink point, i.e., B3. It should also be noted that, just because the expressions
@@ -696,7 +696,7 @@ post-dominating PHI to use the exact same values to be legally sinkable.
 A general global scheduling algorithm also requires checks for undefined values
 when introducing a new computation along a path. Since only very busy
 expressions are moved in the current implementation, there is no need to check
-for undefined resulting due to movement of instructions. This simplifies the
+for undefinedness resulting due to movement of instructions. This simplifies the
 implementation.
 
 \subsubsection{Barriers}
