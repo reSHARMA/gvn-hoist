@@ -1,0 +1,45 @@
+===========================================================================
+                          OOPSLA'17 Review #208B
+---------------------------------------------------------------------------
+         Paper #208: Global code motion of congruent instructions
+---------------------------------------------------------------------------
+
+                      Overall merit: D. Reject
+                         Confidence: Y. I am knowledgeable in this area,
+                                        but not an expert
+
+                         ===== Paper summary =====
+
+Code motion is often used in compilers to eliminate redundant computation. For
+instance, typical compilers will lift loop-invariant value computations out of
+loops, storing their invariant value for each loop iteration to use. Similarly,
+common subexpression elimination merges identical computations by merging them
+into a single prior computation and using the computed value multiple times.
+These optimizations are designed to prevent redundant recomputation, but do not
+address other reasons for moving code. This paper presents an algorithm for
+global code motion using a cost model more sophisticated than simply reducing
+redundancy, which can increase instruction-level parallelism.
+
+                      ===== Comments for author =====
+
+This is not a clear paper. Too much pseudocode, not enough explanation.
+
+The actual algorithm is broadly similar to GCSE, with a different consideration
+of when to move expression evaluation: In GCSE, evaluation is moved when the
+set of common subexpression is of size >1 (and other correctness conditions
+hold). In GCM, they're moved based on a more interesting cost model. And yet,
+pages are spent describing the algorithm, and very little describing the cost
+model, which is the actual contribution.
+
+Upon that, the actual results aren't compelling. As you take both size
+decreases and increases as victories (either you increased opportunities for
+inlining or you eliminated redundant code), I can't really judge the utility of
+the code size changes, and the increased opportunity for inlining seems to have
+done nothing for performance. Reducing register spills and increasing inlining
+aren't goals in and of themselves, they're means to an end of performance, and
+this doesn't seem to offer that.
+
+The description is unclear, the contribution is small, and the results are not
+compelling. Put more focus on the cost model and there may be something deeper
+here.
+
