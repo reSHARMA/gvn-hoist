@@ -11,26 +11,58 @@
 
                          ===== Paper summary =====
 
-This paper describes global-code-motion of congruent instructions, a technique where identical computations are hoisted out of different branches and into dominating blocks. This technique has several advantages, such as reducing code size, exposing more ILP to the compiler, reducing branch mis-prediction penalties, and more. A general implementation of this technique is missing from GCC and LLVM. The current LLVM implementation of code hoisting is limited to hoisting from identical basic blocks, and has quadratic overhead.
+This paper describes global-code-motion of congruent instructions, a technique
+where identical computations are hoisted out of different branches and into
+dominating blocks. This technique has several advantages, such as reducing code
+size, exposing more ILP to the compiler, reducing branch mis-prediction
+penalties, and more. A general implementation of this technique is missing from
+GCC and LLVM. The current LLVM implementation of code hoisting is limited to
+hoisting from identical basic blocks, and has quadratic overhead.
 
-The authors provide a new algorithm for moving congruent instructions. It consists of three main steps. After gathering liveness information (using an implementation of DJ-graph and merge-sets) and the control flow graph, the first step of global-code-motion is to identify the congruent instructions. This is done by performing a linear scan of the program, and classifying instructions by their value numbers; due to limitations in LLVM's implementation of global value numbering, this needs to be performed again every time that a load instruction is hoisted.
+The authors provide a new algorithm for moving congruent instructions. It
+consists of three main steps. After gathering liveness information (using an
+implementation of DJ-graph and merge-sets) and the control flow graph, the first
+step of global-code-motion is to identify the congruent instructions. This is
+done by performing a linear scan of the program, and classifying instructions by
+their value numbers; due to limitations in LLVM's implementation of global value
+numbering, this needs to be performed again every time that a load instruction
+is hoisted.
 
-The second step of GCM is to determine where to move the code. They first identify the common dominator and post-dominator, and determine the legality of moving the instructions in either direction by analyzing the dependency. In cases where the legality is unclear (e.g. because of potentially aliasing memory accesses or indirect branches), movement is assumed to be illegal. They then determine whether it's profitable to move instructions to the legal locations, based on how it affects register pressure, live ranges, and spills.
+The second step of GCM is to determine where to move the code. They first
+identify the common dominator and post-dominator, and determine the legality of
+moving the instructions in either direction by analyzing the dependency. In
+cases where the legality is unclear (e.g. because of potentially aliasing memory
+accesses or indirect branches), movement is assumed to be illegal. They then
+determine whether it's profitable to move instructions to the legal locations,
+based on how it affects register pressure, live ranges, and spills.
 
-The third step of the GCM pass is actually moving the code. A copy of the instruction is created at the new location, instructions are rematerialized as necessary, redundant computations are removed, and the IR is updated to restore SSA form. Once this step is complete, all three steps are iteratively repeated until convergence. Compiler flags can be used to limit the number of iterations, or to skip profitability analysis of legal movements, in order to reduce the time the process takes.
+The third step of the GCM pass is actually moving the code. A copy of the
+instruction is created at the new location, instructions are rematerialized as
+necessary, redundant computations are removed, and the IR is updated to restore
+SSA form. Once this step is complete, all three steps are iteratively repeated
+until convergence. Compiler flags can be used to limit the number of iterations,
+or to skip profitability analysis of legal movements, in order to reduce the
+time the process takes.
 
                       ===== Comments for author =====
 
 Pros:
-+ Having to perform GCM reduces compilation time by about 1%, due to the removal of redundant instructions that later passes would have to process.
++ Having to perform GCM reduces compilation time by about 1%, due to the removal
+of redundant instructions that later passes would have to process.
 
 Cons: 
 - On average, GCM caused slightly more slowdown than speedup.
-- It's unclear where the novelty is in this work. It sounds like the techniques being used already exist, even if they weren't fully present in LLVM's compiler.
+
+- It's unclear where the novelty is in this work. It sounds like the techniques
+  being used already exist, even if they weren't fully present in LLVM's
+  compiler.
 
               ===== Questions for authors’ response =====
 
-For Table 1, I think it would be better to have the increase/decrease in code size listed as a percentage instead of the flat number of bytes, or else to have the original code size listed somewhere.
+For Table 1, I think it would be better to have the increase/decrease in code
+size listed as a percentage instead of the flat number of bytes, or else to have
+the original code size listed somewhere.
 
-Since GCM is an iterative process, how many times does it repeat before convergence on these benchmarks?
+Since GCM is an iterative process, how many times does it repeat before
+convergence on these benchmarks?
 
