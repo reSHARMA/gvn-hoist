@@ -367,27 +367,27 @@ data-flow model and an adaptation to a sparse \SSA{} representation is required.
 identical value numbers from immediate successors. Their algorithm iterates on
 computations of same rank and move the code with identical computations from the
 sibling branch to a common dominator if they are very busy
-\cite{steven1997advanced}. The cost-model to mitigate register pressure is
-missing, also there is no mention of sinking congruent instructions.
+\cite{steven1997advanced}. However, the cost-model to mitigate register pressure
+is missing, also, there is no mention of sinking congruent instructions.
 
 \GCC{} recently got code-hoisting \cite{GCCCodeHoisting} which is implemented as
 part of \GVN{}-\PRE{}: it uses the set of ANTIC\_IN and AVAIL\_OUT value
-expressions computed for \PRE{}. ANTIC\_IN[B] contains very busy expressions at
-basic-block B, i.e., values computed on all paths from B to exit and
+expressions computed for \PRE{}. ANTIC\_IN[B] contains very busy expressions
+(VBEs) at basic-block B, i.e., values computed on all paths from B to exit and
 AVAIL\_OUT[B] contains values which are already available. The algorithm hoists
-top down to a predecessor.  It uses ANTIC\_IN[B] to know what expressions will
-be computed on every path from B to exit, and can be computed in B.  It uses
-AVAIL\_OUT[B] to subtract out those values already being computed.  The cost
-function is: for each hoist candidate, if all successors of B are dominated by
-B, then we know insertion into B will eliminate all the remaining computations.
-It then checks to see if at least one successor of B has the value available.
-This avoids hoisting it way up the chain to ANTIC\_IN[B].  It also checks to
-ensure that B has multiple successors, since hoisting in a straight line is
-pointless.  The algorithm continues top down the dominator tree, working in
-tandem with \PRE{} until no more hoisting is possible.  One advantage of \GCC{}
-implementation is that it works in sync with the \GVN{}-\PRE{} such that when
-new hoisting opportunities are created by \GVN{}-\PRE{}, code-hoisting will
-hoist them.
+VBEs to a predecessor.  It uses ANTIC\_IN[B] to know what expressions will be
+computed on every path from the basic block B to exit, and can be computed in B.
+It uses AVAIL\_OUT[B] to subtract out those values already being computed.  The
+cost function is: for each hoist candidate, if all successors of B are dominated
+by B, then we know insertion into B will eliminate all the remaining
+computations.  It then checks to see if at least one successor of B has the
+value available.  This avoids hoisting it way up the chain to ANTIC\_IN[B].  It
+also checks to ensure that B has multiple successors, since hoisting in a
+straight line is pointless.  The algorithm continues top down the dominator
+tree, working in tandem with \PRE{} until no more hoisting is possible.  One
+advantage of \GCC{} implementation is that it works in sync with the
+\GVN{}-\PRE{} such that when new hoisting opportunities are created by
+\GVN{}-\PRE{}, code-hoisting will hoist them.
 
 \citet{click1995global} describes aggressive \gcm{} to first
 schedule all the instructions as early as possible. This results in very long
@@ -401,14 +401,14 @@ promising. It may be because they only used the scheduler for smaller functions
 is more resilient to register pressure because it has more registers compared to
 X86, for example.
 
-\citet{shobaki2013} also recently presented a combinatorial global
-scheduler with reasonable performance improvements. It is possible that both
-Barany and Shobaki's implementation will have similar results when compiled for
-same target architecture. Also, both suffer from the same problem, although
-Shobaki not so much, of large compile times which would not suit in industrial
-compilers like \GCC{} and \LLVM{}. With the algorithm described in the next
-section, we got a reduction in register spills, improved inliner heuristics,
-improved compile time, and show performance improvements on \SPEC{} benchmarks.
+\citet{shobaki2013} also presented a combinatorial global scheduler with
+reasonable performance improvements. It is possible that both Barany and
+Shobaki's implementation will have similar results when compiled for same target
+architecture. Also, both suffer from the same problem, although Shobaki not so
+much, of large compile times which would not suit in industrial compilers like
+\GCC{} and \LLVM{}. With the algorithm described in the next section, we got a
+reduction in register spills, improved inliner heuristics, improved compile
+time, and show performance improvements on \SPEC{} benchmarks.
 
 % TODO: References
 % Sink instructions
@@ -505,13 +505,13 @@ void constructMergeSet(CFG G)
 \end{verbatim}
 
 We compute merge sets, of the control flow graph, which remain same throughout
-the \gcm{} transformation. For \gcm{} we only want to know if a use
-operand is a kill (to compute changes in register pressure.) For that we only
-need to know whether the use is also required later in the execution path. A
-variable is live out of a basic-block B if it is used in the merge set of B. We
-compute the live-out relation on-demand when profitability of hoist/sink
-candidates is to be evaluated. A simplified version of
-\emph{isLiveOutUsingMergeSet} is presented here:
+the \GCM{} transformation. For \GCM{} we only want to know if a use operand is a
+kill (to compute changes in register pressure). For that we only need to know
+whether the use is also required later in the execution path. A variable is live
+out of a basic-block B if it is used in the merge set of B. We compute the
+live-out relation on-demand when profitability of hoist/sink candidates is to be
+evaluated. A simplified version of \emph{isLiveOutUsingMergeSet} is presented
+here:
 
 \begin{verbatim}
 // Return true if variable A is liveout from basic-block N
@@ -563,13 +563,13 @@ The \GCM{} pass can be broadly divided into the following steps that we will
 describe in the rest of this section:
 \begin{itemize}
 \item find candidates (congruent instructions) suitable for \gcm{}
-  (Section~\ref{subsec:finding-candidates},)
+  (Section~\ref{subsec:finding-candidates}),
 \item compute a point in the program where it is both legal
   (Section~\ref{subsec:legality}) and profitable
   (Section~\ref{subsec:cost-models}) to move the code,
 \item move the code to hoist point or sink point
-  (Section~\ref{subsec:optimistic},) and
-\item update data structures to continue iterative \gcm{} (Section~\ref{subsec:optimistic}.)
+  (Section~\ref{subsec:optimistic}) and
+\item update data structures to continue iterative \gcm{} (Section~\ref{subsec:optimistic}).
 \end{itemize}
 
 \subsection{Finding candidates to move}
