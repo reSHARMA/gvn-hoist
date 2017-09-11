@@ -904,7 +904,7 @@ establish that program invariants are maintained: e.g., consistency of use-defs,
 and \SSA{} semantics.
 
 The amount of hoisting depends on whether we collect \GVN{} of instructions
-before finding candidates (optimistic) or, on-demand (pessimistic.) It also
+before finding candidates (optimistic) or, on-demand (pessimistic). It also
 depends on the generality of the \GVN{} algorithm as mentioned earlier in
 Section~\ref{subsec:finding-candidates}. We have implemented an optimistic
 \gcm{} of congruent instructions which uses the liveness analysis as
@@ -998,7 +998,7 @@ void doCodeSinking()
 \end{verbatim}
 
 Code hoisting opens new opportunities for other hoistable candidates which were
-of higher rank (depended on candidates which got hoisted.) Ideally we could
+of higher rank (depended on candidates which got hoisted). Ideally we could
 iterate on lower ranking expressions first and then proceed to higher ranking
 expressions in the same iteration but \LLVM{'}s \GVN{} infrastructure does not
 compute equivalence classes in an effective way. We found it simpler to just
@@ -1014,7 +1014,7 @@ on-demand for hoistable candidates so it does not affect the overall compilation
 time by much. Other analyses like Alias Analysis, \MemorySSA{} and Dominator Tree
 are already available in the \LLVM{} pass pipeline. Although we recompute \GVN{}, and
 Barriers for each iteration of the \gcm{}, we have not seen significant
-increase in the compilation times (see Section~\ref{tab:compile-time}.) We have also
+increase in the compilation times (see Section~\ref{tab:compile-time}). We have also
 provided appropriate compiler
 flags to expedite \gcm{} by bailing out with fewer iterations, or skip the
 liveness based profitability analysis to aggressively move the code as long as
@@ -1075,7 +1075,7 @@ Geomean         & 0.997 &  & \\\hline
 
 Overall there was only a minor change in the performance numbers with a few improvements 
 (429.mcf, 458.sjeng, etc.) and a few regressions (447.dealII, 453.povray,
-etc.) The \gcm{} pass was run twice in the pass pipeline (at -Ofast,)
+etc.) The \gcm{} pass was run twice in the pass pipeline (at -Ofast),
 first after EarlyCSE pass, and then after the inliner. Because EarlyCSE removes
 local redundancies, \GCM{} would have to analyze less redundant instructions, also
 as inliner creates more redundancies, \GCM{} would have more opportunities to move
