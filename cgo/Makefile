@@ -13,7 +13,7 @@ latexmk: $(paper).tex Bibliography.bib
 	latexmk -pdf -pvc $< -pdflatex="pdflatex --shell-escape %O %S"
 
 clean:
-	rm -rf *.aux *.bbl *.blg *.log *.out *.pdf *.dot *~
+	rm -rf *.aux *.bbl *.blg *.log *.out *.dot *~
 
 all: $(paper).pdf
 

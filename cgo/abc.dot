@@ -1,8 +1,0 @@
-digraph abc {
-B0 -> B1
-B0 -> B2
-B1 -> B3
-B1 -> B4
-B2 -> B5
-B2 -> B6
-}
