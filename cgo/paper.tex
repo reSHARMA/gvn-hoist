@@ -484,7 +484,7 @@ bool constructMergeSet_1(BFSList B, JEdges JE,
 void constructMergeSet(CFG G)
   B = Breadth First Order of G
   JE = JEdges of G
-  DL = List of Path length (from root) of each node in G.
+  DL = Path lengths (from root) of each node in G
   do: // Call until a fixed point is reached.
     Repeat = constructMergeSet_1(B, JE, DL)
   while (Repeat)
@@ -500,7 +500,7 @@ evaluated. A simplified version of \emph{isLiveOutUsingMergeSet} is presented
 here:
 
 \begin{verbatim}
-// Return true if variable A is liveout from basic-block N
+// Return true if variable A is liveout from N
 bool isLiveOutUsingMergeSet(Node N, Variable A)
   if (A is defined in N)
     if (A is used outside any basic-block other than N)
@@ -508,11 +508,13 @@ bool isLiveOutUsingMergeSet(Node N, Variable A)
     return false
 
   MergeSet(N) = null
-  // The merge-set of N is the union of merge-sets of its successors.
+  // The merge-set of N is the union of
+  // merge-sets of its successors.
   for W in successors(N)
     MergeSet(N) = MergeSet(N) U MergeSet(W)
 
-  // Iterate over all the uses of A and see if any intersect with the merge-set of N.
+  // Iterate over all the uses of A and see
+  // if any intersect with the merge-set of N.
   for T in users(A)
     B = basic_block(T)
     while (B != null and B != def_bb(A))
@@ -698,7 +700,7 @@ attributes.
 \begin{verbatim}
 // Compute barriers for both hoistable and sinkable
 // candidates.
-void compute_barriers()
+void computeBarriers()
   for each basic-block B in a function:
     barrier_found = false
     for each instruction I in B:
@@ -707,9 +709,10 @@ void compute_barriers()
         barrier_found = true
         break;
 
-    // Find the last barrier below which instructions can be sunk.
-    // If there was no barrier in B, any instruction satisfying
-    // other legality checks can be sunk.
+    // Find the last barrier below which instructions
+    // can be sunk. If there was no barrier in B, any
+    // instruction satisfying other legality checks
+    // can be sunk.
     if barrier_found:
       for each instruction I in B in reverse order:
         if I does not guarantee progress:
@@ -732,17 +735,22 @@ downward-safety ensures that no undefined behaviors are introduced as a result
 of code-motion.
 \newline
 \begin{verbatim}
-// Return true if a hoistable instruction is downward safe at hoist-point
-bool compute_downward_safety()
-  Worklist = list of all basic-blocks of hoistable instructions
-  for each basic-block B in the dominator tree starting at hoist-point:
+// Return true if a hoistable instruction is downward
+// safe at hoist-point
+bool compute_downward_safety(Node HP)
+  Worklist = basic-blocks of hoistable instructions
+  DT = The dominator tree
+  HP = the hoist-point
+  for each basic-block B in the DT starting at HP:
     if Worklist is empty
        return false // Path exists! not downward safe
     if B is in Worklist:
       remove B from worklist
-      remove subtree with root at B // Available at B => downward safe from B
+      // Available at B => downward safe from B
+      remove subtree with root at B
     if B is a leaf basic-block
-      return false  // Path exists! not downward safe
+      // Path exists! not downward safe
+      return false
     if B dominates hoist-point
       return false  // Back edge
   return true
@@ -829,9 +837,9 @@ hoist a subset of instructions by splitting the set of candidates and finding a
 closer hoisting point for each subset.
 
 In order to hoist a subset of identical instructions, we partition the list of
-all candidates in a way to maximize the total number of hoist instructions.  By sorting
-the list of all the candidates in the increasing order of their depth first
-search discovery time stamp \cite{clrs} (DFSIn numbers,) we make sure that
+all candidates in a way to maximize the total number of hoist instructions.  By
+sorting the list of all the candidates in the increasing order of their depth
+first search discovery time stamp \cite{clrs} (DFSIn numbers,) we make sure that
 candidates closer in the list have their common dominator nearby. In
 Figure-\ref{fig:dfsin}, if B3, B4, B5, and B6 have identical computations and if
 for some reason, they cannot be hoisted at B0, then we partition the set of
@@ -909,13 +917,15 @@ rematerializable.
 
 \begin{verbatim}
 void doGCM()
-  Analyses available: Dominator Tree, DFS Numbering, Memory SSA,
+  Analyses available:
+    Dominator Tree, DFS Numbering, Memory SSA
   Compute DJ-graph of function
-  compute mergeset based on that (using constructMergeSet function)
-  compute barriers (using compute_barriers function)
-  do
+  constructMergeSet(CGF)
+  computeBarriers()
+  do:
     Compute GVN of each expression in the function
-  while (doCodeHoisting() > 0) // Repeat hoisting if any candidates were hoisted.
+   // Repeat hoisting if any candidates were hoisted.
+  while (doCodeHoisting() > 0)
   doCodeSinking()
 \end{verbatim}
 
@@ -933,21 +943,25 @@ register pressure; in those cases, this algorithm would partition
 which can be partially hoisted to their respective common dominators.
 \newpage
 \begin{verbatim}
-int doCodeHoisting() // Find hoistable candidates and do hoisting
-  For each value number VN with 2 or more instructions (I1, I2, ..., Ik)
+// Find hoistable candidates and do hoisting
+int doCodeHoisting()
+  For each value number VN with 2 or more instructions
     sort the instructions according to DFSIn numbers
-    if first two I1, I2 are hoistable and if they are downward-safe at hoist-point
-          and if they are profitable to be hoisted at hoist-point
-      proceed to check the ability to hoist subsequent instruction with same VN
-    else
-      proceed to check if I2 and I3 (if available) can be hoisted
-  For each set of instructions (I1, ..., Ik) with same VN that can be hoisted:
-    move the first one I1 to the hoist-point
-    update the use of all other candidates (I2, ..., Ik) to refer to I1
+    if first two I1, I2 are hoistable
+        && downward-safe at hoist-point
+        && profitable to be hoisted at hoist-point:
+      continue the check for subsequent
+        instructions with same VN
+    else:
+      proceed to check if I2 and I3 (if available)
+      can be hoisted
+
+  For each set of hoistable instructions:
+    move the first one (I1) to the hoist-point
+    update their users others to refer to I1
     remove all other instructions (I2, ..., Ik)
-    if I1 has memory references (a load, store, call, etc.)
-      update MemorySSA of I1 and others to point to the MemorySSA reference of I1
-      remove MemorySSA reference of all others which were deleted
+    if I1 has memory references:
+      update MemorySSA of I1 and others
     update statistics
   return number of hoisted instructions
 \end{verbatim}
@@ -959,25 +973,28 @@ performed once because currently there are very few sinkable candidates
 \GCM{}) has a code-sinking which already sinks several instructions.
 
 \begin{verbatim}
-void doCodeSinking()
+int doCodeSinking()
   // Find sinkable instructions
-  For each value number VN with 2 or more instructions
-    if there are two instructions with same immediate successor as post-dominator
-      if both are only used in the same PHI-node (PN) of the successor
-        if both have dependencies that are available at the sink point
-           // available or can be made available by rematerialization
-           mark VN as sinkable
+  For each value number VN with 2 or more instructions:
+    if there are two instructions with same immediate
+        successor(S) as post-dominator:
+      if both are only used in the same PHI-node of S
+          && dependencies of both are available at S:
+         mark instructions as sinkable
 
   // Sink the instructions and update statistics
-  For each pair (I1, I2) of sinkable instructions
+  For each pair (I1, I2) of sinkable instructions:
     Move I1 to the sink point
-    // the sink point is just after all the PHI-nodes in the post-dominator
+    // the sink point is just after all
+    // the PHI-nodes in the post-dominator
     update all the uses of PHI node (PN) with I1
     Remove I2 and PN
     if I1 is a memory reference:
       update MemorySSA of I1
-      update MemorySSA of removed instructions to point to the MemorySSA reference of I1
-      remove MemorySSA reference of all others which were deleted
+      update MemorySSA of removed instructions
+        to point to the MemorySSA reference of I1
+      remove MemorySSA reference of all
+        others which were deleted
     update statistics
 
   return number of sinked instructions
