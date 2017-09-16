@@ -4,7 +4,7 @@ set term postscript dashed color
 set output "printme.ps"
 #plot "ex.csv" using 1:3:xtic(2) with points title "old SCoP detection"
 set margin 10
-set xtics rotate by 70 right
+set xtics rotate by 55 right
 #set title "GCM stats"
 
 #plot 'gvn-stat.csv' using 2:xticlabels(1) with points title "total hoisted", \
