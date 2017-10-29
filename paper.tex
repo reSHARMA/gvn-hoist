@@ -76,7 +76,7 @@
 
 
 %% Title information
-\title[SSA GCM]{Global code motion of congruent instructions}         %% [Short Title] is optional;
+\title[SSA GCM]{A fast global code motion algorithm for code size optimization}         %% [Short Title] is optional;
                                         %% when present, will be used in
                                         %% header instead of Full Title.
 %\titlenote{with title note}             %% \titlenote is optional;
@@ -415,6 +415,55 @@ time, and show performance improvements on \SPEC{} benchmarks.
 % Ranking of instructions from Zadeck
 % Liveness analysis from Ramakrishna
 % Experimental results: Register spills, compile time, run time.
+\section{Code hoisting of congruent computations}
+Examples to show CHI insertion.
+
+The algorithm factors out the reachability of values such that multiple queries
+to find reachability of values are fast. This is based on finding the ANTIC
+points in the CFG which do not change during hoisting. The ANTIC points are
+basically the dominance-frontiers in the inverse graph. So we introduce a data
+structure (CHI nodes) to keep track of values flowing out of a basic block. We
+only do this for values with multiple occurrences in the function as they are
+the potentially hoistable candidates. This approach allows us to hoist
+instructions to a basic block with more than two successors, as well as deal
+with infinite loops in a trivial way.
+
+Limitations: This pass does not hoist fully redundant expressions because they
+are already handled by GVN-PRE. It is advisable to run gvn-hoist before and
+after gvn-pre because gvn-pre creates opportunities for more instructions to be
+hoisted.
+
+\includegraphics[width=0.8\textwidth,height=8cm]{chi-example.pdf}
+
+A CHI keeps information about values flowing out of a basic block.  It is
+similar to PHI but in the inverse graph, and used for outgoing values on each
+edge. For conciseness, it is computed only for instructions with multiple
+occurrences in the CFG because they are the only hoistable candidates.
+
+
+
+The global value number for both I1 and I2 is V, the CHI node will save the
+instruction as well as the edge where the value is flowing to.  Where CHIArg1,
+CHIArg2 are of type CHIArg.
+
+\begin{verbatim}
+struct CHIArg {
+  // Edge destination (shows the direction of flow), may not be where the I is.
+  BasicBlock *Dest;
+  // The instruction which uses the values flowing out of CHI.
+  Instruction *I;
+  // The global value number of I.
+  GVNType VN;
+};
+
+\end{verbatim}
+
+Essentially, CHIArg1 = {V, B, I1} and CHIArg2 = {V, C, I2}
+
+For sinking we use the similar approach as \ref{SSAPRE} to track values flowing
+into a basic block.
+
+TODO: Explain ranking
 
 \section{Global code motion}
 

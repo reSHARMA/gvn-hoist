@@ -1,0 +1,8 @@
+digraph g{
+A [label="A[CHI(CHIArg1, CHIArg2)]"]
+B [label="B(I1)"]
+C [label="C(I2)"]
+
+A -> B
+A -> C
+}
