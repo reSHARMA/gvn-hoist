@@ -769,25 +769,28 @@ possible. Following cost models are implemented:
 Hoisting upwards will decrease the live-range of its use, if it is a last use (a
 kill,) but increase the live-range of its definition. Conversely, sinking will
 decrease the live-range of the defined register but increase the live-range for
-killed operands. If the live-range after \gcm{} is less than before it will
-be moved. Essentially, as long as there is one killed operand, code hoisting
-will either decrease or preserve the register pressure.  Similarly, code-sinking
-will either decrease or preserve the register pressure as long as there is one
-operand killed at most.  The following example explains how \gcm{} of
-identical computations can reduce the register pressure.
+killed operands. If the live-range after \GCM{} will decrease, it will be
+moved. Essentially, as long as there is one killed operand, code hoisting will
+either decrease or preserve the register pressure.  Similarly, code-sinking will
+either decrease or preserve the register pressure as long as there is one
+operand killed at most.  The following example explains how \GCM{} of can reduce
+the register pressure.
 
 \begin{verbatim}
 B0: b = m
     c = n
-    if c is true then goto B3 else goto B4
+    if c is true then goto B1 else goto B2
 B1: a0 = b<kill> + c<kill>
+    goto B3
 B2: a1 = b<kill> + c<kill>
+    goto B3
 \end{verbatim}
 
-After hoisting, $a0$ and $a1$ are removed and a copy of $a0$ as $a1$ is placed
-in $B0$ just before the branch. Since $b$ and $c$ are killed in $a0$ and $a1$,
-hoisting the expressions will reduce the register pressure because two registers
-will be freed.
+After hoisting, $a0$ and $a1$ are removed and a copy of $a0$ is placed in
+$B0$. Since $b$ and $c$ are killed in both $a0$ and $a1$, hoisting the
+expressions will reduce the register pressure because two registers will be
+freed at the insertion point but only one register will be required to assign
+the definition of hoisted instruction $a0$.
 
 Ideally, it should be okay to hoist all the instructions and a later
 live-range-splitting \cite{cooper1998live} pass should make the right decision
@@ -803,9 +806,9 @@ being, that would make the loaded value available by the time it is used.
 \subsubsection{Hoisting an expression across a call}
 \label{cost:across-calls}
 Even hoisting scalars across calls is tricky because it can increase the number
-of spills. During the frame lowering of calls, the argument registers also known
-as the caller saved registers are saved because they might be modified by the
-callee and after the call they are restored. So before the call, the register
+of spills. During the frame lowering of calls, the argument registers (also
+known as the caller saved registers) are saved because they might be modified by
+the callee and after the call they are restored. Due to this the register
 pressure is high because the number of available registers are reduced by the
 number of caller saved registers. In that situation a computation that increases
 register pressure is not profitable to hoist.

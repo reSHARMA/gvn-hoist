@@ -1,5 +1,5 @@
-paper = paper
-slides = slides
+paper=paper
+slides=slides
 $(paper).pdf: $(paper).tex  Bibliography.bib
 	pdflatex -shell-escape $(paper)
 	bibtex $(paper)
