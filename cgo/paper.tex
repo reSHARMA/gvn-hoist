@@ -146,10 +146,10 @@ the \SPEC{} benchmark suite.
 We have implemented the pass in \LLVM{}. It is based on Global Value Numbering
 infrastructure available in \LLVM{}. The experimental results show an average
 saving of 1\% on the total compilation time on \SPEC{}. \GCM{} enables more
-inlining and exposes more loop invariant code motion opportunities in majority
-of the benchmarks. We have also seen execution time improvements in a few of
-\SPEC{} benchmarks viz. mcf and sjeng, moreover, register spills reduced by 2\%
-on the \SPEC{} benchmarks suite when compiled for \xlinux{}. \GCM{} is an
+inlining and exposes more loop invariant code motion opportunities in the
+majority of benchmarks. We have also seen execution time improvements in a few
+of \SPEC{} benchmarks viz. mcf and sjeng, moreover, register spills reduced by
+2\% on the \SPEC{} benchmarks suite when compiled for \xlinux{}. \GCM{} is an
 optimistic algorithm in the sense that it considers all congruent instructions
 in a function as potential candidates. We make an extra effort to hoist
 candidates by partitioning the potential candidates in a way to enable partial
@@ -302,7 +302,7 @@ code out of branches, and in general global scheduling
 \cite{click1995global}. Some relate code-hoisting to code-size optimization
 \cite{rosen1988global} and many \cite{barany2013, shobaki2013} use global
 scheduling to improve performance. Most of the recent work on global scheduling
-are done using integer linear programming (ILP,) which results in prohibitively
+are done using integer linear programming (ILP) which results in prohibitively
 high compile time. To the best of our knowledge we have not found any reference
 which explored \gcm{} of congruent instructions in as much detail us. A part of
 our implementation (aggressive code hoisting) is already merged
@@ -490,14 +490,14 @@ void constructMergeSet(CFG G)
   while (Repeat)
 \end{verbatim}
 
-We compute merge sets, of the control flow graph, which remain same throughout
-the \GCM{} transformation. For \GCM{} we only want to know if a use operand is a
-kill (to compute changes in register pressure). For that we only need to know
-whether the use is also required later in the execution path. A variable is live
-out of a basic-block B if it is used in the merge set of B. We compute the
-live-out relation on-demand when profitability of hoist/sink candidates is to be
-evaluated. A simplified version of \emph{isLiveOutUsingMergeSet} is presented
-here:
+We compute merge sets, of the control flow graph, which remains the same
+throughout the \GCM{} transformation. For \GCM{} we only want to know if a use
+operand is a kill (to compute changes in register pressure). For that we only
+need to know whether the use is also required later in the execution path. A
+variable is live out of a basic-block B if it is used in the merge set of B. We
+compute the live-out relation on-demand when profitability of hoist/sink
+candidates is to be evaluated. A simplified version of
+\emph{isLiveOutUsingMergeSet} is presented here:
 
 \begin{verbatim}
 // Return true if variable A is liveout from N
@@ -616,7 +616,7 @@ paths.
 \subsubsection{Legality of hoisting scalars}
 Scalars are the easiest to hoist because we do not have to analyze them for
 aliasing memory references. As long as all the operands are available, or can be
-made available by rematerialization,) the scalar computations can be hoisted.
+made available by rematerialization, the scalar computations can be hoisted.
 
 \subsubsection{Legality of hoisting loads}
 The availability of operand to the load (an address) is checked at the hoisting
@@ -640,7 +640,7 @@ without further information, calls have to be classified as writing to memory,
 that is the most restrictive form.  Each category of call instructions is
 handled as described for scalar, load, and store instructions.
 
-Hoisting loads/stores across calls also require precise analysis of all the
+Hoisting loads/stores across calls also requires precise analysis of all the
 memory addresses accessed by the call. The current implementation being an
 intraprocedural pass, cannot hoist aggressively across calls. In the presence of
 pure calls, loads can be hoisted but stores can't. Also, if a call throws
@@ -688,13 +688,12 @@ implementation.
 
 \subsubsection{Barriers}
 Barriers are based on the concept of pinned instructions \cite{click1995global}
-but extended to adapt to \LLVM{} IR. Since a basic-block in \LLVM{} IR is
-actually an extended basic-block because there might be calls in the middle of a
-basic-block which might not return. Essentially, any instruction that cannot
-guarantee progress is marked as a barrier. In the absence of context, as in our
-current implementation, some instructions which might be safe are still
-classified as barriers, e.g., volatile loads/stores, calls with missing
-attributes.
+but extended to adapt to \LLVM{} IR. A basic-block in \LLVM{} IR is actually an
+extended basic-block because there might be non-returning calls in the middle of
+a basic-block. Essentially, any instruction that cannot guarantee progress is
+marked as a barrier. In the absence of context, as in our current
+implementation, some instructions which might be safe are still classified as
+barriers, e.g., volatile loads/stores, calls with missing attributes.
 
 \begin{verbatim}
 // Compute barriers for both hoistable and sinkable
@@ -767,7 +766,7 @@ possible. Following cost models are implemented:
 \subsubsection{Reduce register pressure}
 \label{hoist:reg-pressure}
 Hoisting upwards will decrease the live-range of its use, if it is a last use (a
-kill,) but increase the live-range of its definition. Conversely, sinking will
+kill) but increase the live-range of its definition. Conversely, sinking will
 decrease the live-range of the defined register but increase the live-range for
 killed operands. If the live-range after \GCM{} will decrease, it will be
 moved. Essentially, as long as there is one killed operand, code hoisting will
@@ -816,7 +815,7 @@ register pressure is not profitable to hoist.
 \subsubsection{Partitioning the list of hoist candidates to maximize hoisting}
 \label{subsec:partition}
 %The partition algorithm is described as follows:
-In the approach, described in Section~\ref{subsec:optimistic}, it is possible
+In the approach described in Section~\ref{subsec:optimistic}, it is possible
 that a common hoisting point for all the instructions does not satisfy legality
 or profitability checks. In these cases, it is still possible to `partially'
 hoist a subset of instructions by splitting the set of candidates and finding a
@@ -825,7 +824,7 @@ closer hoisting point for each subset.
 In order to hoist a subset of identical instructions, we partition the list of
 all candidates in a way to maximize the total number of hoist instructions.  By
 sorting the list of all the candidates in the increasing order of their depth
-first search discovery time stamp \cite{clrs} (DFSIn numbers,) we make sure that
+first search discovery time stamp \cite{clrs} (DFSIn numbers) we make sure that
 candidates closer in the list have their common dominator nearby. In
 Figure-\ref{fig:dfsin}, if B3, B4, B5, and B6 have identical computations and if
 for some reason, they cannot be hoisted at B0, then we partition the set of
@@ -852,8 +851,8 @@ still be hoisted - if legal and profitable - to B2.
 
 % TODO: Rewrite the following.
 In our current implementation we keep as many candidates in one set as possible
-(greedy approach.) To start with, first two candidates are tried for
-hoistability (see Section~\ref{subsec:optimistic},) if that passes then the next
+(greedy approach.) To start with, the first two candidates are tried for
+hoistability (see Section~\ref{subsec:optimistic}) if that passes then the next
 instruction is tried (if available) and so on until a non-hoistable instruction
 is found. The partition starts from that point.  We split the list at a point
 where the legality checks fail to hoist subset of candidates which are legal to
@@ -1082,7 +1081,7 @@ We see some nice gains in code size at -Os with \gcm{} (403.gcc, 447.dealII, and
 is the text size delta (from linux size command) of the final executable for
 each benchmark.  On the other hand, some benchmarks like 473.astar increased in
 code size by almost 2\%. This is because once the code-size of a function
-decreases (due to \GCM{},) it becomes cheaper to inline. As we can see in
+decreases (due to \GCM{}) it becomes cheaper to inline. As we can see in
 Table~\ref{tab:stats}, four more functions got inlined in 473.astar. Except for
 447.dealII, 450.soplex, 482.sphinx3 and 483.xalancbmk all other benchmarks got
 more functions inlined. Also, since the pass runs early, it affects many
@@ -1099,7 +1098,7 @@ inlining, loop-unrolling, code-versioning are aggressive at -Ofast.
     \scalebox{0.7}{
     \begin{tabular}{|l|r|r|r|}
       \hline
-Number of spills  &base(-Ofast) &\GCM{}(-Ofast) &\%change\\\hline
+Benchmarks        &base(-Ofast) &\GCM{}(-Ofast) &GCM/base\\\hline
 400.perlbench	  & 2539	& 2493	& 0.98 \\\hline
 401.bzip2	  & 718	        & 707	& 0.98 \\\hline
 403.gcc	          & 5782	& 5722	& 0.99 \\\hline
@@ -1130,7 +1129,7 @@ Grand Total	  & 43349	& 42497	& 0.98 \\\hline
 Spills are listed in Table~\ref{tab:spills}. Spills were reduced by an average
 of 2\% on the \SPEC{} benchmark suite. This is a result of cost-model which
 limits the \gcm{} to those candidates which do not increase the register
-pressure (except for loads Section~\ref{subsec:cost-models},) overall spills
+pressure (except for loads Section~\ref{subsec:cost-models}) overall spills
 still decreases.
 
 \begin{table}[h]
