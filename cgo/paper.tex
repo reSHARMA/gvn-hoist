@@ -559,6 +559,67 @@ describe in the rest of this section:
 \item update data structures to continue iterative \gcm{} (Section~\ref{subsec:optimistic}).
 \end{itemize}
 
+
+\subsection{Profitability check (Cost models)}
+\label{subsec:cost-models}
+TODO: Motivate why this is important.
+After the legality checks have passed, we check if a \gcm{} is profitable.  That
+takes into account the impact \gcm{} would have on various parameters that might
+affect runtime performance, e.g., impact on live-range, gain in the code
+size. The current implementation makes effort to not regress in performance
+across popular benchmarks and at the same time to reduce code size as much as
+possible. Following cost models are implemented:
+
+\subsubsection{Reduce register pressure}
+\label{hoist:reg-pressure}
+Hoisting upwards will decrease the live-range of its use, if it is a last use (a
+kill) but increase the live-range of its definition. Conversely, sinking will
+decrease the live-range of the defined register but increase the live-range for
+killed operands. If the live-range after \GCM{} will decrease, it will be
+moved. Essentially, as long as there is one killed operand, code hoisting will
+either decrease or preserve the register pressure.  Similarly, code-sinking will
+either decrease or preserve the register pressure as long as there is one
+operand killed at most.  The following example explains how \GCM{} of can reduce
+the register pressure.
+
+\begin{verbatim}
+B0: b = m
+    c = n
+    if c is true then goto B1 else goto B2
+B1: a0 = b<kill> + c<kill>
+    goto B3
+B2: a1 = b<kill> + c<kill>
+    goto B3
+\end{verbatim}
+
+After hoisting, $a0$ and $a1$ are removed and a copy of $a0$ is placed in
+$B0$. Since $b$ and $c$ are killed in both $a0$ and $a1$, hoisting the
+expressions will reduce the register pressure because two registers will be
+freed at the insertion point but only one register will be required to assign
+the definition of hoisted instruction $a0$.
+
+Ideally, it should be okay to hoist all the instructions and a later
+live-range-splitting \cite{cooper1998live} pass should make the right decision
+but the current live-range splitting pass of \LLVM{} is not making the optimal
+decision and we have found performance regressions while hoisting aggressively.
+
+There is a special case for hoisting load instructions when the hoist-point is
+the predecessor basic-block for all the congruent loads. Even if the register
+pressure would increase, we prefer to hoist loads in this case. The reason
+being, that would make the loaded value available by the time it is used.
+
+
+\subsubsection{Hoisting an expression across a call}
+\label{cost:across-calls}
+Even hoisting scalars across calls is tricky because it can increase the number
+of spills. During the frame lowering of calls, the argument registers (also
+known as the caller saved registers) are saved because they might be modified by
+the callee and after the call they are restored. Due to this the register
+pressure is high because the number of available registers are reduced by the
+number of caller saved registers. In that situation a computation that increases
+register pressure is not profitable to hoist.
+
+
 \subsection{Finding candidates to move}
 \label{subsec:finding-candidates}
 The first step is to find a set of congruent instructions
@@ -594,6 +655,85 @@ precomputed.
 Once the instructions have been classified into congruence classes, we compute
 for each group of congruent instructions, a point in the program that is both
 legal and profitable for the instructions to be moved to.
+
+\subsubsection{Barriers}
+Barriers are based on the concept of pinned instructions \cite{click1995global}
+but extended to adapt to \LLVM{} IR. A basic-block in \LLVM{} IR is actually an
+extended basic-block because there might be non-returning calls in the middle of
+a basic-block. Essentially, any instruction that cannot guarantee progress is
+marked as a barrier. In the absence of context, as in our current
+implementation, some instructions which might be safe are still classified as
+barriers, e.g., volatile loads/stores, calls with missing attributes.
+
+\begin{verbatim}
+// Compute barriers for both hoistable and sinkable
+// candidates.
+void computeBarriers()
+  for each basic-block B in a function:
+    barrier_found = false
+    for each instruction I in B:
+      if I does not guarantee progress:
+        mark I as a barrier instruction
+        barrier_found = true
+        break;
+
+    // Find the last barrier below which instructions
+    // can be sunk. If there was no barrier in B, any
+    // instruction satisfying other legality checks
+    // can be sunk.
+    if barrier_found:
+      for each instruction I in B in reverse order:
+        if I does not guarantee progress:
+          mark I as a sink barrier
+          break
+\end{verbatim}
+
+\subsubsection{Partitioning the list of hoist candidates to maximize hoisting}
+\label{subsec:partition}
+%The partition algorithm is described as follows:
+In the approach described in Section~\ref{subsec:optimistic}, it is possible
+that a common hoisting point for all the instructions does not satisfy legality
+or profitability checks. In these cases, it is still possible to `partially'
+hoist a subset of instructions by splitting the set of candidates and finding a
+closer hoisting point for each subset.
+
+In order to hoist a subset of identical instructions, we partition the list of
+all candidates in a way to maximize the total number of hoist instructions.  By
+sorting the list of all the candidates in the increasing order of their depth
+first search discovery time stamp \cite{clrs} (DFSIn numbers) we make sure that
+candidates closer in the list have their common dominator nearby. In
+Figure-\ref{fig:dfsin}, if B3, B4, B5, and B6 have identical computations and if
+for some reason, they cannot be hoisted at B0, then we partition the set of
+hoistable candidates in their DFSIn order. In this case the DFSIn ordering would
+be B3, B4, B5, B6 which will allow the instructions in (B3, B4) to be hoisted at
+B1 and those in (B5, B6) to be hoisted at B2. Even if instructions in (B3, B4)
+could not be hoisted, for some reason, to B1, the instructions in (B5, B6) can
+still be hoisted - if legal and profitable - to B2.
+
+\begin{figure}
+\centering
+%rankdir=LR;
+\digraph[scale=0.35]{abc}{
+  B0 -> B1
+  B0 -> B2
+  B1 -> B3
+  B1 -> B4
+  B2 -> B5
+  B2 -> B6
+}
+\caption{\CFG{} to illustrate partitioning}
+\label{fig:dfsin}
+\end{figure}
+
+% TODO: Rewrite the following.
+In our current implementation we keep as many candidates in one set as possible
+(greedy approach.) To start with, the first two candidates are tried for
+hoistability (see Section~\ref{subsec:optimistic}) if that passes then the next
+instruction is tried (if available) and so on until a non-hoistable instruction
+is found. The partition starts from that point.  We split the list at a point
+where the legality checks fail to hoist subset of candidates which are legal to
+hoist and then start finding new hoisting point for the remaining ones.
+
 
 \subsection{Legality check}
 \label{subsec:legality}
@@ -686,37 +826,6 @@ expressions are moved in the current implementation, there is no need to check
 for undefinedness resulting due to movement of instructions. This simplifies the
 implementation.
 
-\subsubsection{Barriers}
-Barriers are based on the concept of pinned instructions \cite{click1995global}
-but extended to adapt to \LLVM{} IR. A basic-block in \LLVM{} IR is actually an
-extended basic-block because there might be non-returning calls in the middle of
-a basic-block. Essentially, any instruction that cannot guarantee progress is
-marked as a barrier. In the absence of context, as in our current
-implementation, some instructions which might be safe are still classified as
-barriers, e.g., volatile loads/stores, calls with missing attributes.
-
-\begin{verbatim}
-// Compute barriers for both hoistable and sinkable
-// candidates.
-void computeBarriers()
-  for each basic-block B in a function:
-    barrier_found = false
-    for each instruction I in B:
-      if I does not guarantee progress:
-        mark I as a barrier instruction
-        barrier_found = true
-        break;
-
-    // Find the last barrier below which instructions
-    // can be sunk. If there was no barrier in B, any
-    // instruction satisfying other legality checks
-    // can be sunk.
-    if barrier_found:
-      for each instruction I in B in reverse order:
-        if I does not guarantee progress:
-          mark I as a sink barrier
-          break
-\end{verbatim}
 
 \subsubsection{Downward-safety of movable instructions}
 
@@ -754,109 +863,7 @@ bool computeDownwardSafety(Node HP)
   return true
 \end{verbatim}
 
-\subsection{Profitability check (Cost models)}
-\label{subsec:cost-models}
-After the legality checks have passed, we check if a \gcm{} is profitable.  That
-takes into account the impact \gcm{} would have on various parameters that might
-affect runtime performance, e.g., impact on live-range, gain in the code
-size. The current implementation makes effort to not regress in performance
-across popular benchmarks and at the same time to reduce code size as much as
-possible. Following cost models are implemented:
 
-\subsubsection{Reduce register pressure}
-\label{hoist:reg-pressure}
-Hoisting upwards will decrease the live-range of its use, if it is a last use (a
-kill) but increase the live-range of its definition. Conversely, sinking will
-decrease the live-range of the defined register but increase the live-range for
-killed operands. If the live-range after \GCM{} will decrease, it will be
-moved. Essentially, as long as there is one killed operand, code hoisting will
-either decrease or preserve the register pressure.  Similarly, code-sinking will
-either decrease or preserve the register pressure as long as there is one
-operand killed at most.  The following example explains how \GCM{} of can reduce
-the register pressure.
-
-\begin{verbatim}
-B0: b = m
-    c = n
-    if c is true then goto B1 else goto B2
-B1: a0 = b<kill> + c<kill>
-    goto B3
-B2: a1 = b<kill> + c<kill>
-    goto B3
-\end{verbatim}
-
-After hoisting, $a0$ and $a1$ are removed and a copy of $a0$ is placed in
-$B0$. Since $b$ and $c$ are killed in both $a0$ and $a1$, hoisting the
-expressions will reduce the register pressure because two registers will be
-freed at the insertion point but only one register will be required to assign
-the definition of hoisted instruction $a0$.
-
-Ideally, it should be okay to hoist all the instructions and a later
-live-range-splitting \cite{cooper1998live} pass should make the right decision
-but the current live-range splitting pass of \LLVM{} is not making the optimal
-decision and we have found performance regressions while hoisting aggressively.
-
-There is a special case for hoisting load instructions when the hoist-point is
-the predecessor basic-block for all the congruent loads. Even if the register
-pressure would increase, we prefer to hoist loads in this case. The reason
-being, that would make the loaded value available by the time it is used.
-
-
-\subsubsection{Hoisting an expression across a call}
-\label{cost:across-calls}
-Even hoisting scalars across calls is tricky because it can increase the number
-of spills. During the frame lowering of calls, the argument registers (also
-known as the caller saved registers) are saved because they might be modified by
-the callee and after the call they are restored. Due to this the register
-pressure is high because the number of available registers are reduced by the
-number of caller saved registers. In that situation a computation that increases
-register pressure is not profitable to hoist.
-
-\subsubsection{Partitioning the list of hoist candidates to maximize hoisting}
-\label{subsec:partition}
-%The partition algorithm is described as follows:
-In the approach described in Section~\ref{subsec:optimistic}, it is possible
-that a common hoisting point for all the instructions does not satisfy legality
-or profitability checks. In these cases, it is still possible to `partially'
-hoist a subset of instructions by splitting the set of candidates and finding a
-closer hoisting point for each subset.
-
-In order to hoist a subset of identical instructions, we partition the list of
-all candidates in a way to maximize the total number of hoist instructions.  By
-sorting the list of all the candidates in the increasing order of their depth
-first search discovery time stamp \cite{clrs} (DFSIn numbers) we make sure that
-candidates closer in the list have their common dominator nearby. In
-Figure-\ref{fig:dfsin}, if B3, B4, B5, and B6 have identical computations and if
-for some reason, they cannot be hoisted at B0, then we partition the set of
-hoistable candidates in their DFSIn order. In this case the DFSIn ordering would
-be B3, B4, B5, B6 which will allow the instructions in (B3, B4) to be hoisted at
-B1 and those in (B5, B6) to be hoisted at B2. Even if instructions in (B3, B4)
-could not be hoisted, for some reason, to B1, the instructions in (B5, B6) can
-still be hoisted - if legal and profitable - to B2.
-
-\begin{figure}
-\centering
-%rankdir=LR;
-\digraph[scale=0.35]{abc}{
-  B0 -> B1
-  B0 -> B2
-  B1 -> B3
-  B1 -> B4
-  B2 -> B5
-  B2 -> B6
-}
-\caption{\CFG{} to illustrate partitioning}
-\label{fig:dfsin}
-\end{figure}
-
-% TODO: Rewrite the following.
-In our current implementation we keep as many candidates in one set as possible
-(greedy approach.) To start with, the first two candidates are tried for
-hoistability (see Section~\ref{subsec:optimistic}) if that passes then the next
-instruction is tried (if available) and so on until a non-hoistable instruction
-is found. The partition starts from that point.  We split the list at a point
-where the legality checks fail to hoist subset of candidates which are legal to
-hoist and then start finding new hoisting point for the remaining ones.
 
 \subsection{Code generation for the optimistic \gcm{} algorithm}
 \label{subsec:optimistic}
