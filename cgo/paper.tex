@@ -307,6 +307,8 @@ instructions. A part of our implementation (aggressive code hoisting) is already
 merged in \LLVM{} trunk. The main contributions of this paper are:
 \begin{itemize}[leftmargin=*,topsep=0pt]
 \item an optimistic fast algorithm to schedule congruent instructions;
+\item introducing an analogue of PHI nodes on the inverse CFG which allows
+  faster tracking of anticipable instructions;
 \item a cost model to reduce interference and hence, reduce spills;
 \item experimental evaluation of our implementation in \LLVM{}.
 \end{itemize}
@@ -718,7 +720,7 @@ code-motion will produce the same side-effects.  For hoisting in particular, we
 need to prove that on all execution paths from the hoisting point to the end of
 the program the side effects appear in the same order. In general, we cannot
 introduce a new computation along any path of execution without checking for
-undefined behaviors \cite{undef}. Since \GCM{} is only dealing with VBEs, as
+undefined behavior \cite{undef}. Since \GCM{} is only dealing with VBEs, as
 hoisting happens for CHIs with complete entries, the downward safety is ensured
 by construction of CHIs.
 
@@ -802,6 +804,10 @@ int doCodeHoisting()
   return number of sinked instructions
 \end{verbatim}
 
+Code hoisting opens new opportunities for other hoistable candidates which were
+of higher rank (depended on candidates which got hoisted) which are encountered
+subsequently as the algorithm visits instructions in the increasing order of
+their ranks.
 
 %\newpage
 After no more candidates are hoistable, sinking is performed. Sinking is only
@@ -809,10 +815,17 @@ performed once because currently there are very few sinkable candidates
 (Figure~\ref{tab:code-motion-metric}) as SimplifyCFG of LLVM (which runs before
 \GCM{}) has a code-sinking which already sinks several instructions.
 
+For sinking we reuse the PHI nodes instead of inserting another expression nodes
+like in \cite{ssapre} because PHI nodes ensure availability of definitions, and
+hence downward safety, as long as all instructions corresponding to a PHI are
+congruent. Also, the PHI nodes represent a complete set of instructions which
+could be potentially sunk for code-size optimizations because PHI nodes
+represent all values flowing out from a basic block into its dominance-frontier.
+
 \begin{verbatim}
 int doCodeSinking()
   // Find sinkable instructions
-  For each value number VN with 2 or more instructions:
+  For each value number VN > 1 instructions:
     if there are two instructions with same immediate
         successor(S) as post-dominator:
       if both are only used in the same PHI-node of S
@@ -837,33 +850,23 @@ int doCodeSinking()
   return number of sinked instructions
 \end{verbatim}
 
-Code hoisting opens new opportunities for other hoistable candidates which were
-of higher rank (depended on candidates which got hoisted). Ideally we could
-iterate on lower ranking expressions first and then proceed to higher ranking
-expressions in the same iteration but \LLVM{'}s \GVN{} infrastructure does not
-compute equivalence classes in an effective way. We found it simpler to just
-recompute the value numbers and start finding hoistable candidates again.
 
 \subsection{Time complexity of algorithm}
 The complexity of code hoisting is linear in number of instructions that are
-candidates for \gcm{}, matching the complexity of \PRE{} on \SSA{} form.
-The analyses computed for this pass are Global Value Numbering, Computation of
-DJ-graph and merge-sets, Marking Barriers, all are linear in number of
-instructions in a function. Liveness analysis is expensive and only performed
-on-demand for hoistable candidates so it does not affect the overall compilation
-time by much. Other analyses like Alias Analysis, \MemorySSA{} and Dominator Tree
-are already available in the \LLVM{} pass pipeline. Although we recompute \GVN{}, and
-Barriers for each iteration of the \gcm{}, we have not seen significant
-increase in the compilation times (see Section~\ref{tab:compile-time}). We have also
-provided appropriate compiler
+candidates for \gcm{}, matching the complexity of \PRE{} on \SSA{} form.  The
+analyses computed for this pass like Global Value Numbering, Marking Barriers,
+are both linear in number of instructions in a function. Computation of DJ-graph
+and merge-sets is $O(E)$, E being number of edges in the CFG. Liveness analysis
+is not very expensive \cite{das2012} but still only performed on-demand for
+hoistable candidates. Other analyses like Alias Analysis, \MemorySSA{} and
+Dominator Tree are already available in the \LLVM{} pass pipeline.
+
+Although we recompute \GVN{}, and Barriers for each iteration of the \gcm{},
+there is still gain in the compilation times (see
+Section~\ref{tab:compile-time}). We have also provided appropriate compiler
 flags to expedite \gcm{} by bailing out with fewer iterations, or skip the
 liveness based profitability analysis to aggressively move the code as long as
 they are legal.
-
-The analysis is followed by a simple code generation that adds the identified
-instruction in the destination point and removes all instructions rendered
-redundant as a result of \gcm{}.
-
 
 \section{Experimental Evaluation}
 \label{sec:experimental-results}
