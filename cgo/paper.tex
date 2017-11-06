@@ -57,7 +57,6 @@
                         %% http://ctan.org/pkg/subcaption
 \usepackage{comment}
 \usepackage{amsmath}
-\usepackage{hyperref}
 \usepackage{graphicx}
 \usepackage{amssymb}
 \usepackage{graphviz}
@@ -438,39 +437,39 @@ describe in the rest of this section:
 \item update data structures to continue iterative \gcm{} (Section~\ref{subsec:optimistic}).
 \end{itemize}
 
-
-\section{Code hoisting of congruent computations}
-Examples to show CHI insertion.
-
+\section{A fastt Code motion of congruent computations}
 The algorithm factors out the reachability of values such that multiple queries
-to find reachability of values are fast. This is based on finding the ANTIC
-points in the CFG which do not change during hoisting. The ANTIC points are
-basically the dominance-frontiers in the inverse graph. So we introduce a data
-structure (CHI nodes) to keep track of values flowing out of a basic block. We
-only do this for values with multiple occurrences in the function as they are
-the potentially hoistable candidates. This approach allows us to hoist
-instructions to a basic block with more than two successors, as well as deal
-with infinite loops in a trivial way.
+to find reachability of values are fast. This is based on finding the dominance
+frontiers and the post-dominance frontiers of the CFG. These points, being
+structural properties of a graph, do not change during code-motion.
+
+A post-dominance frontier is the basic block where anticipability (ANTIC) of an
+instruction (I) is checked because it the point on which the basic block
+containing I is control dependent.
+
+So we introduce a data structure (CHI nodes) to keep track of values flowing out
+of a basic block. We only do this for values with multiple occurrences in the
+function as they are the potentially hoistable candidates. This approach allows
+us to hoist instructions to a basic block with more than two successors, as well
+as deal with infinite loops in a trivial way.
 
 Limitations: This pass does not hoist fully redundant expressions because they
 are already handled by GVN-PRE. It is advisable to run gvn-hoist before and
 after gvn-pre because gvn-pre creates opportunities for more instructions to be
 hoisted.
 
-\begin{figure}[h!]
+A CHI keeps information about values flowing out of a basic block.  It is
+similar to PHI but in the inverse graph, and used for outgoing values on each
+edge. For conciseness, it is computed only for instructions with multiple
+occurrences in the CFG because they are the only hoistable candidates.
+
+\begin{figure}
   \includegraphics[width=0.4\textwidth]{chi-example.pdf}
   \vspace*{-1.0cm}
 \caption{I1, I2 are instructions in B, and C respectively, CHIArg1 = \{V, B,
   I1\} and CHIArg2 = \{V, C, I2\}, V is the value number for both I1, and I2}
 \label{fig:chi-intro}
 \end{figure}
-
-A CHI keeps information about values flowing out of a basic block.  It is
-similar to PHI but in the inverse graph, and used for outgoing values on each
-edge. For conciseness, it is computed only for instructions with multiple
-occurrences in the CFG because they are the only hoistable candidates.
-
-
 
 The global value number for both I1 and I2 is V, the CHI node will save the
 instruction as well as the edge where the value is flowing to.  Where CHIArg1,
@@ -486,15 +485,31 @@ struct CHIArg {
   // The global value number of I.
   GVNType VN;
 };
-
 \end{verbatim}
 
-Essentially, CHIArg1 = \{V, B, I1\} and CHIArg2 = \{V, C, I2\}
+Essentially, CHIArg1 = \{V, B, I1\} and CHIArg2 = \{V, C, I2\}. For sinking we
+use the similar approach as \cite{ssapre} to track values flowing into a basic
+block.
 
-For sinking we use the similar approach as \cite{ssapre} to track values flowing
-into a basic block.
+When SSAPRE inserts PHI (expression PHIs), it does so at places where
+(potentially) multiple expressions may merge. If a PHI has a missing entry, that
+means the expression is partially available.  The concept may work for hoisting
+expression to help factor out anticipability by working on inverted graph. If we
+insert a CHI, to a basic block with multiple successors, as instructions are
+hoisted upwards to the post-dominance frontier.  And we start walking the CFG to
+figure out if any CHI has a missing entry, that means the expression is not
+anticipable in the basic block having that outgoing PHI.
 
-
+\begin{itemize}
+\item Sort VNs according to their rank, and start with lowest ranked VN
+\item Take a VN and for each instruction with same VN
+\item  - Find the dominance frontier in the inverse graph (PDF)
+\item  - Insert the chi-node at PDF
+\item Remove the chi-nodes with missing entries
+\item Remove values from CHI-nodes which do not truly flow out, e.g.,
+\item  modified along the path.
+\item Collect the remaining values that are still anticipable
+\end{itemize}
 
 \subsection{Profitability check (Cost models)}
 \label{subsec:cost-models}
