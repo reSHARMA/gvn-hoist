@@ -460,7 +460,8 @@ hoisted.
 \begin{figure}[h!]
   \includegraphics[width=0.4\textwidth]{chi-example.pdf}
   \vspace*{-1.0cm}
-\caption{I1, I2 are instructions in B, and C respectively, CHIArg1 = \{V, B, I1\} and CHIArg2 = \{V, C, I2\}}
+\caption{I1, I2 are instructions in B, and C respectively, CHIArg1 = \{V, B,
+  I1\} and CHIArg2 = \{V, C, I2\}, V is the value number for both I1, and I2}
 \label{fig:chi-intro}
 \end{figure}
 
@@ -477,9 +478,10 @@ CHIArg2 are of type CHIArg.
 
 \begin{verbatim}
 struct CHIArg {
-  // Edge destination (shows the direction of flow), may not be where the I is.
+  // Edge destination (shows the direction of flow),
+  // may not be where the I is.
   BasicBlock *Dest;
-  // The instruction which uses the values flowing out of CHI.
+  // The instruction CHI-arg refers to.
   Instruction *I;
   // The global value number of I.
   GVNType VN;
@@ -487,9 +489,9 @@ struct CHIArg {
 
 \end{verbatim}
 
-Essentially, CHIArg1 = {V, B, I1} and CHIArg2 = {V, C, I2}
+Essentially, CHIArg1 = \{V, B, I1\} and CHIArg2 = \{V, C, I2\}
 
-For sinking we use the similar approach as \ref{SSAPRE} to track values flowing
+For sinking we use the similar approach as \cite{ssapre} to track values flowing
 into a basic block.
 
 
