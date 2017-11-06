@@ -270,10 +270,12 @@ by $15\%$.  In fact, there are several advantages of \GCM{}:
   improved inlining heuristics; functions become cheaper to inline when their
   code size decreases because the inliner heuristics depend on instruction
   count;
-\item it exposes more instruction level parallelism to the later compiler
+\item it exposes more instruction level parallelism (ILP) to the later compiler
   passes. By hoisting identical computations to be executed earlier, instruction
   schedulers can move heavy computations earlier in order to avoid pipeline
-  bubbles;
+  bubbles. Although it decreases the ILP of basic blocks from where the
+  instructions were removed, those basic blocks execute for lesser number of
+  cycles than the destination basic block.
 \item it reduces branch misprediction penalty on \ooo{} processors with
   speculative execution of branches: by hoisting or sinking expressions out of
   branches, it can effectively reduce the amount of code to be speculatively
