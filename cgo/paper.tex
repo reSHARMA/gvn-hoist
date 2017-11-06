@@ -150,12 +150,9 @@ majority of benchmarks. We have also seen execution time improvements in a few
 of \SPEC{} benchmarks viz. mcf and sjeng, moreover, register spills reduced by
 2\% on the \SPEC{} benchmarks suite when compiled for \xlinux{}. \GCM{} is an
 optimistic algorithm in the sense that it considers all congruent instructions
-in a function as potential candidates. We make an extra effort to hoist
-candidates by partitioning the potential candidates in a way to enable partial
-hoisting in case a common hoisting point for all the candidates cannot be
-found. We also formalize why register pressure reduces as a result of \gcm{},
-and how \gcm{} increases instruction level parallelism thereby enabling more
-\ooo{} execution on modern architectures.
+in a function as potential candidates. We also formalize why register pressure
+reduces as a result of \gcm{}, and how \gcm{} increases instruction level
+parallelism thereby enabling more \ooo{} execution on modern architectures.
 \end{abstract}
 
 
@@ -440,40 +437,19 @@ describe in the rest of this section:
 \section{A fast algorithm for code motion congruent computations}
 The algorithm factors out the reachability of values such that multiple queries
 to find reachability of values are fast. This is based on finding the dominance
-frontiers and the post-dominance frontiers of the CFG. These points, being
-structural properties of a graph, do not change during code-motion.
-
-A post-dominance frontier is the basic block where anticipability (ANTIC) of an
+frontiers and the post-dominance frontiers (PDF) of the CFG. These points, being
+structural properties of a graph, do not change during code-motion. A
+post-dominance frontier is the basic block where anticipability (ANTIC) of an
 instruction (I) is checked because it the point on which the basic block
 containing I is control dependent.
 
 So we introduce a data structure (CHI nodes) to keep track of values flowing out
-of a basic block. We only do this for values with multiple occurrences in the
-function as they are the potentially hoistable candidates. This approach allows
-us to hoist instructions to a basic block with more than two successors, as well
-as deal with infinite loops in a trivial way.
-
-Limitations: This pass does not hoist fully redundant expressions because they
-are already handled by GVN-PRE. It is advisable to run gvn-hoist before and
-after gvn-pre because gvn-pre creates opportunities for more instructions to be
-hoisted.
-
-A CHI keeps information about values flowing out of a basic block.  It is
-similar to PHI but in the inverse graph, and used for outgoing values on each
-edge. For conciseness, it is computed only for instructions with multiple
-occurrences in the CFG because they are the only hoistable candidates.
-
-\begin{figure}
-  \includegraphics[width=0.4\textwidth]{chi-example.pdf}
-  \vspace*{-1.0cm}
-\caption{I1, I2 are instructions in B, and C respectively, CHIArg1 = \{V, B,
-  I1\} and CHIArg2 = \{V, C, I2\}, V is the value number for both I1, and I2}
-\label{fig:chi-intro}
-\end{figure}
-
-The global value number for both I1 and I2 is V, the CHI node will save the
-instruction as well as the edge where the value is flowing to.  Where CHIArg1,
-CHIArg2 are of type CHIArg.
+of a basic block with more than once successors. We only do this for values with
+multiple occurrences in the function as they are the potentially hoistable
+candidates. This approach allows us to hoist instructions to a basic block with
+more than two successors. The CHI node in a basic block $B$ has CHIArgs with
+three entries: a) the instruction (I) CHIArg refers to, b) the basic block $Dest$
+which is post-dominated by the basic block containing I, and c) the GVN of I.
 
 \begin{verbatim}
 struct CHIArg {
@@ -487,9 +463,31 @@ struct CHIArg {
 };
 \end{verbatim}
 
-Essentially, CHIArg1 = \{V, B, I1\} and CHIArg2 = \{V, C, I2\}. For sinking we
-use the similar approach as \cite{ssapre} to track values flowing into a basic
-block.
+Limitations: This pass does not hoist fully redundant expressions because they
+are already handled by GVN-PRE. It is advisable to run gvn-hoist before and
+after gvn-pre because gvn-pre creates opportunities for more instructions to be
+hoisted.
+
+
+A CHI keeps information about values flowing out of a basic block.  It is
+similar to PHI but in the inverse graph, and used for outgoing values on each
+edge. Although it may be suitable for other analyses/optimizations, for \GCM{},
+it is computed only for instructions with multiple occurrences in the CFG. An
+illustration of CHI is shown in Figure~\ref{fig:chi-intro}. The \GVN{} for both
+I1 and I2 is V, the CHI node will save the instruction as well as the edge where
+the value is flowing to.  Where CHIArg1, CHIArg2 are of type CHIArg. The CHI for
+both I1 and I2 is inserted in their PDF. For sinking we use the similar approach
+as \cite{ssapre} to track values flowing into a basic block.
+
+
+\begin{figure}
+  \includegraphics[width=0.4\textwidth]{chi-example.pdf}
+  \vspace*{-1.0cm}
+\caption{I1, I2 are instructions in B, and C respectively, CHIArg1 = \{B, I1,
+  V\} and CHIArg2 = \{C, I2, V\}, V is the value number for both I1, and I2}
+\label{fig:chi-intro}
+\end{figure}
+
 
 When SSAPRE inserts PHI (expression PHIs), it does so at places where
 (potentially) multiple expressions may merge. If a PHI has a missing entry, that
@@ -499,17 +497,6 @@ insert a CHI, to a basic block with multiple successors, as instructions are
 hoisted upwards to the post-dominance frontier.  And we start walking the CFG to
 figure out if any CHI has a missing entry, that means the expression is not
 anticipable in the basic block having that outgoing PHI.
-
-\begin{itemize}
-\item Sort VNs according to their rank, and start with lowest ranked VN
-\item Take a VN and for each instruction with same VN
-\item  - Find the dominance frontier in the inverse graph (PDF)
-\item  - Insert the chi-node at PDF
-\item Remove the chi-nodes with missing entries
-\item Remove values from CHI-nodes which do not truly flow out, e.g.,
-\item  modified along the path.
-\item Collect the remaining values that are still anticipable
-\end{itemize}
 
 \subsection{Profitability check (Cost models)}
 \label{subsec:cost-models}
@@ -536,11 +523,12 @@ the register pressure.
 \begin{verbatim}
 B0: b = m
     c = n
-    if c is true then goto B1 else goto B2
+    if p is true then goto B1 else goto B2
 B1: a0 = b<kill> + c<kill>
     goto B3
 B2: a1 = b<kill> + c<kill>
     goto B3
+B3: ...
 \end{verbatim}
 
 After hoisting, $a0$ and $a1$ are removed and a copy of $a0$ is placed in
@@ -557,7 +545,9 @@ decision and we have found performance regressions while hoisting aggressively.
 There is a special case for hoisting load instructions when the hoist-point is
 the predecessor basic-block for all the congruent loads. Even if the register
 pressure would increase, we prefer to hoist loads in this case. The reason
-being, that would make the loaded value available by the time it is used.
+being, that would make the loaded value available by the time it is used, and
+livess would not increase by much because instruction is hoisted to immediate
+predecessor.
 
 
 \subsubsection{Hoisting an expression across a call}
@@ -575,11 +565,7 @@ register pressure is not profitable to hoist.
 \label{subsec:finding-candidates}
 The first step is to find a set of congruent instructions
 \cite{briggs1997}. This is performed by a linear scan of all instructions of the
-program and classifying them by their value numbers. We could compute available
-and anticipable sets as computed by \GCC{'}s code-hoisting but that would be a lot
-of data structures to maintain at each basic-block level. For \GCC{} it makes sense
-because their code-hoisting is integrated with \GVN{}-\PRE{} which already has those
-data structures available.
+program and classifying them by their value numbers.
 
 The current implementation of \GVN{} in \LLVM{} has some limitations when it
 comes to loads and stores so we compute the \GVN{} of loads and stores
@@ -589,9 +575,7 @@ well as the value to be stored at that address. Another limitation of the
 current \GVN{} implementation in \LLVM{} is that the instructions dependent on
 the loads will not get numbered correctly, and so after hoisting all candidates
 we need to rerun the \GVN{} analysis in order to discover new candidates now
-available after having hoisted load instructions.  This limitation should be
-addressed in a new implementation of the \GVN{} based on \MemorySSA{}, that
-would better account for equivalent loads and their dependent instructions.
+available after having hoisted load instructions.
 
 The process of computing \GVN{} can be on-demand, as we come across an
 instruction, or precomputed, computing \GVN{} of all the instructions
@@ -602,10 +586,6 @@ is sufficient to compute \GVN{} values on-demand. Whereas, in the optimistic
 approach, as described in Section~\ref{subsec:optimistic}, we want to move as
 many instructions as possible, and it would require \GVN{} values to be
 precomputed.
-
-Once the instructions have been classified into congruence classes, we compute
-for each group of congruent instructions, a point in the program that is both
-legal and profitable for the instructions to be moved to.
 
 \subsubsection{Barriers}
 \label{subsec:barriers}
@@ -640,103 +620,52 @@ void computeBarriers()
           break
 \end{verbatim}
 
-\subsubsection{Partitioning the list of hoist candidates to maximize hoisting}
-\label{subsec:partition}
-%The partition algorithm is described as follows:
-In the approach described in Section~\ref{subsec:optimistic}, it is possible
-that a common hoisting point for all the instructions does not satisfy legality
-or profitability checks. In these cases, it is still possible to `partially'
-hoist a subset of instructions by splitting the set of candidates and finding a
-closer hoisting point for each subset.
-
-In order to hoist a subset of identical instructions, we partition the list of
-all candidates in a way to maximize the total number of hoist instructions.  By
-sorting the list of all the candidates in the increasing order of their depth
-first search discovery time stamp \cite{clrs} (DFSIn numbers) we make sure that
-candidates closer in the list have their common dominator nearby. In
-Figure-\ref{fig:dfsin}, if B3, B4, B5, and B6 have identical computations and if
-for some reason, they cannot be hoisted at B0, then we partition the set of
-hoistable candidates in their DFSIn order. In this case the DFSIn ordering would
-be B3, B4, B5, B6 which will allow the instructions in (B3, B4) to be hoisted at
-B1 and those in (B5, B6) to be hoisted at B2. Even if instructions in (B3, B4)
-could not be hoisted, for some reason, to B1, the instructions in (B5, B6) can
-still be hoisted - if legal and profitable - to B2.
-
-\begin{figure}
-\centering
-%rankdir=LR;
-\digraph[scale=0.35]{abc}{
-  B0 -> B1
-  B0 -> B2
-  B1 -> B3
-  B1 -> B4
-  B2 -> B5
-  B2 -> B6
-}
-\caption{\CFG{} to illustrate partitioning}
-\label{fig:dfsin}
-\end{figure}
-
-% TODO: Rewrite the following.
-In our current implementation we keep as many candidates in one set as possible
-(greedy approach.) To start with, the first two candidates are tried for
-hoistability (see Section~\ref{subsec:optimistic}) if that passes then the next
-instruction is tried (if available) and so on until a non-hoistable instruction
-is found. The partition starts from that point.  We split the list at a point
-where the legality checks fail to hoist subset of candidates which are legal to
-hoist and then start finding new hoisting point for the remaining ones.
-
-
 \subsection{Legality check}
 \label{subsec:legality}
 Since the equality of candidates is purely based on the value numbers, we also
-need to establish if hoisting them to a common dominator or sinking them to a
-common post-dominator would be legal. Once a common dominator (post-dominator)
-is found, we check whether all the use-operands of the set of instructions are
-available at that position. It is possible to reinstantiate or remateralize the
-use-operands in some cases when the operands are not available and make it legal
-to move the instruction.
+need to establish if hoisting them or sinking them would be legal. Once a common
+dominator (post-dominator) is found, we check whether all the use-operands of
+the set of instructions are available at that position. It is possible to
+reinstantiate or remateralize the use-operands in some cases when the operands
+are not available and make it legal to move the instruction.
 
 Subsequently, it is checked that the side-effects of the computations (if any)
-do not intersect with any side-effects between the instructions to be
-moved and their hoisting/sinking point. It is also necessary to check if
-there are indirect branch targets, e.g., landing pad, case statements, goto
-labels, etc., along the path because it becomes difficult to prove safety checks
-in those cases. In our current implementation we discard candidates on those
-paths.
+do not intersect (alias) with any side-effects between the instructions to be
+moved and their hoisting/sinking point. It is also necessary to check if there
+are indirect branch targets, e.g., landing pad, case statements, goto labels,
+etc., along the path because it becomes difficult to prove safety checks in
+those cases. In our current implementation we discard candidates on those paths.
 
 \subsubsection{Legality of hoisting scalars}
 Scalars are the easiest to hoist because we do not have to analyze them for
 aliasing memory references. As long as all the operands are available, or can be
 made available by rematerialization, the scalar computations can be hoisted.
 
-\subsubsection{Legality of hoisting loads}
+\subsubsection{Legality of hoisting memory references}
 The availability of operand to the load (an address) is checked at the hoisting
-point. If that is not available we try to rematerialize the address if
-possible.  Along the path, from current position of the load instruction
-backwards on the control flow to the hoisting point, we check whether there are
-writes to memory that may alias with the load, in which case the candidate is
-discarded. To iterate on the use-def chains for memory references the MemorySSA
-of \LLVM{} is used.
+point. If that is not available we try to rematerialize the address if possible.
+Along the path, from current position of the load instruction backwards on the
+control flow to the hoisting point, we check whether there are writes to memory
+that may alias with the load, in which case the candidate is discarded. Memory
+SSA allows efficient way of iterating over the use-def chains of memory
+references on a factored graph.
 
-\subsubsection{Legality of hoisting stores}
 For stores, we check the dependency requirements similar to the hoisting of
-loads using the \MemorySSA{} of \LLVM{}. We check that the operands of the store
-instruction are available at the hoisting point, and there are no aliasing
-memory references along the hoisting path.
+loads. We check that the operands of the store instruction are available at the
+hoisting point, and there are no aliasing memory references along the hoisting
+path.
 
 \subsubsection{Legality of hoisting calls}
 Call instructions can be divided into three categories: those calls equivalent
-to purely scalar computations, calls reading from memory, and most of the time,
-without further information, calls have to be classified as writing to memory,
-that is the most restrictive form.  Each category of call instructions is
-handled as described for scalar, load, and store instructions.
+to purely scalar computations, calls reading from memory, and calls writing to
+memory which is the most restrictive form.  Each category of call instructions
+is handled as described for scalar, load, and store instructions.
 
 Hoisting loads/stores across calls also requires precise analysis of all the
 memory addresses accessed by the call. The current implementation being an
-intraprocedural pass, cannot hoist aggressively across calls. In the presence of
-pure calls, loads can be hoisted but stores can't. Also, if a call throws
-exceptions, or if it may not return, nothing can be hoisted across that call.
+intraprocedural pass, cannot schedule aggressively across calls. In the presence
+of pure calls, loads can be hoisted but stores can't. Also, if a call throws
+exceptions, or if it may not return, nothing can be scheduled across that call.
 
 \subsubsection{Legality of sinking expressions}
 \label{subsec:legality-sink}
@@ -787,34 +716,9 @@ code-motion will produce the same side-effects.  For hoisting in particular, we
 need to prove that on all execution paths from the hoisting point to the end of
 the program the side effects appear in the same order. In general, we cannot
 introduce a new computation along any path of execution without checking for
-undefined behaviors. The algorithm \emph{computeDownwardSafety} computes if
-hoisting a set of instruction to a common hoisting point is downward-safe
-\cite{steven1997advanced}. Since \GCM{} is only dealing with VBEs, computing
-downward-safety ensures that no undefined behaviors are introduced as a result
-of code-motion.
-\newline
-\begin{verbatim}
-// Return true if a hoistable instruction is downward
-// safe at hoist-point
-bool computeDownwardSafety(Node HP)
-  Worklist = basic-blocks of hoistable instructions
-  DT = The dominator tree
-  HP = the hoist-point
-  for each basic-block B in the DT starting at HP:
-    if Worklist is empty
-       return false // Path exists! not downward safe
-    if B is in Worklist:
-      remove B from worklist
-      // Available at B => downward safe from B
-      remove subtree with root at B
-    if B is a leaf basic-block
-      // Path exists! not downward safe
-      return false
-    if B dominates hoist-point
-      return false  // Back edge
-  return true
-\end{verbatim}
-
+undefined behaviors \cite{undef}. Since \GCM{} is only dealing with VBEs, as
+hoisting happens for CHIs with complete entries, the downward safety is ensured
+by construction of CHIs.
 
 
 \subsection{Code generation for the optimistic \gcm{} algorithm}
@@ -863,7 +767,7 @@ void doGCM()
   Analyses available:
     Dominator Tree, DFS Numbering, Memory SSA
   Compute DJ-graph of function
-  constructMergeSet(CGF)
+  constructMergeSet(CFG)
   computeBarriers()
   do:
     Compute GVN of each expression in the function
@@ -876,38 +780,26 @@ We collect the \GVN{} of all the instructions in the function and iterate on the
 list of instructions having identical \GVN{}s. The algorithm \emph{doGCM}
 prefers hoisting (\emph{doCodeHoisting}) to sinking (\emph{doCodeSinking}).
 
-For hoisting, we find a common dominator dominating all a set of congruent
-instructions and perform legality checks, as described in
-Section~\ref{subsec:legality}. Often times it is not possible to hoist all the
-instructions to one common dominator, due to legality constraints, e.g.,
-intersecting side-effects, or profitability constraints, e.g., increasing
-register pressure; in those cases, this algorithm would partition
-(Section~\ref{subsec:partition}) the list of identical instructions into subsets
-which can be partially hoisted to their respective common dominators.
 
 \begin{verbatim}
-// Find hoistable candidates and do hoisting
 int doCodeHoisting()
-  For each value number VN with 2 or more instructions
-    sort the instructions according to DFSIn numbers
-    if first two I1, I2 are hoistable
-        && downward-safe at hoist-point
-        && profitable to be hoisted at hoist-point:
-      continue the check for subsequent
-        instructions with same VN
-    else:
-      proceed to check if I2 and I3 (if available)
-      can be hoisted
+  Sort VNs in ascending order
+  
+  for each instruction with the same VN
+      Find its post-dominance-frontier (PDF)
+      Insert the CHI-node at PDF
+  
+  for each CHI-nodes in the CFG:
+    Remove the ones with missing entries
+    Remove CHI-arg if it fails legality checks
+  
+  for each CHI-nodes in the CFG:
+    if CHI  does not have missing entries:
+      Perform code hoisting
 
-  For each set of hoistable instructions:
-    move the first one (I1) to the hoist-point
-    update their users others to refer to I1
-    remove all other instructions (I2, ..., Ik)
-    if I1 has memory references:
-      update MemorySSA of I1 and others
-    update statistics
-  return number of hoisted instructions
+  return number of sinked instructions
 \end{verbatim}
+
 
 %\newpage
 After no more candidates are hoistable, sinking is performed. Sinking is only
