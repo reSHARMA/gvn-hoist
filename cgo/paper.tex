@@ -302,21 +302,14 @@ code out of branches, and in general global scheduling
 \cite{rosen1988global} and many \cite{barany2013, shobaki2013} use global
 scheduling to improve performance. Most of the recent work on global scheduling
 are done using integer linear programming (ILP) which results in prohibitively
-high compile time. To the best of our knowledge we have not found any reference
-which explored \gcm{} of congruent instructions in as much detail us. A part of
-our implementation (aggressive code hoisting) is already merged
-in \LLVM{} trunk, however, a general implementation of \gcm{} of congruent (non
-redundant) expressions is still missing from \GCC{} and \LLVM{} trunk. The main
-contributions of this paper are:
+high compile time which is not suitable for industrial compilers. To the best of
+our knowledge we have not found any reference which explored \gcm{} of congruent
+instructions. A part of our implementation (aggressive code hoisting) is already
+merged in \LLVM{} trunk. The main contributions of this paper are:
 \begin{itemize}[leftmargin=*,topsep=0pt]
-\item a new optimistic algorithm to move congruent instructions out of branches;
+\item an optimistic fast algorithm to schedule congruent instructions;
 \item a cost model to reduce interference and hence, reduce spills;
-\item a technique to maximize hoisting in an optimistic approach by partitioning
-  the list of potential candidates sorted by their DFS visit number;
-\item experimental evaluation of our implementation in \LLVM{} which combines
-  \SSA{} based liveness analysis, and ranking of expressions to move very busy
-  expressions in order to reduce register spills and improve performance in some
-  cases.
+\item experimental evaluation of our implementation in \LLVM{}.
 \end{itemize}
 
 \section{Related Work}
@@ -332,6 +325,18 @@ equivalent.  This implementation does not allow for an easy extension: first in
 terms of compilation time overhead the implementation is quadratic in number of
 instructions to bisimulate and second, the equivalence of instructions is
 computed by comparing the operands which is neither general nor scalable.
+
+\citet{click1995global} describes aggressive \gcm{} in sparse representation. It
+first schedules all the instructions as early as possible. This results in very
+long live ranges which is mitigated by again scheduling all the instructions as
+late as possible. They report a speedup of as high as $23\%$ but there is no
+cost model to limit amount of scheduling and could often introduce redundant
+computations. It is also not mentioned how safety is ensured while hoisting an
+instruction when it is not anticipable. The legality checks are only based on
+barriers (Section~\ref{subsec:barriers}) and availability of used operands. Even
+introducing a simple integer addition can also result in undefined behavior
+\cite{undef}.  Except from this paper we found no reference of global scheduling
+in sparse representation.
 
 \citet{dhamdhere1988fast} and \citet{steven1997advanced} mention
 code hoisting in a data-flow framework. A list of Very Busy Expressions (VBE)
@@ -366,11 +371,6 @@ tree, working in tandem with \PRE{} until no more hoisting is possible.  One
 advantage of \GCC{} implementation is that it works in sync with the
 \GVN{}-\PRE{} such that when new hoisting opportunities are created by
 \GVN{}-\PRE{}, code-hoisting will hoist them.
-
-\citet{click1995global} describes aggressive \gcm{} to first
-schedule all the instructions as early as possible. This results in very long
-live ranges which is mitigated by again scheduling all the instructions as late
-as possible. They report a speedup of as high as $23\%$.
 
 \citet{barany2013} presented a global scheduler with ILP formulation with
 a goal to minimize register pressure. The results they got were not very
@@ -437,7 +437,7 @@ describe in the rest of this section:
 \item update data structures to continue iterative \gcm{} (Section~\ref{subsec:optimistic}).
 \end{itemize}
 
-\section{A fastt Code motion of congruent computations}
+\section{A fast algorithm for code motion congruent computations}
 The algorithm factors out the reachability of values such that multiple queries
 to find reachability of values are fast. This is based on finding the dominance
 frontiers and the post-dominance frontiers of the CFG. These points, being
@@ -608,6 +608,7 @@ for each group of congruent instructions, a point in the program that is both
 legal and profitable for the instructions to be moved to.
 
 \subsubsection{Barriers}
+\label{subsec:barriers}
 Barriers are based on the concept of pinned instructions \cite{click1995global}
 but extended to adapt to \LLVM{} IR. A basic-block in \LLVM{} IR is actually an
 extended basic-block because there might be non-returning calls in the middle of
