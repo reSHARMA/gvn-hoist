@@ -512,11 +512,49 @@ CHIs anticipabilty of `values' is ensured by construction.
 \label{fig:chi-intro2}
 \end{figure}
 
+Before we consider factors affecting the legality of \GCM{}, we introduce the
+concept of barriers.
+
+\subsection{Barriers}
+\label{subsec:barriers}
+Barriers are based on the concept of pinned instructions \cite{click1995global}
+but extended to adapt to \LLVM{} IR. A basic-block in \LLVM{} IR is actually an
+extended basic-block because there might be non-returning calls in the middle of
+a basic-block. Essentially, any instruction that cannot guarantee progress is
+marked as a barrier. In the absence of context, as in our current
+implementation, some instructions which might be safe are still classified as
+barriers, e.g., volatile loads/stores, calls with missing attributes.
+
+\begin{verbatim}
+// Compute barriers for both hoistable and sinkable
+// candidates.
+void computeBarriers()
+  for each basic-block B in a function:
+    barrier_found = false
+    for each instruction I in B:
+      if I does not guarantee progress:
+        mark I as a barrier instruction
+        barrier_found = true
+        break;
+
+    // Find the last barrier below which instructions
+    // can be sunk. If there was no barrier in B, any
+    // instruction satisfying other legality checks
+    // can be sunk.
+    if barrier_found:
+      for each instruction I in B in reverse order:
+        if I does not guarantee progress:
+          mark I as a sink barrier
+          break
+\end{verbatim}
+
+Computing barriers allows for efficient removal of non-movable candidates, this
+makes the legality check converge faster.
 
 \subsubsection{Legality of movable instructions}
 \label{subsec:legality}
-Since the equality of candidates is purely based on the value numbers, we also
-need to establish if hoisting them or sinking them would be legal. The
+Since the equality of movable candidates is purely based on the value numbers,
+we also need to establish if hoisting them or sinking them would be legal. The
 completeness of CHI is a necessary condition for hoistability but not
 sufficient. This is because congruence of value numbers only implies that they
 compute same value if the inputs are same. So for instructions like memory
@@ -527,18 +565,13 @@ the path.
 For hoisting, we need to prove that on all execution paths from the hoisting
 point to the end of the program the side effects appear in the same order. In
 general, we cannot introduce a new computation along any path of execution
-without checking for undefined behavior \cite{undef}. For that we need to see a)
-if I aliases with any instruction before it in its basic block and b) Walk the
-CFG from its basic block 'upwards' to its PDF and look for any interfering
-side-effects. If there aren't any then it is safe to hoist.
-
-
-Subsequently, it is checked that the side-effects of the computations (if any)
-do not intersect (alias) with any side-effects between the instructions to be
-moved and their hoisting/sinking point. It is also necessary to check if there
-are indirect branch targets, e.g., landing pad, case statements, goto labels,
-etc., along the path because it becomes difficult to prove safety checks in
-those cases. In our current implementation we discard candidates on those paths.
+without checking for undefined behavior \cite{undef}.  For that, it is checked
+that the side-effects of the computations (if any) do not intersect (alias) with
+any side-effects between the instructions to be moved and their hoisting/sinking
+point. It is also necessary to check if there are indirect branch targets, e.g.,
+landing pad, case statements, goto labels, etc., along the path because it
+becomes difficult to prove safety checks in those cases. In our current
+implementation we discard candidates on those paths.
 
 \subsubsection{Legality of hoisting scalars}
 Scalars are the easiest to hoist because we do not have to analyze them for
@@ -604,12 +637,6 @@ of `i1' and `i2' it would be illegal to sink (c1, c2) to B3. On the other hand
 sink point, i.e., B3. It should also be noted that, just because the expressions
 are identical and operands are available, it still requires a unique
 post-dominating PHI to use the exact same values to be legally sinkable.
-
-A general global scheduling algorithm also requires checks for undefined values
-when introducing a new computation along a path. Since only very busy
-expressions are moved in the current implementation, there is no need to check
-for undefinedness resulting due to movement of instructions. This simplifies the
-implementation.
 
 
 \subsection{Profitability check (Cost models)}
@@ -700,41 +727,6 @@ is sufficient to compute \GVN{} values on-demand. Whereas, in the optimistic
 approach, as described in Section~\ref{subsec:optimistic}, we want to move as
 many instructions as possible, and it would require \GVN{} values to be
 precomputed.
-
-\subsubsection{Barriers}
-\label{subsec:barriers}
-Barriers are based on the concept of pinned instructions \cite{click1995global}
-but extended to adapt to \LLVM{} IR. A basic-block in \LLVM{} IR is actually an
-extended basic-block because there might be non-returning calls in the middle of
-a basic-block. Essentially, any instruction that cannot guarantee progress is
-marked as a barrier. In the absence of context, as in our current
-implementation, some instructions which might be safe are still classified as
-barriers, e.g., volatile loads/stores, calls with missing attributes.
-
-\begin{verbatim}
-// Compute barriers for both hoistable and sinkable
-// candidates.
-void computeBarriers()
-  for each basic-block B in a function:
-    barrier_found = false
-    for each instruction I in B:
-      if I does not guarantee progress:
-        mark I as a barrier instruction
-        barrier_found = true
-        break;
-
-    // Find the last barrier below which instructions
-    // can be sunk. If there was no barrier in B, any
-    // instruction satisfying other legality checks
-    // can be sunk.
-    if barrier_found:
-      for each instruction I in B in reverse order:
-        if I does not guarantee progress:
-          mark I as a sink barrier
-          break
-\end{verbatim}
-
-
 
 \subsection{Code generation for the optimistic \gcm{} algorithm}
 \label{subsec:optimistic}
