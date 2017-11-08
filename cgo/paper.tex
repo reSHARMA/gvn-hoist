@@ -135,10 +135,10 @@
 \begin{abstract}
 We present a \gcm{} (\GCM{}) compiler optimization which schedules congruent
 instructions across the program.  Not only \GCM{} saves code size, it exposes
-redundancies in some cases, it exposes more instruction level parallelism in the
+redundancies as well, it exposes more instruction level parallelism in the
 basic-block to which instructions are moved, and it enables other passes like
-loop invariant motion to remove more redundancies. The cost model to drive the
-code motion is based on liveness analysis on \SSA{} representation such that the
+loop invariant motion to remove redundancies. The cost model to drive the code
+motion is based on liveness analysis on \SSA{} representation such that the
 (virtual) register pressure does not increase resulting in 2\% fewer spills on
 the \SPEC{} benchmark suite.
 
@@ -151,8 +151,8 @@ of \SPEC{} benchmarks viz. mcf and sjeng, moreover, register spills reduced by
 2\% on the \SPEC{} benchmarks suite when compiled for \xlinux{}. \GCM{} is an
 optimistic algorithm in the sense that it considers all congruent instructions
 in a function as potential candidates. We also formalize why register pressure
-reduces as a result of \gcm{}, and how \gcm{} increases instruction level
-parallelism thereby enabling more \ooo{} execution on modern architectures.
+reduces, and how \GCM{} increases instruction level parallelism thereby enabling
+more \ooo{} execution on modern architectures.
 \end{abstract}
 
 
@@ -207,15 +207,15 @@ of compilation time \cite{briggs1994effective,chow1997new,kennedy1999partial}
 and brought these techniques in the main stream: \SSA{} based \PRE{} is
 available in many compilers like \GCC{} and \LLVM{}.
 
-This paper describes \gcm{} (\GCM{}) of congruent instructions
-\cite{briggs1997}, a technique that uses the information computed for \PRE{} to
-detect identical computations but has a transformation phase whose goal differs
-from \PRE{}: it removes identical computations from different branches of
-execution.  These identical computations in different branches of execution are
-not redundant computations at run-time and the number of run-time computations
-is not reduced. It is not a redundancy elimination pass, and thus it has
-different cost function and heuristics than \PRE{} or CSE. It is similar to
-global code scheduling \cite{dragonbook,click1995global} in the sense that it
+This paper describes a fast algorithm for \gcm{} (\GCM{}) of congruent
+instructions \cite{briggs1997}, a technique that uses the information computed
+for \PRE{} to detect identical computations but has a transformation phase whose
+goal differs from \PRE{}: it removes identical computations from different
+branches of execution.  These identical computations in different branches of
+execution are not redundant computations at run-time and the number of run-time
+computations is not reduced. It is not a redundancy elimination pass, and thus
+it has different cost function and heuristics than \PRE{} or CSE. It is similar
+to global code scheduling \cite{dragonbook,click1995global} in the sense that it
 will only move computations. Code hoisting, for example, can reduce the critical
 path length of execution in \ooo{} machines. As more instructions are available
 at the hoisting point, the hardware has more independent instructions to
@@ -261,31 +261,29 @@ float fun(float d, float min, float max, float a) {
 In this code the division operation can be executed in parallel with the two
 subtractions because there are no dependencies among them. So the total number
 of cycles will be $max(C_{div}, C_{sub}) + C_{mul} = C_{div} + C_{mul}$; since
-$C_{div}$ is usually much greater than $C_{sub}$ \cite{x86,aarch64}. We have
-seen the performance of the original benchmark (on an \ooo{} processor) improve
-by $15\%$.  In fact, there are several advantages of \GCM{}:
+$C_{div}$ is usually much greater than $C_{sub}$ \cite{x86,aarch64}.  Although
+it decreases the instruction level parallelism (ILP) of basic blocks from where
+the instructions were removed, those basic blocks cannot execute for more cycles
+than the destination basic block. We have seen the performance of a proprietary
+benchmark (on an \ooo{} processor) improve by $15\%$.  In fact, there are
+several advantages of \GCM{}:
 \begin{itemize}[leftmargin=*,topsep=0pt]
 \item it helps reduce the code size of the program by replacing multiple
-  instructions with one although the final code size may be higher because of
-  improved inlining heuristics; functions become cheaper to inline when their
-  code size decreases because the inliner heuristics depend on instruction
-  count;
-\item it exposes more instruction level parallelism (ILP) to the later compiler
-  passes. By hoisting identical computations to be executed earlier, instruction
-  schedulers can move heavy computations earlier in order to avoid pipeline
-  bubbles. Although it decreases the ILP of basic blocks from where the
-  instructions were removed, those basic blocks execute for lesser number of
-  cycles than the destination basic block.
+  instructions with one thereby making the function cheaper to inline because
+  inliner heuristics depend on instruction count;
+\item it exposes more ILP to the later compiler passes. By hoisting identical
+  computations to be executed earlier, instruction schedulers can move heavy
+  computations earlier in order to avoid pipeline bubbles.
 \item it reduces branch misprediction penalty on \ooo{} processors with
   speculative execution of branches: by hoisting or sinking expressions out of
   branches, it can effectively reduce the amount of code to be speculatively
-  executed and hence reduce the critical path;
+  executed;
 \item it reduces interference or register pressure with an appropriate
   cost-model: we have used a cost model in our implementation which only hoists
   or sinks when the register pressure is reduced;
 \item it reduces the total number of instructions to be executed for SIMD
   architectures which execute all code in branches based on masking or
-  predication;
+  predication \cite{simd};
 \item it may improve loop vectorization by reducing a loop with control flow to
   a loop with a single basic-block, should all the instructions in a conditional get
   hoisted or sunk;
@@ -295,19 +293,19 @@ by $15\%$.  In fact, there are several advantages of \GCM{}:
   out of conditional expressions and expose them to LICM.
 \end{itemize}
 
-There has been a lot of work both in industry and academia to hoist and sink
-code out of branches, and in general global scheduling
-\cite{click1995global}. Some relate code-hoisting to code-size optimization
-\cite{rosen1988global} and many \cite{barany2013, shobaki2013} use global
-scheduling to improve performance. Most of the recent work on global scheduling
-are done using integer linear programming (ILP) which results in prohibitively
-high compile time which is not suitable for industrial compilers. To the best of
-our knowledge we have not found any reference which explored \gcm{} of congruent
-instructions. A part of our implementation (aggressive code hoisting) is already
-merged in \LLVM{} trunk. The main contributions of this paper are:
+There has been a lot of work both in industry and academia related to code
+hoisting/sinking, and in general global scheduling \cite{click1995global}. Some
+relate code-hoisting to code-size optimization \cite{rosen1988global} and many
+\cite{barany2013, shobaki2013} use global scheduling to improve
+performance. Most of the recent work on global scheduling are done using integer
+linear programming (ILP) which results in prohibitively high compile time which
+is not suitable for industrial compilers. To the best of our knowledge we have
+not found any reference which explored \gcm{} with a cost-model to reduce
+register-pressure. A part of our implementation (aggressive code hoisting) is
+already merged in \LLVM{} trunk. The main contributions of this paper are:
 \begin{itemize}[leftmargin=*,topsep=0pt]
 \item an optimistic fast algorithm to schedule congruent instructions;
-\item introducing an analogue of PHI nodes on the inverse CFG which allows
+\item introducing an analogue of $\phi$ nodes on the inverse CFG which allows
   faster tracking of anticipable instructions;
 \item a cost model to reduce interference and hence, reduce spills;
 \item experimental evaluation of our implementation in \LLVM{}.
@@ -474,14 +472,15 @@ hoisted.
 
 
 A CHI keeps information about values flowing out of a basic block.  It is
-similar to PHI but in the inverse graph, and used for outgoing values on each
-edge. Although it may be suitable for other analyses/optimizations, for \GCM{},
-it is computed only for instructions with multiple occurrences in the CFG. An
-illustration of CHI is shown in Figure~\ref{fig:chi-intro}. The \GVN{} for both
-I1 and I2 is V, the CHI node will save the instruction as well as the edge where
-the value is flowing to.  Where CHIArg1, CHIArg2 are of type CHIArg. The CHI for
-both I1 and I2 is inserted in their PDF. For sinking we use the similar approach
-as \cite{ssapre} to track values flowing into a basic block.
+similar to $\phi$ \cite{ssa} but in the inverse graph, and used for out-flowing
+values on each edge. Although it may be suitable for other
+analyses/optimizations, for \GCM{}, it is computed only for instructions with
+multiple occurrences in the CFG. An illustration of CHI is shown in
+Figure~\ref{fig:chi-intro}. The \GVN{} for both I1 and I2 is V, the CHI node
+will save the instruction as well as the edge where the value is flowing to.
+Where CHIArg1, CHIArg2 are of type CHIArg. The CHI for both I1 and I2 is
+inserted in their PDF (A). For sinking we use the similar approach as
+\cite{ssapre} to track values flowing into a basic block.
 
 
 \begin{figure}
@@ -493,14 +492,14 @@ as \cite{ssapre} to track values flowing into a basic block.
 \end{figure}
 
 
-When SSAPRE inserts PHI (expression PHIs), it does so at places where
-(potentially) multiple expressions may merge. If a PHI has a missing entry, that
+When SSAPRE inserts $\phi$ (expression PHIs), it does so at places where
+(potentially) multiple expressions may merge. If a $\phi$ has a missing entry, that
 means the expression is partially available.  The concept may work for hoisting
 expression to help factor out anticipability by working on inverted graph. If we
 insert a CHI, to a basic block with multiple successors, as instructions are
 hoisted upwards to the post-dominance frontier.  And we start walking the CFG to
 figure out if any CHI has a missing entry, that means the expression is not
-anticipable in the basic block having that outgoing PHI.
+anticipable in the basic block having CHI.
 
 \subsection{Profitability check (Cost models)}
 \label{subsec:cost-models}
@@ -815,11 +814,11 @@ performed once because currently there are very few sinkable candidates
 (Figure~\ref{tab:code-motion-metric}) as SimplifyCFG of LLVM (which runs before
 \GCM{}) has a code-sinking which already sinks several instructions.
 
-For sinking we reuse the PHI nodes instead of inserting another expression nodes
-like in \cite{ssapre} because PHI nodes ensure availability of definitions, and
-hence downward safety, as long as all instructions corresponding to a PHI are
-congruent. Also, the PHI nodes represent a complete set of instructions which
-could be potentially sunk for code-size optimizations because PHI nodes
+For sinking we reuse the $\phi$ nodes instead of inserting another expression nodes
+like in \cite{ssapre} because $\phi$ nodes ensure availability of definitions, and
+hence downward safety, as long as all instructions corresponding to a $\phi$ are
+congruent. Also, the $\phi$ nodes represent a complete set of instructions which
+could be potentially sunk for code-size optimizations because $\phi$ nodes
 represent all values flowing out from a basic block into its dominance-frontier.
 
 \begin{verbatim}
@@ -828,7 +827,7 @@ int doCodeSinking()
   For each value number VN > 1 instructions:
     if there are two instructions with same immediate
         successor(S) as post-dominator:
-      if both are only used in the same PHI-node of S
+      if both are only used in the same $\phi$-node of S
           && dependencies of both are available at S:
          mark instructions as sinkable
 

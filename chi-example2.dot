@@ -1,8 +1,10 @@
 digraph g{
-A [label="A[CHI(Arg1, Arg2)]"]
+A [label="A[CHI(Arg1, Arg2, &perp;)]"]
 B [label="B(I1)"]
 C [label="C(I2)"]
+D [label="D"]
 
 A -> B
 A -> C
+A -> D
 }
