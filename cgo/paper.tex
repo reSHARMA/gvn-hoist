@@ -500,13 +500,8 @@ basic block with multiple successors. Then for each instruction, we register its
 flow of value to its corresponding CHI which can be found in its PDF. For
 conciseness we only register values with multiple occurrences. Finally, we start
 walking the CFG and remove the CHI if it has a missing entry, that means the
-expression is not anticipable in the basic block having CHI. The completeness of
-CHI is a necessary condition for hoistability but not sufficient. This is
-because congruence of value numbers only implies that they compute same value if
-the inputs are same. So for instructions like memory references, they may
-compute different values should the memory get modified along the path. For that
-we need to check for intersecting side-effects along the path.
-
+expression is not anticipable in the basic block having CHI. For the remaining
+CHIs anticipabilty of `values' is ensured by construction.
 
 \begin{figure}
   \includegraphics[width=0.4\textwidth]{chi-example2.pdf}
@@ -516,6 +511,105 @@ we need to check for intersecting side-effects along the path.
   missing entry in CHI so values are not anticipable}
 \label{fig:chi-intro2}
 \end{figure}
+
+
+\subsubsection{Legality of movable instructions}
+\label{subsec:legality}
+Since the equality of candidates is purely based on the value numbers, we also
+need to establish if hoisting them or sinking them would be legal. The
+completeness of CHI is a necessary condition for hoistability but not
+sufficient. This is because congruence of value numbers only implies that they
+compute same value if the inputs are same. So for instructions like memory
+references, they may compute different values should the memory get modified
+along the path. For that we need to check for intersecting side-effects along
+the path.
+
+For hoisting, we need to prove that on all execution paths from the hoisting
+point to the end of the program the side effects appear in the same order. In
+general, we cannot introduce a new computation along any path of execution
+without checking for undefined behavior \cite{undef}. For that we need to see a)
+if I aliases with any instruction before it in its basic block and b) Walk the
+CFG from its basic block 'upwards' to its PDF and look for any interfering
+side-effects. If there aren't any then it is safe to hoist.
+
+
+Subsequently, it is checked that the side-effects of the computations (if any)
+do not intersect (alias) with any side-effects between the instructions to be
+moved and their hoisting/sinking point. It is also necessary to check if there
+are indirect branch targets, e.g., landing pad, case statements, goto labels,
+etc., along the path because it becomes difficult to prove safety checks in
+those cases. In our current implementation we discard candidates on those paths.
+
+\subsubsection{Legality of hoisting scalars}
+Scalars are the easiest to hoist because we do not have to analyze them for
+aliasing memory references. As long as all the operands are available, or can be
+made available by rematerialization, the scalar computations can be hoisted.
+
+\subsubsection{Legality of hoisting memory references}
+The availability of operand to the load (an address) is checked at the hoisting
+point. If that is not available we try to rematerialize the address if possible.
+Along the path, from current position of the load instruction backwards on the
+control flow to the hoisting point, we check whether there are writes to memory
+that may alias with the load, in which case the candidate is discarded. Memory
+SSA allows efficient way of iterating over the use-def chains of memory
+references on a factored graph.
+
+For stores, we check the dependency requirements similar to the hoisting of
+loads. We check that the operands of the store instruction are available at the
+hoisting point, and there are no aliasing memory references along the hoisting
+path.
+
+\subsubsection{Legality of hoisting calls}
+Call instructions can be divided into three categories: those calls equivalent
+to purely scalar computations, calls reading from memory, and calls writing to
+memory which is the most restrictive form.  Each category of call instructions
+is handled as described for scalar, load, and store instructions.
+
+Hoisting loads/stores across calls also requires precise analysis of all the
+memory addresses accessed by the call. The current implementation being an
+intraprocedural pass, cannot schedule aggressively across calls. In the presence
+of pure calls, loads can be hoisted but stores can't. Also, if a call throws
+exceptions, or if it may not return, nothing can be scheduled across that call.
+
+\subsubsection{Legality of sinking expressions}
+\label{subsec:legality-sink}
+Sometimes, hoisting is not upward-safe \cite{click1995global}, e.g., if the
+expressions are in a landing pad, sinking of those expressions
+may reduce code size. Sinking may also reduce the register pressure in some
+cases, e.g., when the use operands are not kills. For sinking, higher ranked
+expressions would be sunk first. And it would be illegal to sink higher ranked
+identical expressions if they are not fully anticipable in the common
+post-dominator. For example:
+
+\begin{verbatim}
+B0: i0 = load B
+B1: i1 = load A
+    c1 = i1 + 10
+    d1 = i0 + 20
+    goto B3
+B2: i2 = load A
+    c2 = i2 + 10
+    d2 = i0 + 20
+    goto B3
+
+B3: phi(c1, c2)
+    phi(d1, d2)
+\end{verbatim}
+
+In this example (c1, c2) or (d1, d2) are potential sinkable candidates. Since
+(c1, c2) depend on i1 and i2 respectively which are also in their original basic
+blocks, c1 and c2 are not fully anticipable in B3. So without knowing the ability to sink
+of `i1' and `i2' it would be illegal to sink (c1, c2) to B3. On the other hand
+(d1, d2) can safely be sunk because their operands are readily available at the
+sink point, i.e., B3. It should also be noted that, just because the expressions
+are identical and operands are available, it still requires a unique
+post-dominating PHI to use the exact same values to be legally sinkable.
+
+A general global scheduling algorithm also requires checks for undefined values
+when introducing a new computation along a path. Since only very busy
+expressions are moved in the current implementation, there is no need to check
+for undefinedness resulting due to movement of instructions. This simplifies the
+implementation.
 
 
 \subsection{Profitability check (Cost models)}
@@ -640,105 +734,6 @@ void computeBarriers()
           break
 \end{verbatim}
 
-\subsection{Legality check}
-\label{subsec:legality}
-Since the equality of candidates is purely based on the value numbers, we also
-need to establish if hoisting them or sinking them would be legal. Once a common
-dominator (post-dominator) is found, we check whether all the use-operands of
-the set of instructions are available at that position. It is possible to
-reinstantiate or remateralize the use-operands in some cases when the operands
-are not available and make it legal to move the instruction.
-
-Subsequently, it is checked that the side-effects of the computations (if any)
-do not intersect (alias) with any side-effects between the instructions to be
-moved and their hoisting/sinking point. It is also necessary to check if there
-are indirect branch targets, e.g., landing pad, case statements, goto labels,
-etc., along the path because it becomes difficult to prove safety checks in
-those cases. In our current implementation we discard candidates on those paths.
-
-\subsubsection{Legality of hoisting scalars}
-Scalars are the easiest to hoist because we do not have to analyze them for
-aliasing memory references. As long as all the operands are available, or can be
-made available by rematerialization, the scalar computations can be hoisted.
-
-\subsubsection{Legality of hoisting memory references}
-The availability of operand to the load (an address) is checked at the hoisting
-point. If that is not available we try to rematerialize the address if possible.
-Along the path, from current position of the load instruction backwards on the
-control flow to the hoisting point, we check whether there are writes to memory
-that may alias with the load, in which case the candidate is discarded. Memory
-SSA allows efficient way of iterating over the use-def chains of memory
-references on a factored graph.
-
-For stores, we check the dependency requirements similar to the hoisting of
-loads. We check that the operands of the store instruction are available at the
-hoisting point, and there are no aliasing memory references along the hoisting
-path.
-
-\subsubsection{Legality of hoisting calls}
-Call instructions can be divided into three categories: those calls equivalent
-to purely scalar computations, calls reading from memory, and calls writing to
-memory which is the most restrictive form.  Each category of call instructions
-is handled as described for scalar, load, and store instructions.
-
-Hoisting loads/stores across calls also requires precise analysis of all the
-memory addresses accessed by the call. The current implementation being an
-intraprocedural pass, cannot schedule aggressively across calls. In the presence
-of pure calls, loads can be hoisted but stores can't. Also, if a call throws
-exceptions, or if it may not return, nothing can be scheduled across that call.
-
-\subsubsection{Legality of sinking expressions}
-\label{subsec:legality-sink}
-Sometimes, hoisting is not upward-safe \cite{click1995global}, e.g., if the
-expressions are in a landing pad, sinking of those expressions
-may reduce code size. Sinking may also reduce the register pressure in some
-cases, e.g., when the use operands are not kills. For sinking, higher ranked
-expressions would be sunk first. And it would be illegal to sink higher ranked
-identical expressions if they are not fully anticipable in the common
-post-dominator. For example:
-
-\begin{verbatim}
-B0: i0 = load B
-B1: i1 = load A
-    c1 = i1 + 10
-    d1 = i0 + 20
-    goto B3
-B2: i2 = load A
-    c2 = i2 + 10
-    d2 = i0 + 20
-    goto B3
-
-B3: phi(c1, c2)
-    phi(d1, d2)
-\end{verbatim}
-
-In this example (c1, c2) or (d1, d2) are potential sinkable candidates. Since
-(c1, c2) depend on i1 and i2 respectively which are also in their original basic
-blocks, c1 and c2 are not fully anticipable in B3. So without knowing the ability to sink
-of `i1' and `i2' it would be illegal to sink (c1, c2) to B3. On the other hand
-(d1, d2) can safely be sunk because their operands are readily available at the
-sink point, i.e., B3. It should also be noted that, just because the expressions
-are identical and operands are available, it still requires a unique
-post-dominating PHI to use the exact same values to be legally sinkable.
-
-A general global scheduling algorithm also requires checks for undefined values
-when introducing a new computation along a path. Since only very busy
-expressions are moved in the current implementation, there is no need to check
-for undefinedness resulting due to movement of instructions. This simplifies the
-implementation.
-
-
-\subsubsection{Downward-safety of movable instructions}
-
-In order to be able to move an instruction that has side effects, we must
-guarantee that the side-effects of that instruction before and after its
-code-motion will produce the same side-effects.  For hoisting in particular, we
-need to prove that on all execution paths from the hoisting point to the end of
-the program the side effects appear in the same order. In general, we cannot
-introduce a new computation along any path of execution without checking for
-undefined behavior \cite{undef}. Since \GCM{} is only dealing with VBEs, as
-hoisting happens for CHIs with complete entries, the downward safety is ensured
-by construction of CHIs.
 
 
 \subsection{Code generation for the optimistic \gcm{} algorithm}
