@@ -789,10 +789,12 @@ prefers hoisting (\emph{doCodeHoisting}) to sinking (\emph{doCodeSinking}).
 
 
 \begin{verbatim}
-int doCodeHoisting()
+int doCodeHoisting(VNs)
+  // VNs = map (VN -> list of I with value VN)
   Sort VNs in ascending order
-  
-  for each instruction with the same VN
+
+  for each VN in VNs
+    for each instruction with the same VN
       Find its post-dominance-frontier (PDF)
       Insert the CHI-node at PDF
   
