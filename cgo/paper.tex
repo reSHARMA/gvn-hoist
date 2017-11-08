@@ -418,7 +418,7 @@ program that we shortly describe below:
   information.
 \end{itemize}
 
-Dominance graphs, Global Value Numbers and Memory SSA are already available in
+Dominator tree, Global Value Numbers and Memory SSA are already available in
 \LLVM{} but there is no facility to infer liveness of virtual registers. So we
 implemented DJ-Graph data structure that allowed us to calculate MergeSets which
 was used in the liveness analysis during \GCM{}.
@@ -442,8 +442,8 @@ to find reachability of values are fast. This is based on finding the dominance
 frontiers and the post-dominance frontiers (PDF) of the CFG. These points, being
 structural properties of a graph, do not change during code-motion. A
 post-dominance frontier is the basic block where anticipability (ANTIC) of an
-instruction (I) is checked because it the point on which the basic block
-containing I is control dependent.
+instruction (I) is checked because it is the basic block on which the basic
+block containing I is control dependent.
 
 So we introduce a data structure (CHI nodes) to keep track of values flowing out
 of a basic block with more than once successors. We only do this for values with
@@ -470,17 +470,16 @@ are already handled by GVN-PRE. It is advisable to run gvn-hoist before and
 after gvn-pre because gvn-pre creates opportunities for more instructions to be
 hoisted.
 
-
-A CHI keeps information about values flowing out of a basic block.  It is
-similar to $\phi$ \cite{ssa} but in the inverse graph, and used for out-flowing
-values on each edge. Although it may be suitable for other
+A CHI keeps information about `congruent' values flowing out of a basic block.
+It is similar to $\phi$ \cite{ssa} but in the inverse graph, and used for
+trackig out-flowing values on each edge. Although it may be suitable for other
 analyses/optimizations, for \GCM{}, it is computed only for instructions with
 multiple occurrences in the CFG. An illustration of CHI is shown in
 Figure~\ref{fig:chi-intro}. The \GVN{} for both I1 and I2 is V, the CHI node
 will save the instruction as well as the edge where the value is flowing to.
-Where $Arg1$, $Arg2$ are of type CHIArg. The CHI for both I1 and I2 is
-inserted in their PDF (A). For sinking we use the similar approach as
-\cite{ssapre} to track values flowing into a basic block.
+Where $Arg1$, $Arg2$ are of type CHIArg. The CHI for both I1 and I2 is inserted
+in their PDF (A). For sinking we use the similar approach as \cite{ssapre} to
+track values flowing into a basic block.
 
 
 \begin{figure}
@@ -499,9 +498,10 @@ for hoisting expression by working on inverted graph. We insert a CHI, to a
 basic block with multiple successors. Then for each instruction, we register its
 flow of value to its corresponding CHI which can be found in its PDF. For
 conciseness we only register values with multiple occurrences. Finally, we start
-walking the CFG and remove the CHI if it has a missing entry, that means the
-expression is not anticipable in the basic block having CHI. For the remaining
-CHIs anticipabilty of `values' is ensured by construction.
+walking the CFG and remove the CHI if it has a missing entry (see
+Figure~\cite{fig:chi-intro2}), that means the expression is not anticipable in
+the basic block having CHI. For the remaining CHIs anticipabilty of `values' is
+ensured by construction.
 
 \begin{figure}
   \includegraphics[width=0.4\textwidth]{chi-example2.pdf}
@@ -702,7 +702,7 @@ number of caller saved registers. In that situation a computation that increases
 register pressure is not profitable to hoist.
 
 
-\subsection{Finding candidates to move}
+\subsection{Finding candidates to schedule}
 \label{subsec:finding-candidates}
 The first step is to find a set of congruent instructions
 \cite{briggs1997}. This is performed by a linear scan of all instructions of the
