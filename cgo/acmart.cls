@@ -1050,8 +1050,8 @@ Computing Machinery]
   \ifx\acmConference@shortname\@empty
     \gdef\acmConference@shortname{#2}%
   \fi}
-\acmConference[Conference'17]{ACM Conference}{July 2017}{Washington,
-  DC, USA}
+\acmConference[CC'18]{CC}{February 2018}{Vienna,
+  Austria}
 \def\acmBooktitle#1{\gdef\@acmBooktitle{#1}}
 \acmBooktitle{Proceedings of \acmConference@name
        \ifx\acmConference@name\acmConference@shortname\else
@@ -1498,7 +1498,7 @@ Computing Machinery]
    only.
   \fi}
 \def\copyrightyear#1{\def\@copyrightyear{#1}}
-\copyrightyear{\@acmYear}
+\copyrightyear{2018}
 \def\@teaserfigures{}
 \newenvironment{teaserfigure}{\Collect@Body\@saveteaser}{}
 \long\def\@saveteaser#1{\g@addto@macro\@teaserfigures{\@teaser{#1}}}
