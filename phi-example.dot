@@ -1,0 +1,14 @@
+digraph g{
+A [label="A"]
+E [label="E[&Phi;(Arg1, Arg2, &perp;)]"]
+B [label="B(I1)"]
+C [label="C(I2)"]
+D [label="D"]
+
+A -> B
+A -> C
+A -> D
+B -> E
+C -> E
+D -> E
+}
