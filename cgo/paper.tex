@@ -66,6 +66,15 @@
 \usepackage{needspace}
 \usepackage{algpseudocode}
 \usepackage{enumitem}
+\usepackage{listings}
+\lstset{
+  basicstyle=\ttfamily,
+  %columns=fixed,
+  %fontadjust=true,
+  basewidth=0.4em,
+  language=C,
+  mathescape
+}
 \usepackage[final]{pdfpages}
 
 \begin{document}
@@ -222,7 +231,7 @@ at the hoisting point, the hardware has more independent instructions to
 reorder. The following reduced example illustrates how hoisting can improve
 performance by exposing more ILP.
 
-\begin{verbatim}
+\begin{lstlisting}
 float fun(float d, float min, float max, float a) {
   float tmin, tmax;
   float inv = 1.0f / d;
@@ -235,7 +244,7 @@ float fun(float d, float min, float max, float a) {
   }
   return tmax + tmin;
 }
-\end{verbatim}
+\end{lstlisting}
 
 In this program the computations of $tmax$ and $tmin$ are identical to the
 computations of $tmin$ and $tmax$ of sibling branch respectively. Both $tmax$ and $tmin$
@@ -247,7 +256,7 @@ units, the total latency of computation is $C_{div} + C_{sub} + C_{mul}$.
 
 Now if the computation of $tmax$ and $tmin$ are hoisted outside the
 conditionals, the C code version would look like:
-\begin{verbatim}
+\begin{lstlisting}
 float fun(float d, float min, float max, float a) {
   float inv = 1.0f / d;
   float x = (min - a) * inv;
@@ -256,7 +265,7 @@ float fun(float d, float min, float max, float a) {
   if (inv < 0) { tmin = y; tmax = x; }
   return tmax + tmin;
 }
-\end{verbatim}
+\end{lstlisting}
 
 In this code the division operation can be executed in parallel with the two
 subtractions because there are no dependencies among them. So the total number
@@ -436,7 +445,7 @@ describe in the rest of this section:
 \item update data structures to continue iterative \gcm{} (Section~\ref{subsec:optimistic}).
 \end{itemize}
 
-\section{A fast algorithm for code motion congruent computations}
+\section{Factoring reachability of expressions}
 Our algorithm factors out the reachability of values such that multiple queries
 to find reachability of values are fast. This is based on finding the dominance
 frontiers (DF) and the post-dominance frontiers (PDF) of the CFG. These points,
@@ -452,7 +461,7 @@ node in a basic block $B$ has CHIArgs with three entries: a) the instruction (I)
 CHIArg refers to, b) the basic block $Dest$ which is post-dominated by the basic
 block containing I, and c) the GVN of I.
 
-\begin{verbatim}
+\begin{lstlisting}
 struct CHIArg {
   // Edge destination (shows the direction of flow),
   // may not be where the I is.
@@ -462,7 +471,7 @@ struct CHIArg {
   // The global value number of I.
   GVNType VN;
 };
-\end{verbatim}
+\end{lstlisting}
 
 A $\chi$ keeps information about `congruent' values flowing out of a basic
 block.  It is similar to $\phi$ \cite{ssa} but in the inverse graph, and used
@@ -540,7 +549,7 @@ marked as a barrier. In the absence of context, as in our current
 implementation, some instructions which might be safe are still classified as
 barriers, e.g., calls with missing attributes.
 
-\begin{verbatim}
+\begin{lstlisting}
 // Compute barriers for both hoistable and sinkable
 // candidates.
 void computeBarriers()
@@ -561,7 +570,7 @@ void computeBarriers()
         if I does not guarantee progress:
           mark I as a sink barrier
           break
-\end{verbatim}
+\end{lstlisting}
 
 Computing barriers allows for efficient removal of non-movable candidates, this
 makes the legality check converge faster.
@@ -619,7 +628,7 @@ either decrease or preserve the register pressure as long as there is one
 operand killed at most.  The following example explains how \GCM{} of can reduce
 the register pressure.
 
-\begin{verbatim}
+\begin{lstlisting}
 B0: b = m
     c = n
     if p is true then goto B1 else goto B2
@@ -628,7 +637,7 @@ B1: a0 = b<kill> + c<kill>
 B2: a1 = b<kill> + c<kill>
     goto B3
 B3: ...
-\end{verbatim}
+\end{lstlisting}
 
 After hoisting, $a0$ and $a1$ are removed and a copy of $a0$ is placed in
 $B0$. Since $b$ and $c$ are killed in both $a0$ and $a1$, hoisting the
@@ -643,7 +652,7 @@ operands are not kills. For sinking, higher ranked expressions would be sunk
 first. And it would be illegal to sink higher ranked identical expressions if
 they are not fully anticipable in the common post-dominator. For example:
 
-\begin{verbatim}
+\begin{lstlisting}
 B0: i0 = load B
 B1: i1 = load A
     c1 = i1 + 10
@@ -656,7 +665,7 @@ B2: i2 = load A
 
 B3: PHIc1, c2)
     PHI(d1, d2)
-\end{verbatim}
+\end{lstlisting}
 
 In this example (c1, c2) or (d1, d2) are potential sinkable candidates. Since
 (c1, c2) depend on i1 and i2 respectively which are also in their original basic
@@ -677,75 +686,16 @@ pressure is high because the number of available registers are reduced by the
 number of caller saved registers. In that situation a computation that increases
 register pressure is not profitable to hoist.
 
-
-\subsection{Finding candidates to schedule}
-\label{subsec:finding-candidates}
-The first step is to find a set of congruent instructions
-\cite{briggs1997}. This is performed by a linear scan of all instructions of the
-program and classifying them by their value numbers.
-
-The current implementation of \GVN{} in \LLVM{} has some limitations when it
-comes to loads and stores so we compute the \GVN{} of loads and stores
-separately.  Our solution is to value number the address from where the value of
-a load is to be read from memory. For stores, we value number the address as
-well as the value to be stored at that address. Another limitation of the
-current \GVN{} implementation in \LLVM{} is that the instructions dependent on
-the loads will not get numbered correctly, and so after hoisting all candidates
-we need to rerun the \GVN{} analysis in order to discover new candidates now
-available after having hoisted load instructions.
-
-The process of computing \GVN{} can be on-demand, as we come across an
-instruction, or precomputed, computing \GVN{} of all the instructions
-beforehand. Which process to choose is determined by the scope of code-hoisting
-we want to perform. In a pessimistic approach, we want to hoist a limited set of
-instructions from the sibling branches as we iterate the DFS tree bottom-up, it
-is sufficient to compute \GVN{} values on-demand. Whereas, in the optimistic
-approach, as described in Section~\ref{subsec:optimistic}, we want to move as
-many instructions as possible, and it would require \GVN{} values to be
-precomputed.
-
-\subsection{Code generation for the optimistic \gcm{} algorithm}
+\section{A fast algorithm for code motion of congruent computations}
 \label{subsec:optimistic}
 Once all the legality and profitability checks are satisfied for a set of
-congruent instructions, they are suitable candidates for hoisting or sinking. A
+congruent instructions, they are suitable candidates for code motion. A
 copy of the computation is inserted at the hoisting/sinking point along with any
 instructions which needed to be rematerialized. Thereafter, all the computations
-made redundant by the new copy are removed, and the \SSA{} form is restored by
-updating the intermediate representation (IR) to reflect the changes. At the
-same time \MemorySSA{} is updated as well.
+made redundant by the new copy are removed.
 
-After one iteration of algorithm runs through the entire function, it creates
-more opportunities for \emph{higher ranked} computations
-\cite{rosen1988global}. Currently, this is a limitation of the \GVN{} analysis
-pass, and so we rerun the code-hoisting algorithm until there are no more
-instructions left to be hoisted.  Obviously, this is not the most optimal
-approach and can be improved by ranking the computations \cite{rosen1988global},
-or by improving the \GVN{} analysis to correctly populate congruence classes as
-the program is modified by the code generation.
 
-Finally after the transformation is done, we verify a set of post-conditions to
-establish that program invariants are maintained: e.g., consistency of use-defs,
-and \SSA{} semantics.
-
-The amount of hoisting depends on whether we collect \GVN{} of instructions
-before finding candidates (optimistic) or, on-demand (pessimistic). It also
-depends on the generality of the \GVN{} algorithm as mentioned earlier in
-Section~\ref{subsec:finding-candidates}. We have implemented an optimistic
-\gcm{} of congruent instructions which uses the liveness analysis as
-illustrated by \citet{das2012} and ranking expressions explained by
-\citet{rosen1988global}.
-
-\GCM{} basically consists of two parts, i.e., hoisting and sinking. This
-implementation only moves congruent instructions. An immediate guarantee of this
-approach is gain in code size (the final executable may be of larger size
-because of more inlining.) The algorithm prefers hoisting to sinking. If the
-dependency of a hoistable candidate is in the same basic-block as the candidate,
-then the dependency must also be hoistable, otherwise hoisting will be illegal or
-would require a complicated code generation to make it legal. The current
-algorithm discards cases if the dependency is neither hoistable nor
-rematerializable.
-
-\begin{verbatim}
+\begin{lstlisting}
 void doGCM()
   Analyses available:
     Dominator Tree, DFS Numbering, Memory SSA
@@ -754,17 +704,26 @@ void doGCM()
   computeBarriers()
   do:
     Compute GVN of each expression in the function
-   // Repeat hoisting if any candidates were hoisted.
+    // Repeat hoisting if any candidates were hoisted.
   while (doCodeHoisting() > 0)
+  // Code-sinking only once
   doCodeSinking()
-\end{verbatim}
-
-We collect the \GVN{} of all the instructions in the function and iterate on the
-list of instructions having identical \GVN{}s. The algorithm \emph{doGCM}
-prefers hoisting (\emph{doCodeHoisting}) to sinking (\emph{doCodeSinking}).
+\end{lstlisting}
 
 
-\begin{verbatim}
+\GCM{} basically consists of two parts, i.e., hoisting and sinking. This
+implementation only moves congruent instructions. An immediate guarantee of this
+approach is gain in code size (the final executable may be of larger size
+because of more inlining). If the dependency of a hoistable candidate is in the
+same basic-block as the candidate, then the dependency must also be hoistable,
+otherwise hoisting will be illegal or would require a complicated code
+generation to make it legal. The current algorithm discards cases if the
+dependency is neither hoistable nor rematerializable. We collect the \GVN{} of
+all the instructions in the function and iterate on the list of instructions
+having identical \GVN{}s. The algorithm \emph{doGCM} prefers hoisting
+(\emph{doCodeHoisting}) to sinking (\emph{doCodeSinking}).
+
+\begin{lstlisting}
 int doCodeHoisting(VNs)
   // VNs = map (VN -> list of I with value VN)
   Sort VNs in ascending order
@@ -775,61 +734,59 @@ int doCodeHoisting(VNs)
       Insert the CHI-node at PDF
 
   for each CHI-nodes in the CFG:
-    Remove the ones with missing entries
-    Remove CHI-arg if it fails legality checks
+    for each CHI-arg in CHI-node:
+      Remove CHI-arg if it fails legality checks
 
   for each CHI-nodes in the CFG:
     if CHI  does not have missing entries:
       Perform code hoisting
+      update data structures and statistics
 
-  return number of sinked instructions
-\end{verbatim}
+  return number of hoisted instructions
+\end{lstlisting}
 
-Code hoisting opens new opportunities for other hoistable candidates which were
-of higher rank (depended on candidates which got hoisted) which are encountered
-subsequently as the algorithm visits instructions in the increasing order of
-their ranks.
 
-%\newpage
-After no more candidates are hoistable, sinking is performed. Sinking is only
-performed once because currently there are very few sinkable candidates
-(Figure~\ref{tab:code-motion-metric}) as SimplifyCFG of LLVM (which runs before
-\GCM{}) has a code-sinking which already sinks several instructions.
+Code hoisting opens new opportunities for other higher ranked
+\cite{rosen1988global} (depended on candidates which got hoisted) which are
+encountered subsequently as the algorithm visits instructions in the increasing
+order of their ranks. Some of the congruent higher ranked computations do not
+get equal value numbers so we rerun the code-hoisting algorithm until there are
+no more instructions left to be hoisted. The hoisting converges quickly with 2-3
+iterations.
 
-For sinking we reuse the $\phi$ nodes instead of inserting another expression nodes
-like in \cite{ssapre} because $\phi$ nodes ensure availability of definitions, and
-hence downward safety, as long as all instructions corresponding to a $\phi$ are
-congruent. Also, the $\phi$ nodes represent a complete set of instructions which
-could be potentially sunk for code-size optimizations because $\phi$ nodes
-represent all values flowing out from a basic block into its dominance-frontier.
-
-\begin{verbatim}
+\begin{lstlisting}
 int doCodeSinking()
-  // Find sinkable instructions
-  For each value number VN > 1 instructions:
-    if there are two instructions with same immediate
-        successor(S) as post-dominator:
-      if both are only used in the same $\phi$-node of S
-          && dependencies of both are available at S:
-         mark instructions as sinkable
+  // VNs = map (VN -> list of I with value VN)
+  Sort VNs in ascending order
 
-  // Sink the instructions and update statistics
-  For each pair (I1, I2) of sinkable instructions:
-    Move I1 to the sink point
-    // the sink point is just after all
-    // the PHI-nodes in the post-dominator
-    update all the uses of PHI node (PN) with I1
-    Remove I2 and PN
-    if I1 is a memory reference:
-      update MemorySSA of I1
-      update MemorySSA of removed instructions
-        to point to the MemorySSA reference of I1
-      remove MemorySSA reference of all
-        others which were deleted
-    update statistics
+  for each VN in VNs
+    for each instruction with the same VN
+      Find its dominance-frontier (DF)
+      Insert the PHI-node at DF
 
-  return number of sinked instructions
-\end{verbatim}
+  for each PHI-nodes in the CFG:
+    for each PHI-arg in PHI-node:
+      Remove PHI-arg if it fails legality checks
+
+  for each PHI-nodes in the CFG:
+    if PHI does not have missing entries:
+      Perform code sinking
+      if a $\phi$ has same entries, reassign
+      update data structures and statistics
+
+      return number of sinked instructions
+\end{lstlisting}
+
+After no more candidates are hoistable, sinking is performed. It is only
+performed once because it may not open new opportunities for sinkable
+candidates. For sinking we iterate on the $\Phi$ nodes. After each code-motion
+the \SSA{} form is restored by updating the intermediate representation (IR) to
+reflect the changes. At the same time \MemorySSA{} is updated as well. Both the
+data structures can be updated very efficiently. After one full iteration of
+hoisting, the \GVN{} needs to be recomputed to explore new hoistable candidates.
+Finally after the transformation is done, we verify a set of post-conditions to
+establish that program invariants are maintained: e.g., consistency of use-defs,
+and \SSA{} semantics.
 
 
 \subsection{Time complexity of algorithm}
