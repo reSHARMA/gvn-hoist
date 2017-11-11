@@ -445,11 +445,11 @@ post-dominance frontier is the basic block where anticipability (ANTIC) of an
 instruction (I) is checked because it is the basic block on which the basic
 block containing I is control dependent.
 
-So we introduce a data structure (CHI nodes) to keep track of values flowing out
+So we introduce a data structure ($\chi$ nodes) to keep track of values flowing out
 of a basic block with more than once successors. We only do this for values with
 multiple occurrences in the function as they are the potentially hoistable
 candidates. This approach allows us to hoist instructions to a basic block with
-more than two successors. The CHI node in a basic block $B$ has CHIArgs with
+more than two successors. The $\chi$ node in a basic block $B$ has CHIArgs with
 three entries: a) the instruction (I) CHIArg refers to, b) the basic block $Dest$
 which is post-dominated by the basic block containing I, and c) the GVN of I.
 
@@ -470,14 +470,14 @@ are already handled by GVN-PRE. It is advisable to run gvn-hoist before and
 after gvn-pre because gvn-pre creates opportunities for more instructions to be
 hoisted.
 
-A CHI keeps information about `congruent' values flowing out of a basic block.
+A $\chi$ keeps information about `congruent' values flowing out of a basic block.
 It is similar to $\phi$ \cite{ssa} but in the inverse graph, and used for
 trackig out-flowing values on each edge. Although it may be suitable for other
 analyses/optimizations, for \GCM{}, it is computed only for instructions with
-multiple occurrences in the CFG. An illustration of CHI is shown in
-Figure~\ref{fig:chi-intro}. The \GVN{} for both I1 and I2 is V, the CHI node
+multiple occurrences in the CFG. An illustration of $\chi$ is shown in
+Figure~\ref{fig:chi-intro}. The \GVN{} for both I1 and I2 is V, the $\chi$ node
 will save the instruction as well as the edge where the value is flowing to.
-Where $Arg1$, $Arg2$ are of type CHIArg. The CHI for both I1 and I2 is inserted
+Where $Arg1$, $Arg2$ are of type CHIArg. The $\chi$ for both I1 and I2 is inserted
 in their PDF (A). For sinking we use the similar approach as \cite{ssapre} to
 track values flowing into a basic block.
 
@@ -494,21 +494,21 @@ track values flowing into a basic block.
 When SSAPRE inserts $\Phi$ (expression PHIs), it does so at places where
 (potentially) multiple expressions may merge. If a $\Phi$ has a missing entry,
 that means the expression is partially available.  We apply a similar concept
-for hoisting expression by working on inverted graph. We insert a CHI, to a
+for hoisting expression by working on inverted graph. We insert a $\chi$, to a
 basic block with multiple successors. Then for each instruction, we register its
-flow of value to its corresponding CHI which can be found in its PDF. For
+flow of value to its corresponding $\chi$ which can be found in its PDF. For
 conciseness we only register values with multiple occurrences. Finally, we start
-walking the CFG and remove the CHI if it has a missing entry (see
+walking the CFG and remove the $\chi$ if it has a missing entry (see
 Figure~\cite{fig:chi-intro2}), that means the expression is not anticipable in
-the basic block having CHI. For the remaining CHIs anticipabilty of `values' is
-ensured by construction.
+the basic block having $\chi$. For the remaining $\chi$s anticipabilty of `values'
+is ensured by construction.
 
 \begin{figure}
   \includegraphics[width=0.4\textwidth]{chi-example2.pdf}
   \vspace*{-1.0cm}
 \caption{I1, I2 are instructions in B, and C respectively, Arg1 = \{B, I1, V\}
   and Arg2 = \{C, I2, V\}, V is the value number for both I1, and I2. A has
-  missing entry in CHI so values are not anticipable}
+  missing entry in $\chi$ so values are not anticipable}
 \label{fig:chi-intro2}
 \end{figure}
 
@@ -523,7 +523,7 @@ extended basic-block because there might be non-returning calls in the middle of
 a basic-block. Essentially, any instruction that cannot guarantee progress is
 marked as a barrier. In the absence of context, as in our current
 implementation, some instructions which might be safe are still classified as
-barriers, e.g., volatile loads/stores, calls with missing attributes.
+barriers, e.g., calls with missing attributes.
 
 \begin{verbatim}
 // Compute barriers for both hoistable and sinkable
@@ -555,7 +555,7 @@ makes the legality check converge faster.
 \label{subsec:legality}
 Since the equality of movable candidates is purely based on the value numbers,
 we also need to establish if hoisting them or sinking them would be legal. The
-completeness of CHI is a necessary condition for hoistability but not
+completeness of $\chi$ is a necessary condition for hoistability but not
 sufficient. This is because congruence of value numbers only implies that they
 compute same value if the inputs are same. So for instructions like memory
 references, they may compute different values should the memory get modified
