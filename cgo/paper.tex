@@ -71,7 +71,7 @@
 \begin{document}
 
 %% Title information
-\title[SSA GCM]{Global code motion of congruent instructions}         %% [Short Title] is optional;
+\title[SSA GCM]{A fast algorithm for global code motion of congruent instructions}         %% [Short Title] is optional;
 
 \def \GCC {GCC}
 \def \LLVM {LLVM}
@@ -133,7 +133,7 @@
 %% Note: \begin{abstract}...\end{abstract} environment must come
 %% before \maketitle command
 \begin{abstract}
-We present a \gcm{} (\GCM{}) compiler optimization which schedules congruent
+We present a fast \gcm{} (\GCM{}) compiler optimization which schedules congruent
 instructions across the program.  Not only \GCM{} saves code size, it exposes
 redundancies as well, it exposes more instruction level parallelism in the
 basic-block to which instructions are moved, and it enables other passes like
@@ -437,21 +437,20 @@ describe in the rest of this section:
 \end{itemize}
 
 \section{A fast algorithm for code motion congruent computations}
-The algorithm factors out the reachability of values such that multiple queries
+Our algorithm factors out the reachability of values such that multiple queries
 to find reachability of values are fast. This is based on finding the dominance
-frontiers and the post-dominance frontiers (PDF) of the CFG. These points, being
-structural properties of a graph, do not change during code-motion. A
+frontiers (DF) and the post-dominance frontiers (PDF) of the CFG. These points,
+being structural properties of a graph, do not change during code-motion. A
 post-dominance frontier is the basic block where anticipability (ANTIC) of an
 instruction (I) is checked because it is the basic block on which the basic
 block containing I is control dependent.
 
-So we introduce a data structure ($\chi$ nodes) to keep track of values flowing out
-of a basic block with more than one successor. We only do this for values with
-multiple occurrences in the function as they are the potentially hoistable
-candidates. This approach allows us to hoist instructions to a basic block with
-more than two successors. The $\chi$ node in a basic block $B$ has CHIArgs with
-three entries: a) the instruction (I) CHIArg refers to, b) the basic block $Dest$
-which is post-dominated by the basic block containing I, and c) the GVN of I.
+So we introduce a data structure ($\chi$ nodes) to keep track of values flowing
+out of a basic block with more than one successor. This approach allows us to
+hoist instructions to a basic block with more than two successors. The $\chi$
+node in a basic block $B$ has CHIArgs with three entries: a) the instruction (I)
+CHIArg refers to, b) the basic block $Dest$ which is post-dominated by the basic
+block containing I, and c) the GVN of I.
 
 \begin{verbatim}
 struct CHIArg {
@@ -465,55 +464,71 @@ struct CHIArg {
 };
 \end{verbatim}
 
-Limitations: This pass does not hoist fully redundant expressions because they
-are already handled by GVN-PRE. It is advisable to run gvn-hoist before and
-after gvn-pre because gvn-pre creates opportunities for more instructions to be
-hoisted.
-
-A $\chi$ keeps information about `congruent' values flowing out of a basic block.
-It is similar to $\phi$ \cite{ssa} but in the inverse graph, and used for
-trackig out-flowing values on each edge. Although it may be suitable for other
-analyses/optimizations, for \GCM{}, it is computed only for instructions with
-multiple occurrences in the CFG. An illustration of $\chi$ is shown in
-Figure~\ref{fig:chi-intro}. The \GVN{} for both I1 and I2 is V, the $\chi$ node
-will save the instruction as well as the edge where the value is flowing to.
-Where $Arg1$, $Arg2$ are of type CHIArg. The $\chi$ for both I1 and I2 is inserted
-in their PDF (A). For sinking we use the similar approach as \cite{ssapre} to
-track values flowing into a basic block.
+A $\chi$ keeps information about `congruent' values flowing out of a basic
+block.  It is similar to $\phi$ \cite{ssa} but in the inverse graph, and used
+for trackig out-flowing values on each edge. An illustration of $\chi$ is shown
+in Figure~\ref{fig:chi-intro}. The \GVN{} for both I1 and I2 is V, the $\chi$
+node will save the instruction as well as the edge where the value is flowing
+to.  Where $Arg1$, $Arg2$ are of type CHIArg. The $\chi$ for both I1 and I2 is
+inserted in their PDF (A).
 
 
 \begin{figure}
-  \includegraphics[width=0.4\textwidth]{chi-example.pdf}
+  \includegraphics[scale=0.55]{chi-example.pdf}
   \vspace*{-1.0cm}
 \caption{I1, I2 are instructions in B, and C respectively, Arg1 = \{B, I1,
   V\} and Arg2 = \{C, I2, V\}, V is the value number for both I1, and I2}
 \label{fig:chi-intro}
 \end{figure}
 
+A similar idea has been used in SSAPRE \cite{ssapre} for partial redundancy
+elimination in spare form. When SSAPRE inserts $\Phi$ (expression PHIs), it does
+so at places where (potentially) multiple expressions may merge. If a $\Phi$ has
+a missing entry, that means the expression is partially available. Subsequent
+algorithms work on $\Phi$s to find out redundancies. We extend the idea for
+\GCM{} by propagating the anticipability in both directions.
 
-When SSAPRE inserts $\Phi$ (expression PHIs), it does so at places where
-(potentially) multiple expressions may merge. If a $\Phi$ has a missing entry,
-that means the expression is partially available.  We apply a similar concept
-for hoisting expression by working on inverted graph. We insert a $\chi$, to a
-basic block with multiple successors. Then for each instruction, we register its
-flow of value to its corresponding $\chi$ which can be found in its PDF. For
-conciseness we only register values with multiple occurrences. Finally, we start
-walking the CFG and remove the $\chi$ if it has a missing entry (see
-Figure~\ref{fig:chi-intro2}), that means the expression is not anticipable in
-the basic block having $\chi$. For the remaining $\chi$s anticipabilty of `values'
-is ensured by construction.
 
 \begin{figure}
-  \includegraphics[width=0.4\textwidth]{chi-example2.pdf}
+  \includegraphics[scale=0.55]{chi-example2.pdf}
   \vspace*{-1.0cm}
 \caption{I1, I2 are instructions in B, and C respectively, Arg1 = \{B, I1, V\}
   and Arg2 = \{C, I2, V\}, V is the value number for both I1, and I2. A has
-  missing entry in $\chi$ so values are not anticipable}
+  missing entry in $\chi$ so V is not anticipable}
 \label{fig:chi-intro2}
 \end{figure}
 
-Before we consider factors affecting the legality of \GCM{}, we introduce the
-concept of barriers.
+For code hoisting we insert a $\chi$, to a basic block with multiple
+successors. Then for each instruction, we register its flow of value to its
+corresponding $\chi$ which can be found in its PDF. Finally, we start walking
+the CFG and remove the $\chi$ if it has a missing entry (see
+Figure~\ref{fig:chi-intro2}), that means the expression is not anticipable in
+the basic block having incomplete $\chi$. For the remaining $\chi$s
+anticipabilty of `values' is ensured by construction. For code-sinking we insert
+$\Phi$s in basic blocks with multiple predecessors. Then for each instruction we
+register its flow of value to its correponding $\Phi$ which can be found in its
+DF.  Finally, we start walking the CFG and remove the $\Phi$ if it has a missing
+entry (see Figure~\ref{fig:phi-intro}), that means the expression is not
+available in the basic block having incomplete $\Phi$. For the remaining $\Phi$s
+availability of `values' is ensured by construction.
+
+
+\begin{figure}[h]
+  \includegraphics[scale=0.55]{phi-example.pdf}
+  \vspace*{-1.0cm}
+  \caption{I1, I2 are instructions in B, and C respectively, Arg1 = \{B, I1, V\}
+  and Arg2 = \{C, I2, V\}, V is the value number for both I1, and I2. A has
+  missing entry in $\Phi$ so V is not available}
+\label{fig:phi-intro}
+\end{figure}
+
+In order to limit the number of spurious $\chi$s and $\Phi$s,
+\cite{ssapre-improv}, we insert them only for values with multiple occurrences
+in the function as they are the interesting candidates for this \GCM{}. We
+believe this factorization of anticipability/availability of expressions may be
+suitable for faster implementation of other global (across basic blocks)
+analyses/optimizations as well. Before we consider factors affecting the
+legality of \GCM{}, we introduce the concept of barriers.
 
 \subsection{Barriers}
 \label{subsec:barriers}
@@ -551,103 +566,46 @@ void computeBarriers()
 Computing barriers allows for efficient removal of non-movable candidates, this
 makes the legality check converge faster.
 
-\subsubsection{Legality of movable instructions}
+\subsection{Legality of movable instructions}
 \label{subsec:legality}
 Since the equality of movable candidates is purely based on the value numbers,
 we also need to establish if hoisting them or sinking them would be legal. The
-completeness of $\chi$ is a necessary condition for hoistability but not
+completeness of $\chi$ and $\Phi$ are necessary for \GCM{} but not
 sufficient. This is because congruence of value numbers only implies that they
 compute same value if the inputs are same. So for instructions like memory
 references, they may compute different values should the memory get modified
 along the path. For that we need to check for intersecting side-effects along
 the path.
 
-For hoisting, we need to prove that on all execution paths from the hoisting
-point to the end of the program the side effects appear in the same order. In
-general, we cannot introduce a new computation along any path of execution
-without checking for undefined behavior \cite{undef}.  For that, it is checked
-that the side-effects of the computations (if any) do not intersect (alias) with
-any side-effects between the instructions to be moved and their hoisting/sinking
-point. It is also necessary to check if there are indirect branch targets, e.g.,
-landing pad, case statements, goto labels, etc., along the path because it
-becomes difficult to prove safety checks in those cases. In our current
-implementation we discard candidates on those paths.
+For that, we need to prove that on all execution paths from the initial position
+of an instruction to its destination, the side effects appear in the same
+order. In general, we cannot introduce a new computation along any path of
+execution without checking for undefined behavior \cite{undef}. It is also
+necessary to check if there are indirect branch targets, e.g., landing pad, case
+statements, goto labels, etc., along the path because it becomes difficult to
+prove safety checks in those cases.
 
-\subsubsection{Legality of hoisting scalars}
-Scalars are the easiest to hoist because we do not have to analyze them for
-aliasing memory references. As long as all the operands are available, or can be
-made available by rematerialization, the scalar computations can be hoisted.
-
-\subsubsection{Legality of hoisting memory references}
-The availability of operand to the load (an address) is checked at the hoisting
-point. If that is not available we try to rematerialize the address if possible.
-Along the path, from current position of the load instruction backwards on the
-control flow to the hoisting point, we check whether there are writes to memory
-that may alias with the load, in which case the candidate is discarded. Memory
-SSA allows efficient way of iterating over the use-def chains of memory
-references on a factored graph.
-
-For stores, we check the dependency requirements similar to the hoisting of
-loads. We check that the operands of the store instruction are available at the
-hoisting point, and there are no aliasing memory references along the hoisting
-path.
-
-\subsubsection{Legality of hoisting calls}
-Call instructions can be divided into three categories: those calls equivalent
-to purely scalar computations, calls reading from memory, and calls writing to
-memory which is the most restrictive form.  Each category of call instructions
-is handled as described for scalar, load, and store instructions.
-
-Hoisting loads/stores across calls also requires precise analysis of all the
-memory addresses accessed by the call. The current implementation being an
-intraprocedural pass, cannot schedule aggressively across calls. In the presence
-of pure calls, loads can be hoisted but stores can't. Also, if a call throws
-exceptions, or if it may not return, nothing can be scheduled across that call.
-
-\subsubsection{Legality of sinking expressions}
-\label{subsec:legality-sink}
-Sometimes, hoisting is not upward-safe \cite{click1995global}, e.g., if the
-expressions are in a landing pad, sinking of those expressions
-may reduce code size. Sinking may also reduce the register pressure in some
-cases, e.g., when the use operands are not kills. For sinking, higher ranked
-expressions would be sunk first. And it would be illegal to sink higher ranked
-identical expressions if they are not fully anticipable in the common
-post-dominator. For example:
-
-\begin{verbatim}
-B0: i0 = load B
-B1: i1 = load A
-    c1 = i1 + 10
-    d1 = i0 + 20
-    goto B3
-B2: i2 = load A
-    c2 = i2 + 10
-    d2 = i0 + 20
-    goto B3
-
-B3: phi(c1, c2)
-    phi(d1, d2)
-\end{verbatim}
-
-In this example (c1, c2) or (d1, d2) are potential sinkable candidates. Since
-(c1, c2) depend on i1 and i2 respectively which are also in their original basic
-blocks, c1 and c2 are not fully anticipable in B3. So without knowing the ability to sink
-of `i1' and `i2' it would be illegal to sink (c1, c2) to B3. On the other hand
-(d1, d2) can safely be sunk because their operands are readily available at the
-sink point, i.e., B3. It should also be noted that, just because the expressions
-are identical and operands are available, it still requires a unique
-post-dominating PHI to use the exact same values to be legally sinkable.
-
+Scalars are the easiest to hoist because we only need to check for availability
+of operands. For sinking the scalars we need to make sure that there are no uses
+of the instruction along the path, For instructions with memory references like
+loads, stores and calls, Memory SSA allows efficient way of iterating over the
+use-def chains of memory references on a factored graph. Hoisting loads/stores
+across calls also requires precise analysis of all the memory addresses accessed
+by the call. The current implementation being an intraprocedural pass, cannot
+schedule aggressively across calls. In the presence of pure calls, loads can be
+hoisted but stores can't. Also, if a call throws exceptions, or if it may not
+return, nothing can be scheduled across that call.
 
 \subsection{Profitability check (Cost models)}
 \label{subsec:cost-models}
-TODO: Motivate why this is important.
-After the legality checks have passed, we check if a \gcm{} is profitable.  That
-takes into account the impact \gcm{} would have on various parameters that might
+After the legality checks have passed, we check if a \GCM{} is profitable.  That
+takes into account the impact \GCM{} would have on various parameters that might
 affect runtime performance, e.g., impact on live-range, gain in the code
-size. The current implementation makes effort to not regress in performance
-across popular benchmarks and at the same time to reduce code size as much as
-possible. Following cost models are implemented:
+size. The current implementation makes effort to not regress in performance but
+at the same time to reduce code size as much as possible. Sometimes, hoisting is
+not upward-safe \cite{click1995global}, e.g., if the expressions are in a
+landing pad, sinking of those expressions may reduce code size. Following cost
+models are implemented:
 
 \subsubsection{Reduce register pressure}
 \label{hoist:reg-pressure}
@@ -676,20 +634,38 @@ After hoisting, $a0$ and $a1$ are removed and a copy of $a0$ is placed in
 $B0$. Since $b$ and $c$ are killed in both $a0$ and $a1$, hoisting the
 expressions will reduce the register pressure because two registers will be
 freed at the insertion point but only one register will be required to assign
-the definition of hoisted instruction $a0$.
+the definition of hoisted instruction $a0$. We have reduced performance
+regressions with this cost model even if LLVM has a live-range splitting
+\cite{cooper1998live} optimization.
 
-Ideally, it should be okay to hoist all the instructions and a later
-live-range-splitting \cite{cooper1998live} pass should make the right decision
-but the current live-range splitting pass of \LLVM{} is not making the optimal
-decision and we have found performance regressions while hoisting aggressively.
+Sinking may also reduce the register pressure in some cases, e.g., when the use
+operands are not kills. For sinking, higher ranked expressions would be sunk
+first. And it would be illegal to sink higher ranked identical expressions if
+they are not fully anticipable in the common post-dominator. For example:
 
-There is a special case for hoisting load instructions when the hoist-point is
-the predecessor basic-block for all the congruent loads. Even if the register
-pressure would increase, we prefer to hoist loads in this case. The reason
-being, that would make the loaded value available by the time it is used, and
-livess would not increase by much because instruction is hoisted to immediate
-predecessor.
+\begin{verbatim}
+B0: i0 = load B
+B1: i1 = load A
+    c1 = i1 + 10
+    d1 = i0 + 20
+    goto B3
+B2: i2 = load A
+    c2 = i2 + 10
+    d2 = i0 + 20
+    goto B3
 
+B3: PHIc1, c2)
+    PHI(d1, d2)
+\end{verbatim}
+
+In this example (c1, c2) or (d1, d2) are potential sinkable candidates. Since
+(c1, c2) depend on i1 and i2 respectively which are also in their original basic
+blocks, c1 and c2 are not fully anticipable in B3. So without knowing the ability to sink
+of `i1' and `i2' it would be illegal to sink (c1, c2) to B3. On the other hand
+(d1, d2) can safely be sunk because their operands are readily available at the
+sink point, i.e., B3. It should also be noted that, just because the expressions
+are identical and operands are available, it still requires a unique
+post-dominating PHI to use the exact same values to be legally sinkable.
 
 \subsubsection{Hoisting an expression across a call}
 \label{cost:across-calls}
@@ -1097,7 +1073,7 @@ sinking and hoisting transforms in the SimplifyCFG pass which runs before
 severe limitations to make the analysis and code transform very fast in order to
 be able to run the pass several times.  Another reason is that instructions for
 which dependencies are not directly available in the successor
-(Section~\ref{subsec:legality-sink}) is not sunk for now because that would
+(Section~\ref{subsec:legality}) is not sunk for now because that would
 require a look ahead on the ability to sink the dependencies. We plan to
 implement this in near future.
 
@@ -1110,6 +1086,10 @@ improves performance in some cases. To preserve performance and not hoist/sink
 too much, we have implemented a register pressure aware cost model as described
 in Section~\ref{subsec:cost-models}. A part of our implementation is merged in
 LLVM trunk as GVNHoist.cpp and the \GCM{} implementation is under review.
+
+This pass does not hoist fully redundant expressions because they are already
+handled by GVN-PRE. It is advisable to run gvn-hoist before and after gvn-pre
+because gvn-pre creates opportunities for more instructions to be hoisted.
 
 We would like to integrate \GCM{} with \LLVM{'}s new GVN-PRE implementation such
 that more congruent instructions can be scheduled. This would also expose more
