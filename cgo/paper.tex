@@ -151,8 +151,8 @@ of \SPEC{} benchmarks viz. mcf and sjeng, moreover, register spills reduced by
 2\% on the \SPEC{} benchmarks suite when compiled for \xlinux{}. \GCM{} is an
 optimistic algorithm in the sense that it considers all congruent instructions
 in a function as potential candidates. We also formalize why register pressure
-reduces, and how \GCM{} increases instruction level parallelism thereby enabling
-more \ooo{} execution on modern architectures.
+reduces as a result of \gcm{}, and how \gcm{} increases instruction level
+parallelism thereby enabling more \ooo{} execution on modern architectures.
 \end{abstract}
 
 
@@ -446,7 +446,7 @@ instruction (I) is checked because it is the basic block on which the basic
 block containing I is control dependent.
 
 So we introduce a data structure ($\chi$ nodes) to keep track of values flowing out
-of a basic block with more than once successors. We only do this for values with
+of a basic block with more than one successor. We only do this for values with
 multiple occurrences in the function as they are the potentially hoistable
 candidates. This approach allows us to hoist instructions to a basic block with
 more than two successors. The $\chi$ node in a basic block $B$ has CHIArgs with
@@ -499,7 +499,7 @@ basic block with multiple successors. Then for each instruction, we register its
 flow of value to its corresponding $\chi$ which can be found in its PDF. For
 conciseness we only register values with multiple occurrences. Finally, we start
 walking the CFG and remove the $\chi$ if it has a missing entry (see
-Figure~\cite{fig:chi-intro2}), that means the expression is not anticipable in
+Figure~\ref{fig:chi-intro2}), that means the expression is not anticipable in
 the basic block having $\chi$. For the remaining $\chi$s anticipabilty of `values'
 is ensured by construction.
 
@@ -797,11 +797,11 @@ int doCodeHoisting(VNs)
     for each instruction with the same VN
       Find its post-dominance-frontier (PDF)
       Insert the CHI-node at PDF
-  
+
   for each CHI-nodes in the CFG:
     Remove the ones with missing entries
     Remove CHI-arg if it fails legality checks
-  
+
   for each CHI-nodes in the CFG:
     if CHI  does not have missing entries:
       Perform code hoisting
