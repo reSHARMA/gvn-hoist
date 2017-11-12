@@ -801,33 +801,30 @@ Table~\ref{tab:compile-time} to see the impact of \gcm{}.
       \hline
 % TODO: Check if putting code-size or spills number is okay or only %age is required.
 % llvm trunk vs. llvm trunk with code-motion
-                &\% performance uplift & size reduction (Bytes) & size reduction (Bytes)\\
-Benchmarks      & at -Ofast (high better)& at -Ofast (high better) & at -Os (high better)\\\hline
-400.perlbench	& 1.00  & -9120  & 544  \\\hline
-401.bzip2	& 1.00  & -1600  & 128  \\\hline
-403.gcc	        & 1.00  & -58176 & 3384 \\\hline
-429.mcf	        & 1.03  & 160    & 16   \\\hline
-433.milc	& 1.00  & -656   & 224  \\\hline
-444.namd	& 1.00  & -3864  & -1168\\\hline
-445.gobmk	& 0.99  & -20480 & -264 \\\hline
-447.dealII	& 0.95  & -27836 & 50934\\\hline
-450.soplex	& 0.99  & 2220   & 348  \\\hline
-453.povray	& 0.97  & 164    & -472 \\\hline
-456.hmmer	& 0.99  & -3464  & -352 \\\hline
-458.sjeng	& 1.02  & 440    & 1456 \\\hline
-462.libquantum	& 1.00  & -96    & 0    \\\hline
-464.h264ref	& 1.00  & -3424  & 864  \\\hline
-470.lbm	        & 1.00  & 0      & 0    \\\hline
-471.omnetpp	& 1.00  & 2688   & 200  \\\hline
-473.astar	& 1.00  & -928   & 152  \\\hline
-482.sphinx3	& 0.99  & 3008   & -176 \\\hline
-483.xalancbmk	& 1.01  & 46492  & 4012 \\\hline
-Geomean         & 0.997 &  & \\\hline
+                &\% performance uplift & size reduction (Bytes) \\
+Benchmarks      & at -Ofast (high better)& at -Ofast (high better)\\\hline
+400.perlbench	&  1.95  & 984   \\\hline
+401.bzip2	& -0.84  & 16    \\\hline
+403.gcc	        & -2.30  & 2128  \\\hline
+429.mcf	        & -4.36  & 16    \\\hline
+433.milc	& -1.86  & 48    \\\hline
+444.namd	& -2.40  & 544   \\\hline
+445.gobmk	& -0.52  & 56    \\\hline
+447.dealII	&  0.39  & -2560 \\\hline
+450.soplex	& -0.24  & -32   \\\hline
+453.povray	& -0.05  & 848   \\\hline
+456.hmmer	&  0.93  & 296   \\\hline
+458.sjeng	& -0.58  & 232   \\\hline
+462.libquantum	&  8.17  & -16   \\\hline
+470.lbm	        &  2.57  & 0     \\\hline
+471.omnetpp	&  5.30  & 152   \\\hline
+473.astar	& -0.17  & 48    \\\hline
+482.sphinx3	& -0.11  & 16    \\\hline
+483.xalancbmk	& -2.98  & 392   \\\hline
     \end{tabular}}
   \end{center}
   \caption{Execution time (ratio) and code size change (Bytes) with and without
-    \GCM{} on \SPEC{}: performance uplift at in mcf and sjeng;
-    code size improvement in dealII.}
+    \GCM{} on \SPEC{}}
   \label{tab:code-size}
 \end{table}
 
