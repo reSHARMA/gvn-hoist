@@ -714,12 +714,12 @@ int doCodeHoisting(VNs)
       Find its post-dominance-frontier (PDF)
       Insert the CHI-node at PDF
 
-  for each CHI-nodes in the CFG:
-    for each CHI-arg in CHI-node:
-      Remove CHI-arg if it fails legality checks
+  for each $\chi$-nodes in the CFG:
+    for each $\chi$-arg in $\chi$-node:
+      Remove $\chi$-arg if it fails legality checks
 
-  for each CHI-nodes in the CFG:
-    if CHI  does not have missing entries:
+  for each $\chi$-nodes in the CFG:
+    if $\chi$ does not have missing entries:
       Perform code hoisting
       update data structures and statistics
 
@@ -743,19 +743,19 @@ int doCodeSinking()
   for each VN in VNs
     for each instruction with the same VN
       Find its dominance-frontier (DF)
-      Insert the PHI-node at DF
+      Insert the $\Phi$-node at DF
 
-  for each PHI-nodes in the CFG:
-    for each PHI-arg in PHI-node:
-      Remove PHI-arg if it fails legality checks
+  for each $\Phi$-nodes in the CFG:
+    for each $\Phi$-arg in PHI-node:
+      Remove $\Phi$-arg if it fails legality checks
 
-  for each PHI-nodes in the CFG:
-    if PHI does not have missing entries:
+  for each $\Phi$-nodes in the CFG:
+    if $\Phi$ does not have missing entries:
       Perform code sinking
       if a $\phi$ has same entries, reassign
       update data structures and statistics
 
-      return number of sinked instructions
+  return number of sinked instructions
 \end{lstlisting}
 
 After no more candidates are hoistable, sinking is performed. It is only
@@ -797,7 +797,7 @@ loop-unroller vary wildly with \GCM{} optimization so it was difficult to
 visualize the impact. Each benchmark was run three times and the best result was
 taken. We collected execution time and code-size which is listed in
 Table~\ref{tab:code-size}, other compiler statistics are listed in
-Table~\ref{tab:spills}, Table~\ref{tab:stats}, and
+Table~\ref{tab:stats}, Table~\ref{tab:spills}, and
 Figure~\ref{tab:code-motion-metric}.  We also measured compile time
 Table~\ref{tab:compile-time}. The benchmark 464.h264ref caused an internal
 compiler error with the trunk clang so it could not be reported.
@@ -850,13 +850,14 @@ the other hand 447.dealII increased in code size. This is because once the
 code-size of a function decreases (due to \GCM{}) it becomes cheaper to do some
 optimizations like inlining, loop unrolling, copy propagation, rematerialization
 etc. We tried to minimize the noise by disabling inliner, and loop unroller but
-still we can see some increase in the code size.  To see the impact of \GCM{} on
-inliner we ran \GCM{} with inliner enabled and collected the compile-time
-statistics produced by LLVM (See Table~\ref{tab:stats}) . Except for 447.dealII,
-450.soplex, 482.sphinx3 and 483.xalancbmk all other benchmarks got more
-functions inlined. Also, since the pass runs early, it affects many
-optimizations which rely on the number of instructions, length of the use-def
-chain, and other metrics.
+still we can see some increase in the code size.
+
+To see the impact of \GCM{} on inliner we ran \GCM{} with inliner enabled and
+collected the compile-time statistics produced by LLVM (See
+Table~\ref{tab:stats}) . Except for 447.dealII, 450.soplex, 482.sphinx3 and
+483.xalancbmk all other benchmarks got more functions inlined. Also, since the
+pass runs early, it affects many optimizations which rely on the number of
+instructions, length of the use-def chain, and other metrics.
 
 
 \begin{table}[h!]
@@ -1016,8 +1017,8 @@ and not hoist/sink too much, we have implemented a register pressure aware cost
 model as described in Section~\ref{subsec:cost-models}. A part of our
 implementation is merged in LLVM trunk as GVNHoist.cpp and the \GCM{}
 implementation is under review. This pass does not hoist fully redundant
-expressions because they are already handled by a later partial redundancy
-elimination pass.
+expressions because they are already removed by a later partial redundancy
+elimination pass in LLVM.
 
 We would like to explore other places in the optimization pipeline where \GCM{}
 could improve performance. It may be useful to integrate \GCM{} with \LLVM{'}s
