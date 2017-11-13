@@ -889,8 +889,8 @@ Benchmarks        &base(-Ofast) &\GCM{}(-Ofast) &GCM/base\\\hline
 Grand Total	  & 43349	& 42497	& 0.98 \\\hline
     \end{tabular}}
   \end{center}
-  \caption{Number of spills before and after \gcm{}(\GCM{}) on SPEC2006 at
-    -Ofast. Lower is better in \%age change. Spills reduced by 2\%.}
+  \caption{Number of spills with and without\GCM{} on SPEC2006 at
+    -Ofast. Lower is better in GCM/base. Spills reduced by 2\%.}
   \label{tab:spills}
 \end{table}
 
@@ -929,7 +929,7 @@ still decreases.
     \end{tabular}}
   \end{center}
   \caption{Change in total number of instructions executed during the
-    compilation with and without \gcm{} (\GCM{}) on \SPEC{} at -Ofast. The
+    compilation with and without \GCM{} on \SPEC{} at -Ofast. The
     instructions were counted using valgrind.}
   \label{tab:compile-time}
 \end{table}
@@ -970,7 +970,7 @@ executed during the compilation of each benchmark as output from valgrind
  483.xalancbmk	  & 14.6& -3.6 &  -1.0&  -1.2 \\\hline
     \end{tabular}}
   \end{center}
-  \caption{Change in the static compile time metrics w.r.t. \gcm{} (\GCM{}) on
+  \caption{Change in the static compile time metrics w.r.t. \GCM{} on
     \SPEC{} at -Ofast. The \% columns show percentage increase in metric
     w.r.t. baseline. \GCM{} improves LICM and inlining in general.}
   \label{tab:stats}
