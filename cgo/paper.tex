@@ -190,8 +190,8 @@ based on data-flow analysis \cite{morel1979global}.  At first these techniques
 were described in the classical data-flow analysis framework, but later the use
 of Static Single Assignment (\SSA{}) representation lowered their cost in terms
 of compilation time \cite{briggs1994effective,chow1997new,kennedy1999partial}
-and brought these techniques in the main stream: \SSA{} based \PRE{} is
-available in many compilers like \GCC{} and \LLVM{}.
+and brought these techniques in the main stream: \SSA{} based \PRE{} has been
+implemented in many optimizing compilers like \GCC{} and \LLVM{}.
 
 This paper describes a fast algorithm for \gcm{} (\GCM{}) of congruent
 instructions \cite{briggs1997}, a technique that uses the information computed
@@ -528,13 +528,13 @@ Barriers are based on the concept of pinned instructions \cite{click1995global}
 but extended to adapt to \LLVM{} IR. A basic-block in \LLVM{} IR is actually an
 extended basic-block because there might be non-returning calls in the middle of
 a basic-block. Essentially, any instruction that cannot guarantee progress is
-marked as a barrier. In the absence of context, as in our current
-implementation, some instructions which might be safe are still classified as
-barriers, e.g., calls with missing attributes.
+marked as a barrier. A barrier will prevent any instruction occurring lexically
+below it from getting hoisted. On the other hand, a sink barrier will prevent
+any instruction above it from getting sunk. If there are no barriers in a basic
+block, any instruction satisfying other legality checks can be sunk.
 
 \begin{lstlisting}
-// Compute barriers for both hoistable and sinkable
-// candidates.
+// Compute both hoist and sink barriers
 void computeBarriers()
   for each basic-block B in a function:
     barrier_found = false
@@ -545,8 +545,6 @@ void computeBarriers()
         break;
 
     // Find the last barrier below which instructions
-    // can be sunk. If there was no barrier in B, any
-    // instruction satisfying other legality checks
     // can be sunk.
     if barrier_found:
       for each instruction I in B in reverse order:
@@ -555,8 +553,11 @@ void computeBarriers()
           break
 \end{lstlisting}
 
-Computing barriers allows for efficient removal of non-movable candidates, this
-makes the legality check converge faster.
+
+In the absence of context, as in our current implementation, some instructions
+which might be safe are still classified as barriers, e.g., calls with missing
+attributes.  Computing barriers allows for efficient removal of non-movable
+candidates, this makes the legality check converge faster.
 
 \subsection{Legality of movable instructions}
 \label{subsec:legality}
@@ -574,8 +575,8 @@ instruction to its destination, the side effects appear in the same order. In
 general, we cannot introduce a new computation along any path of execution
 without checking for undefined behavior \cite{undef}. It is also necessary to
 check if there are indirect branch targets, e.g., landing pad, case statements,
-goto labels, etc., along the path because it becomes difficult to prove safety
-checks in those cases.
+or other forms of goto labels along the path because it becomes difficult to
+prove safety checks in those cases.
 
 Scalars are the easiest to hoist because we only need to check for availability
 of operands. For sinking the scalars we need to make sure that there are no uses
@@ -638,12 +639,15 @@ operand killed at most.  The following example explains how \GCM{} of can reduce
 the register pressure.
 
 \begin{lstlisting}
-B0: b = m
+B0:
+    b = m
     c = n
     if p is true then goto B1 else goto B2
-B1: a0 = b<kill> + c<kill>
+B1:
+    a0 = b<kill> + c<kill>
     goto B3
-B2: a1 = b<kill> + c<kill>
+B2:
+    a1 = b<kill> + c<kill>
     goto B3
 B3: ...
 \end{lstlisting}
@@ -659,21 +663,25 @@ pressure when the use operands are not kills.
 
 \subsubsection{Hoisting an expression across a call}
 \label{cost:across-calls}
-Even hoisting scalars across calls is tricky because it can increase the number
-of spills. During the frame lowering of calls, the argument registers (also
-known as the caller saved registers) are saved because they might be modified by
-the callee and after the call they are restored. Due to this the register
-pressure is high because the number of available registers are reduced by the
-number of caller saved registers. In that situation a computation that increases
-register pressure is not profitable to hoist.
+Call expressions are difficult to analyze in an intraprocedural optimization
+pass like \GCM{}. Even hoisting scalars across calls is tricky because it can
+increase the number of spills. During the register allocation of calls
+expressions, the argument registers (also known as the caller saved registers)
+are saved because they might be modified by the callee and after the call they
+are restored. Due to this the register pressure is high because the number of
+available registers are reduced by the number of caller saved registers. In that
+situation a computation that reduces register pressure may be beneficial to
+hoist. Similarly, a computation that introduces a register (without killing any
+other operand) before a call may be beneficial to sink.
 
 \section{A fast algorithm for code motion of congruent computations}
 \label{subsec:optimistic}
 Once all the legality and profitability checks are satisfied for a set of
-congruent instructions, they are suitable candidates for code motion. A
-copy of the computation is inserted at the hoisting/sinking point along with any
+congruent instructions, they are suitable candidates for code motion. A copy of
+the computation is inserted at the hoisting/sinking point along with any
 instructions which needed to be rematerialized. Thereafter, all the computations
-made redundant by the new copy are removed.
+made redundant by the new copy are removed and affected data structuers are
+updated.
 
 
 \begin{lstlisting}
@@ -693,16 +701,16 @@ void doGCM()
 
 
 \GCM{} basically consists of two parts, i.e., hoisting and sinking. This
-implementation only moves congruent instructions. An immediate guarantee of this
-approach is gain in code size (the final executable may be of larger size
-because of more inlining). If the dependency of a hoistable candidate is in the
-same basic-block as the candidate, then the dependency must also be hoistable,
-otherwise hoisting will be illegal or would require a complicated code
-generation to make it legal. The current algorithm discards cases if the
-dependency is neither hoistable nor rematerializable. We collect the \GVN{} of
-all the instructions in the function and iterate on the list of instructions
-having identical \GVN{}s. The algorithm \emph{doGCM} prefers hoisting
-(\emph{doCodeHoisting}) to sinking (\emph{doCodeSinking}).
+implementation only moves congruent instructions which makes it easier to ensure
+that we do not introduce a redundant computation along any path of execution. If
+the dependency of a hoistable candidate is in the same basic-block as the
+candidate, then the dependency must also be hoistable, otherwise hoisting will
+be illegal or would require a complicated code generation to make it legal. The
+current algorithm discards cases if the dependency is neither hoistable nor
+rematerializable. We collect the \GVN{} of all the instructions in the function
+and iterate on the list of instructions having identical \GVN{}s. The algorithm
+\emph{doGCM} prefers hoisting (\emph{doCodeHoisting}) to sinking
+(\emph{doCodeSinking}).
 
 \begin{lstlisting}
 int doCodeHoisting(VNs)
