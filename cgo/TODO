@@ -1,0 +1,2 @@
+\Phi for all forward propagation optimizations like jump threading. (will be fully/partially available analysis)
+\chi for all backward propagation optimizations (can be precomputed).
