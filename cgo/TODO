@@ -1,2 +1,5 @@
+Which optimizations can benefit from these:
 \Phi for all forward propagation optimizations like jump threading. (will be fully/partially available analysis)
 \chi for all backward propagation optimizations (can be precomputed).
+
+on the correctness of chi and PHI	how to write theorems (https://sites.google.com/site/jongsoopark/home/ssapre.pdf)
