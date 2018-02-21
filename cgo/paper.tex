@@ -328,8 +328,7 @@ performance. Most of the recent work on global scheduling are done using integer
 linear programming (ILP) which results in prohibitively high compile time which
 is not suitable for industrial compilers. To the best of our knowledge we have
 not found any reference which explored \gcm{} with a cost-model to reduce
-register-pressure. A part of our implementation (aggressive code hoisting) is
-already merged in \LLVM{} trunk. The main contributions of this paper are:
+register-pressure. The main contributions of this paper are:
 \begin{itemize}[leftmargin=*,topsep=0pt]
 \item an optimistic fast algorithm to schedule congruent instructions;
 \item introducing an analogue of $\phi$ nodes which allows faster tracking of
@@ -1021,11 +1020,9 @@ helps exploit flow of values in sparse representation.  Experimental results
 show that it is a useful performance and code-size optimization. It also enables
 inlining and LICM opportunities, reduces register spill. To preserve performance
 and not hoist/sink too much, we have implemented a register pressure aware cost
-model as described in Section~\ref{subsec:cost-models}. A part of our
-implementation is merged in LLVM trunk as GVNHoist.cpp and the \GCM{}
-implementation is under review. This pass does not hoist fully redundant
-expressions because they are already removed by a later partial redundancy
-elimination pass in LLVM.
+model as described in Section~\ref{subsec:cost-models}. This pass does not hoist
+fully redundant expressions because they are already removed by a later partial
+redundancy elimination pass in LLVM.
 
 We would like to explore other places in the optimization pipeline where \GCM{}
 could improve performance. It may be useful to integrate \GCM{} with \LLVM{'}s
