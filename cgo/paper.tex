@@ -530,12 +530,9 @@ but extended to adapt to \LLVM{} IR. A basic-block in \LLVM{} IR is actually an
 extended basic-block \cite{ebb} because there might be non-returning calls in
 the middle of a basic-block. There might be other instructions like stores,
 where compiler may not guarantee progress of control flow, all such instructions
-are marked as barriers. A barrier will prevent any instruction occurring
-lexically below it from getting hoisted. On the other hand, a sink barrier will
-prevent any instruction above it from getting sunk. If there are no barriers in
-a basic block, any instruction satisfying other legality checks can be sunk.
+are marked as barriers as illustrated in Algorithm~\ref{algo:barriers}.
 
-\begin{lstlisting}[caption={Compute hoist and sink barriers},captionpos=b]
+\begin{lstlisting}[caption={Compute hoist and sink barriers},captionpos=b,label={algo:barriers}]
 // Compute both hoist and sink barriers
 void computeBarriers()
   for each basic-block B in a function:
@@ -556,10 +553,14 @@ void computeBarriers()
 \end{lstlisting}
 
 
-In the absence of context, as in our current implementation, some instructions
-which might be safe are still classified as barriers, e.g., calls with missing
-attributes.  Computing barriers allows for efficient removal of non-movable
-candidates, this makes the legality check converge faster.
+A barrier will prevent any instruction occurring lexically below it from getting
+hoisted. On the other hand, a sink barrier will prevent any instruction above it
+from getting sunk. If there are no barriers in a basic block, any instruction
+satisfying other legality checks can be sunk.  In the absence of interprocedural
+context, as in our current implementation, some instructions which might be safe
+are still classified as barriers, e.g., calls with missing attributes.
+Computing barriers allows for efficient removal of non-movable candidates, this
+makes the legality check converge faster.
 
 \subsection{Legality of movable instructions}
 \label{subsec:legality}
@@ -688,23 +689,22 @@ instructions which needed to be rematerialized. Thereafter, all the computations
 made redundant by the new copy are removed and affected data structures are
 updated.
 
-\begin{lstlisting}[caption={Global Code Motion},captionpos=b]
+\begin{lstlisting}[caption={Global Code Motion},captionpos=b,label={algo:gcm}]
 void doGCM()
-  Analyses available:
-    Dominator Tree, DFS Numbering, Memory SSA
-  Compute DJ-graph of function
+  Analyses available: Dominator Tree, DFS Numbers, Memory SSA
+  Compute DJ-graph of CFG
   constructMergeSet(CFG)
   computeBarriers()
   do:
     Compute GVN of each expression in the function
     // Repeat hoisting if any candidates were hoisted.
   while (doCodeHoisting() > 0)
-  // Code-sinking only once
-  doCodeSinking()
+  doCodeSinking() // Code-sinking only once
 \end{lstlisting}
 
 
-\GCM{} basically consists of two parts, i.e., hoisting and sinking. This
+\GCM{} (Algorithm~\ref{algo:gcm}) basically consists of two parts, i.e., hoisting
+(Algorithm~\ref{algo:hoist}) and sinking (Algorithm~\ref{algo:sink}). This
 implementation only moves congruent instructions which makes it easier to ensure
 that we do not introduce a redundant computation along any path of execution. If
 the dependency of a hoistable candidate is in the same basic-block as the
@@ -716,7 +716,7 @@ and iterate on the list of instructions having identical \GVN{}s. The algorithm
 \emph{doGCM} prefers hoisting (\emph{doCodeHoisting}) to sinking
 (\emph{doCodeSinking}).
 
-\begin{lstlisting}[caption={Hoist instructions},captionpos=b]
+\begin{lstlisting}[caption={Hoist instructions},captionpos=b,label={algo:hoist}]
 int doCodeHoisting(VNs)
   // VNs = map (VN -> list of I with value VN)
   Sort VNs in ascending order
@@ -747,7 +747,19 @@ get equal value numbers so we rerun the code-hoisting algorithm until there are
 no more instructions left to be hoisted. The hoisting converges quickly with 2-3
 iterations.
 
-\begin{lstlisting}[caption={Sink instructions},captionpos=b]
+After no more candidates are hoistable, sinking is performed. To sink the
+instructions $\Phi$ (Section~\ref{fig:phi-intro}) nodes are considered as they
+keep track of expressions which are available at the point of their definition.
+Sinking is only performed once because there were far fewer sinkable
+instructions than hoistable instructions during our experiments.
+
+Moreover, as the direction of movement of sinkable instruction is in the same
+direction as program flow, the sinkable instructions which are dependent on
+other sinkable instructions can be sunk in the same iteration as algorithm
+iterates bottom up.
+
+
+\begin{lstlisting}[caption={Sink instructions},captionpos=b,label={algo:sink}]
 int doCodeSinking()
   // VNs = map (VN -> list of I with value VN)
   Sort VNs in ascending order
@@ -770,16 +782,14 @@ int doCodeSinking()
   return number of sinked instructions
 \end{lstlisting}
 
-After no more candidates are hoistable, sinking is performed. It is only
-performed once because it may not open new opportunities for sinkable
-candidates. For sinking we iterate on the $\Phi$ nodes. After each code-motion
-the \SSA{} form is restored by updating the intermediate representation (IR) to
-reflect the changes. At the same time \MemorySSA{} is updated as well. Both the
-data structures can be updated very efficiently. After one full iteration of
-hoisting, the \GVN{} needs to be recomputed to explore new hoistable candidates.
-Finally after the transformation is done, we verify a set of post-conditions to
-establish that program invariants are maintained: e.g., consistency of use-defs,
-and \SSA{} semantics.
+After each code-motion the \SSA{} form is restored by updating the
+intermediate representation (IR) to reflect the changes. At the same time
+\MemorySSA{} is updated as well. Both the data structures can be updated very
+efficiently. After one full iteration of hoisting, the \GVN{} needs to be
+recomputed to explore new hoistable candidates.  Finally after the
+transformation is done, we verify a set of post-conditions to establish that
+program invariants are maintained: e.g., consistency of use-defs, and \SSA{}
+semantics.
 
 
 \subsection{Time complexity of algorithm}
@@ -993,7 +1003,6 @@ reduces. The compilation time listed here is the total instruction count
 executed during the compilation of each benchmark as output from `valgrind
 -{}-tool=cachegrind' \cite{valgrind}. We used valgrind because it was a simple
 and reliable way to show the impact of our optimization.
-
 
 \begin{figure*}[h!]
   \includegraphics[width=0.8\textwidth,height=8cm]{gcm-stats.pdf}
