@@ -77,6 +77,8 @@
 }
 \usepackage[final]{pdfpages}
 
+\renewcommand\lstlistingname{Algorithm}
+
 \begin{document}
 
 %% Title information
@@ -89,7 +91,7 @@
 \def \MemorySSA {MemorySSA}
 \def \PRE {PRE}
 \def \GVN {GVN}
-\def \SPEC {SPEC Cpu 2006}
+\def \SPEC {SPEC CPU 2006}
 \def \gcm {global-code-motion}
 \def \GCM {GCM}
 \def \xlinux {x86\_64-linux}
@@ -525,14 +527,15 @@ legality of \GCM{}, we introduce the concept of barriers.
 \label{subsec:barriers}
 Barriers are based on the concept of pinned instructions \cite{click1995global}
 but extended to adapt to \LLVM{} IR. A basic-block in \LLVM{} IR is actually an
-extended basic-block because there might be non-returning calls in the middle of
-a basic-block. Essentially, any instruction that cannot guarantee progress is
-marked as a barrier. A barrier will prevent any instruction occurring lexically
-below it from getting hoisted. On the other hand, a sink barrier will prevent
-any instruction above it from getting sunk. If there are no barriers in a basic
-block, any instruction satisfying other legality checks can be sunk.
+extended basic-block \cite{ebb} because there might be non-returning calls in
+the middle of a basic-block. There might be other instructions like stores,
+where compiler may not guarantee progress of control flow, all such instructions
+are marked as barriers. A barrier will prevent any instruction occurring
+lexically below it from getting hoisted. On the other hand, a sink barrier will
+prevent any instruction above it from getting sunk. If there are no barriers in
+a basic block, any instruction satisfying other legality checks can be sunk.
 
-\begin{lstlisting}
+\begin{lstlisting}[caption={Compute hoist and sink barriers},captionpos=b]
 // Compute both hoist and sink barriers
 void computeBarriers()
   for each basic-block B in a function:
@@ -594,6 +597,7 @@ anticipable in the common post-dominator. For example:
 
 \begin{lstlisting}
 B0: i0 = load B
+    if p is true then goto B1 else goto B2
 B1: i1 = load A
     c1 = i1 + 10
     d1 = i0 + 20
@@ -607,23 +611,23 @@ B3: PHIc1, c2)
     PHI(d1, d2)
 \end{lstlisting}
 
-In this example (c1, c2) or (d1, d2) are potential sinkable candidates. Since
-(c1, c2) depend on i1 and i2 respectively which are also in their original basic
-blocks, c1 and c2 are not fully anticipable in B3. So without knowing the
+In this example (c1, c2) or (d1, d2) are potential sinkable candidates.  (c1,
+c2) depend on i1 and i2 respectively which are also in their original basic
+blocks; c1 and c2 are not fully anticipable in B3. So without knowing the
 ability to sink `i1' and `i2' it would be illegal to sink (c1, c2) to B3. On the
 other hand (d1, d2) can safely be sunk because their operands are readily
-available at the sink point, i.e., B3. It should also be noted that, just
-because the expressions are identical and operands are available, it still
-requires a unique post-dominating $\Phi$ to use the exact same values to be
-legally sinkable.
+available at the sink point, i.e., B3. It should also be noted that, even if the
+expressions are identical and operands are available, it still requires a both
+instructions to be post-dominated by a unique $\Phi$ to be legally sinkable.
 
 \subsection{Profitability check (Cost models)}
 \label{subsec:cost-models}
 After the legality checks have passed, we check if a \GCM{} is profitable.  That
 takes into account the impact \GCM{} would have on various parameters that might
 affect runtime performance, e.g., impact on live-range, gain in the code
-size. The current implementation makes effort to not regress in performance but
-reduce register spills. We implement a cost model to reduce register pressure.
+size. The current implementation makes effort to not regress in performance and
+still reduce register spills. We implement a cost model to reduce register
+pressure.
 
 \subsubsection{Reduce register pressure}
 \label{hoist:reg-pressure}
@@ -631,11 +635,13 @@ Hoisting upwards will decrease the live-range of its use, if it is a last use (a
 kill) but increase the live-range of its definition. Conversely, sinking will
 decrease the live-range of the defined register but increase the live-range for
 killed operands. If the live-range after \GCM{} will decrease, it will be
-moved. Essentially, as long as there is one killed operand, code hoisting will
-either decrease or preserve the register pressure.  Similarly, code-sinking will
-either decrease or preserve the register pressure as long as there is one
-operand killed at most.  The following example explains how \GCM{} of can reduce
-the register pressure.
+moved. Essentially, if there is one killed operand, code hoisting will either
+decrease or preserve the register pressure as long as the hoisting of killed
+operands does not cross a use.  Similarly, code-sinking (of an instructions
+which defines a register) will either decrease or preserve the register pressure
+as long as there is one operand killed at most and the instruction is not sunk
+below the killing use of a non-killed operand. The following example explains
+how \GCM{} can reduce the register pressure.
 
 \begin{lstlisting}
 B0:
@@ -664,14 +670,14 @@ pressure when the use operands are not kills.
 \label{cost:across-calls}
 Call expressions are difficult to analyze in an intraprocedural optimization
 pass like \GCM{}. Even hoisting scalars across calls is tricky because it can
-increase the number of spills. During the register allocation of calls
+increase the number of spills. During the register allocation of call
 expressions, the argument registers (also known as the caller saved registers)
 are saved because they might be modified by the callee and after the call they
-are restored. Due to this the register pressure is high because the number of
-available registers are reduced by the number of caller saved registers. In that
-situation a computation that reduces register pressure may be beneficial to
-hoist. Similarly, a computation that introduces a register (without killing any
-other operand) before a call may be beneficial to sink.
+are restored. Due to this frame setup the register pressure is high because the
+number of available registers are reduced by the number of caller saved
+registers. In that situation a computation that reduces register pressure may be
+beneficial to hoist. Similarly, a computation that introduces a register
+(without killing any other operand) before a call may be beneficial to sink.
 
 \section{A fast algorithm for code motion of congruent computations}
 \label{subsec:optimistic}
@@ -679,10 +685,10 @@ Once all the legality and profitability checks are satisfied for a set of
 congruent instructions, they are suitable candidates for code motion. A copy of
 the computation is inserted at the hoisting/sinking point along with any
 instructions which needed to be rematerialized. Thereafter, all the computations
-made redundant by the new copy are removed and affected data structuers are
+made redundant by the new copy are removed and affected data structures are
 updated.
 
-\begin{lstlisting}
+\begin{lstlisting}[caption={Global Code Motion},captionpos=b]
 void doGCM()
   Analyses available:
     Dominator Tree, DFS Numbering, Memory SSA
@@ -710,13 +716,13 @@ and iterate on the list of instructions having identical \GVN{}s. The algorithm
 \emph{doGCM} prefers hoisting (\emph{doCodeHoisting}) to sinking
 (\emph{doCodeSinking}).
 
-\begin{lstlisting}
+\begin{lstlisting}[caption={Hoist instructions},captionpos=b]
 int doCodeHoisting(VNs)
   // VNs = map (VN -> list of I with value VN)
   Sort VNs in ascending order
 
-  for each VN in VNs
-    for each instruction with the same VN
+  for each VN in VNs:
+    for each instruction with the same VN:
       Find its post-dominance-frontier (PDF)
       Insert the CHI-node at PDF
 
@@ -741,13 +747,13 @@ get equal value numbers so we rerun the code-hoisting algorithm until there are
 no more instructions left to be hoisted. The hoisting converges quickly with 2-3
 iterations.
 
-\begin{lstlisting}
+\begin{lstlisting}[caption={Sink instructions},captionpos=b]
 int doCodeSinking()
   // VNs = map (VN -> list of I with value VN)
   Sort VNs in ascending order
 
-  for each VN in VNs
-    for each instruction with the same VN
+  for each VN in VNs:
+    for each instruction with the same VN:
       Find its dominance-frontier (DF)
       Insert the $\Phi$-node at DF
 
@@ -777,7 +783,7 @@ and \SSA{} semantics.
 
 
 \subsection{Time complexity of algorithm}
-The complexity of code hoisting is linear in number of instructions that are
+The complexity of code hoisting is linear in the number of instructions that are
 candidates for \gcm{}, matching the complexity of \PRE{} on \SSA{} form.  The
 analyses computed for this pass like Global Value Numbering, Marking Barriers,
 are both linear in number of instructions in a function. Computation of DJ-graph
@@ -804,7 +810,7 @@ visualize the impact. Each benchmark was run three times and the best result was
 taken. We collected execution time and code-size which is listed in
 Table~\ref{tab:code-size}, other compiler statistics are listed in
 Table~\ref{tab:stats}, Table~\ref{tab:spills}, and
-Figure~\ref{tab:code-motion-metric}.  We also measured compile time
+Figure~\ref{tab:code-motion-metric}.  We also measured compile time as shown in
 Table~\ref{tab:compile-time}. The benchmark 464.h264ref caused an internal
 compiler error with the trunk clang so it could not be reported.
 

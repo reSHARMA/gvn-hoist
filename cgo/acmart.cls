@@ -1050,8 +1050,8 @@ Computing Machinery]
   \ifx\acmConference@shortname\@empty
     \gdef\acmConference@shortname{#2}%
   \fi}
-\acmConference[CC'18]{CC}{February 2018}{Vienna,
-  Austria}
+\acmConference[LCTES'18]{LCTES}{June 2018}{Philadelphia,
+  Pennsylvania, United States}
 \def\acmBooktitle#1{\gdef\@acmBooktitle{#1}}
 \acmBooktitle{Proceedings of \acmConference@name
        \ifx\acmConference@name\acmConference@shortname\else
