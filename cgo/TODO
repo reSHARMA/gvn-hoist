@@ -3,3 +3,17 @@ Which optimizations can benefit from these:
 \chi for all backward propagation optimizations (can be precomputed).
 
 on the correctness of chi and PHI	how to write theorems (https://sites.google.com/site/jongsoopark/home/ssapre.pdf)
+
+
+cost-model of live range not good, make the modification as per the review in cgo/cc
+
+
+Reduce register pressure
+Essentially, if there is
+one killed operand, code hoisting will either decrease
+or preserve the register pressure as long as the hoisting
+of killed operands does not cross a use. Similarly, code-
+sinking (of an instructions which defines a register) will
+either decrease or preserve the register pressure as long
+as there is one operand killed at most and the instruction
+is not sunk below the killing use of a non-killed operand.
