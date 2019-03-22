@@ -27,6 +27,7 @@
 \usepackage{flushend}
 \usepackage{needspace}
 \usepackage{algpseudocode}
+\usepackage[export]{adjustbox}
 
 \makeatletter\if@ACM@journal\makeatother
 
@@ -1323,6 +1324,61 @@ dependencies. We plan to implement this in near future.
     hoisted the most followed by scalars, stores and calls.}
   \label{tab:code-motion-metric}
 \end{table}
+
+We compiled a popular open source computer vision library, OpenCV. We used OpenCV performance tests and scripts provided by them to measure performance gain with \gcm{}. We compared performance for every test in different test suites. We observe some gains with minor regressions. Feature2D test suite resulted in performance gain of $1-2\%$ without any performance regression. Ratio of performance with \gcm{} for different test suites is shown in Figure~\ref{fig:opencv-perf-result}.
+
+\begin{figure}[H]
+
+\begin{subfigure}{0.4\textwidth}
+\includegraphics[width=0.9\linewidth, height=4cm]{calib-perf-result.png} 
+\caption{Calib3D}
+\label{fig:subim1}
+\end{subfigure}
+\begin{subfigure}{0.4\textwidth}
+\includegraphics[width=0.9\linewidth, height=4cm]{core-perf-result.png}
+\caption{Core}
+\label{fig:subim2}
+\end{subfigure}
+
+\begin{subfigure}{0.4\textwidth}
+\includegraphics[width=0.9\linewidth, height=4cm]{dnn-perf-result.png} 
+\caption{dnn}
+\label{fig:subim3}
+\end{subfigure}
+\begin{subfigure}{0.4\textwidth}
+\includegraphics[width=0.9\linewidth, height=4cm]{feature-perf-result.png}
+\caption{Feature2D}
+\label{fig:subim4}
+\end{subfigure}
+
+\begin{subfigure}{0.4\textwidth}
+\includegraphics[width=0.9\linewidth, height=4cm]{imgproc-perf-result.png} 
+\caption{ImgProc}
+\label{fig:subim5}
+\end{subfigure}
+\begin{subfigure}{0.4\textwidth}
+\includegraphics[width=0.9\linewidth, height=4cm]{objdetect-perf-result.png}
+\caption{ObjDetect}
+\label{fig:subim6}
+\end{subfigure}
+
+\begin{subfigure}{0.4\textwidth}
+\includegraphics[width=0.9\linewidth, height=4cm, center]{video-perf-result.png} 
+\caption{Video}
+\label{fig:subim7}
+\end{subfigure}
+
+\caption{Ratio of performance for OpenCV perf test with \gcm{}}
+\label{fig:opencv-perf-result}
+\end{figure}
+
+We report decrease in size of libopencv\_core library by $0.17\%$. There is no regression observed in size of other libraries. We cross-compiled OpenCV for Android using Android ntk 16b. We report decrease in size in Figure~\ref{fig:opencv-android-size-result}.  Notably with \gcm{} we observed $0.4\%$ decrease in size for OpenCV machine learning library libopencv\_ml.so* and it's core library libopencv\_core.so*.
+
+\begin{figure}[H]
+\includegraphics[width=0.9\linewidth, height=8cm, center]{opencv-android-size-result.png} 
+\caption{Percentage decrease in size of OpenCV libraries on Android with \gcm{}}
+\label{fig:opencv-android-size-result}
+\end{figure}
 
 The code shown in Section~\ref{sec:intro} is a reduced example that appears in a
 hot loop of a proprietary benchmark.  When the expressions are hoisted from the

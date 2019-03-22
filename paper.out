@@ -1,0 +1,13 @@
+\BOOKMARK [1][-]{section*.1}{Abstract}{}% 1
+\BOOKMARK [1][-]{section.1}{1 Introduction}{}% 2
+\BOOKMARK [1][-]{section.2}{2 Related Work}{}% 3
+\BOOKMARK [1][-]{section.3}{3 Code hoisting of congruent computations}{}% 4
+\BOOKMARK [1][-]{section.4}{4 Global code motion}{}% 5
+\BOOKMARK [2][-]{subsection.4.1}{4.1 Liveness using DJ-graph}{section.4}% 6
+\BOOKMARK [2][-]{subsection.4.2}{4.2 Finding candidates to move}{section.4}% 7
+\BOOKMARK [2][-]{subsection.4.3}{4.3 Legality check}{section.4}% 8
+\BOOKMARK [2][-]{subsection.4.4}{4.4 Profitability check \(Cost models\)}{section.4}% 9
+\BOOKMARK [2][-]{subsection.4.5}{4.5 Code generation for the optimistic global-code-motion algorithm}{section.4}% 10
+\BOOKMARK [2][-]{subsection.4.6}{4.6 Time complexity of algorithm}{section.4}% 11
+\BOOKMARK [1][-]{section.5}{5 Experimental Evaluation}{}% 12
+\BOOKMARK [1][-]{section.6}{6 Conclusions and Future Work}{}% 13
